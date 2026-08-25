@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `session_file_submissions` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `session_file_id` INT UNSIGNED NOT NULL,
+    `student_id` INT UNSIGNED NOT NULL,
+    `file_path` VARCHAR(500) NOT NULL,
+    `original_name` VARCHAR(255) NOT NULL DEFAULT '',
+    `note` TEXT NULL,
+    `status` ENUM('pending','graded') NOT NULL DEFAULT 'pending',
+    `grade` DECIMAL(5,2) NULL,
+    `teacher_feedback` TEXT NULL,
+    `graded_by_id` INT UNSIGNED NULL,
+    `graded_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_submission_student_file` (`session_file_id`, `student_id`),
+    KEY `idx_submissions_student` (`student_id`),
+    KEY `idx_submissions_file` (`session_file_id`),
+    KEY `idx_submissions_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

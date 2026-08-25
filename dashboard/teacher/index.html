@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم المعلم - منصة ناجح</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>.icon-emoji{font-size:18px}</style>
+</head>
+<body>
+<div id="toastArea"></div>
+
+<!-- ===== AUTH VIEW (login / register / verify / forgot / reset) ===== -->
+<div class="login-wrap" id="authView">
+  <div class="login-card" id="authCard" style="max-width:480px">
+    <div class="login-logo icon-emoji">👨‍🏫</div>
+
+    <!-- Step: LOGIN -->
+    <div id="stepLogin">
+      <h1>تسجيل دخول المعلم</h1>
+      <p class="sub">منصة ناجح التعليمية</p>
+      <div class="error-box" id="loginError"></div>
+      <form id="loginForm">
+        <div class="field"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" required autocomplete="username"></div>
+        <div class="field"><label>كلمة المرور</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">دخول</button>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:13px">
+        ليس لديك حساب؟ <a href="#" id="gotoRegister" style="color:var(--primary);font-weight:700">سجل الآن</a><br>
+        <a href="#" id="gotoForgot" style="color:var(--primary);font-weight:700">نسيت كلمة المرور؟</a>
+      </p>
+    </div>
+
+    <!-- Step: REGISTER -->
+    <div id="stepRegister" style="display:none">
+      <h1>تسجيل معلم جديد</h1>
+      <p class="sub">بانتظار موافقة الأدمن بعد تأكيد الإيميل</p>
+      <div class="error-box" id="registerError"></div>
+      <form id="registerForm">
+        <div class="field"><label>الاسم *</label><input type="text" id="regName" required></div>
+        <div class="field"><label>البريد الإلكتروني *</label><input type="email" id="regEmail" required></div>
+        <div class="field"><label>كلمة المرور *</label><input type="password" id="regPassword" required></div>
+        <div class="grid-2">
+          <div class="field"><label>واتساب</label><input type="text" id="regWhatsapp"></div>
+          <div id="regCityWrap"></div>
+        </div>
+        <div class="field"><label>التخصص</label><input type="text" id="regSpecialization"></div>
+        <div class="field"><label>المواد الدراسية</label><div id="regSubjectsWrap">جار التحميل...</div></div>
+        <div id="regImageWrap"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="registerBtn">تسجيل</button>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:13px">
+        لديك حساب بالفعل؟ <a href="#" id="gotoLoginFromReg" style="color:var(--primary);font-weight:700">دخول</a>
+      </p>
+    </div>
+
+    <!-- Step: VERIFY EMAIL OTP -->
+    <div id="stepVerify" style="display:none">
+      <h1>تأكيد البريد الإلكتروني</h1>
+      <p class="sub">تم إرسال كود مكون من 6 أرقام إلى <b id="verifyEmailLabel"></b></p>
+      <div class="error-box" id="verifyError"></div>
+      <form id="verifyForm">
+        <div class="field"><label>كود التحقق (OTP)</label><input type="text" id="verifyCode" maxlength="6" required></div>
+        <button type="submit" class="btn btn-primary btn-block" id="verifyBtn">تأكيد</button>
+      </form>
+      <button class="btn btn-outline btn-block" id="resendOtpBtn" style="margin-top:10px">إعادة إرسال الكود</button>
+    </div>
+
+    <!-- Step: FORGOT PASSWORD -->
+    <div id="stepForgot" style="display:none">
+      <h1>نسيت كلمة المرور</h1>
+      <p class="sub">أدخل بريدك لإرسال كود إعادة التعيين</p>
+      <div class="error-box" id="forgotError"></div>
+      <form id="forgotForm">
+        <div class="field"><label>البريد الإلكتروني</label><input type="email" id="forgotEmail" required></div>
+        <button type="submit" class="btn btn-primary btn-block" id="forgotBtn">إرسال الكود</button>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:13px"><a href="#" id="gotoLoginFromForgot" style="color:var(--primary);font-weight:700">رجوع للدخول</a></p>
+    </div>
+
+    <!-- Step: VERIFY RESET CODE + NEW PASSWORD -->
+    <div id="stepReset" style="display:none">
+      <h1>إعادة تعيين كلمة المرور</h1>
+      <p class="sub">أدخل الكود المرسل إلى <b id="resetEmailLabel"></b> وكلمة المرور الجديدة</p>
+      <div class="error-box" id="resetError"></div>
+      <form id="resetForm">
+        <div class="field"><label>كود التحقق (OTP)</label><input type="text" id="resetCode" maxlength="6" required></div>
+        <div class="field"><label>كلمة المرور الجديدة</label><input type="password" id="resetNewPassword" required></div>
+        <button type="submit" class="btn btn-primary btn-block" id="resetBtn">تعيين كلمة المرور</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div class="app" id="appShell" style="display:none">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="logo icon-emoji">👨‍🏫</span> لوحة المعلم</div>
+    <nav id="navMenu">
+      <div class="nav-item active" data-view="profile">👤 الملف الشخصي</div>
+      <div class="nav-section">المحتوى التعليمي</div>
+      <div class="nav-item" data-view="courses">📚 كورساتي <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="units">📦 الوحدات الدراسية <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="videos">🎬 الفيديوهات <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="books">📖 الكتب <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="exams">📝 الامتحانات <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="certificates">🏆 الشهادات <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="homework">📋 الواجبات <span class="badge-new">جديد</span></div>
+      <div class="nav-section">الجدول والمواعيد</div>
+      <div class="nav-item" data-view="sessions">📅 جدول الحصص <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="consultations">🗓️ الاستشارات <span class="badge-new">جديد</span></div>
+      <div class="nav-section">الطلاب</div>
+      <div class="nav-item" data-view="subscribed-students">👥 الطلاب المشتركون <span class="badge-new">جديد</span></div>
+      <div class="nav-item" data-view="reports">📊 التقارير الأكاديمية <span class="badge-new">جديد</span></div>
+    </nav>
+    <div class="user-box">
+      <img id="sideUserImg" src="https://ui-avatars.com/api/?name=Teacher&background=1fa96e&color=fff" alt="">
+      <div>
+        <div class="name" id="sideUserName">المعلم</div>
+        <div class="role" id="sideUserRole" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+      </div>
+    </div>
+    <button class="btn btn-outline logout-btn" id="logoutBtn">🚪 تسجيل الخروج</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle" id="menuToggle">☰</button>
+        <h2 id="pageTitle">الملف الشخصي</h2>
+      </div>
+      <button class="btn btn-outline btn-sm" id="refreshBtn">↻ تحديث</button>
+    </div>
+    <div class="content" id="viewRoot"></div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header"><h3 id="modalTitle">عنوان</h3><button class="modal-close" id="modalClose">&times;</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script src="../shared/ui-kit.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

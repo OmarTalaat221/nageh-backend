@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة ناجح التعليمية - مستقبلك الدراسي يبدأ من هنا</title>
+<meta name="description" content="كورسات مسجلة، حصص مباشرة، وكتاب مذاكرة في مكان واحد — علشان توصل لأعلى تقدير وانت مطمئن على وقتك ومجهودك.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="container navbar-inner">
+    <a href="#" class="brand-logo">
+      <div class="logo-badge">🎓</div>
+      <div class="brand-text">
+        <span class="brand-title">NAJEH</span>
+        <span class="brand-subtitle">BY IBRAHIM AL OBEID</span>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#" class="nav-link active">الصفحة الرئيسية</a>
+      <a href="#courses" class="nav-link">الكورسات</a>
+      <a href="#books" class="nav-link">الكتب والمذكرات</a>
+      <a href="#about" class="nav-link">من نحن</a>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="lang-btn" id="langSwitchBtn">
+        <span>🌐</span>
+        <span id="langBtnText">English</span>
+      </button>
+      <a href="/dashboard/student/" class="btn-primary" style="padding:10px 20px;font-size:14px">تسجيل الدخول</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero-section">
+  <div class="hero-glow-1"></div>
+  <div class="container">
+    <div class="hero-badge" id="heroBadgeWrap">
+      <span>✨</span>
+      <span id="heroBadgeText">أكثر من 40,000 طالب اختاروا ناجح</span>
+    </div>
+    <h1 class="hero-title" id="heroTitle">مستقبلك الدراسي يبدأ من هنا، مع ناجح</h1>
+    <p class="hero-subtitle" id="heroSubtitle">كورسات مسجلة، حصص مباشرة، وكتاب مذاكرة في مكان واحد — علشان توصل لأعلى تقدير وانت مطمئن على وقتك ومجهودك.</p>
+    
+    <div class="hero-buttons">
+      <a href="#courses" class="btn-primary" id="heroPrimaryBtn">تصفح الكورسات</a>
+      <a href="#plans" class="btn-outline" id="heroSecondaryBtn">خطط الاشتراك</a>
+    </div>
+
+    <div class="hero-stats-chips">
+      <div class="chip-item">🎓 <span id="heroSuccessRate">94%</span> معدل نجاح الطلاب</div>
+      <div class="chip-item">📺 <span id="heroLiveSessions">+1200</span> حصة مباشرة</div>
+      <div class="chip-item">⭐ تقييم <span id="heroRating">4.9/5</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="stats-bar-section">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" id="statCoursesVal">+300</div>
+        <div class="stat-label" id="statCoursesLabel">كورس تعليمي</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="statBooksVal">+120</div>
+        <div class="stat-label" id="statBooksLabel">كتاب ومذكرة</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="statTeachersVal">+85</div>
+        <div class="stat-label" id="statTeachersLabel">مدرّس متخصص</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="statStudentsVal">+40k</div>
+        <div class="stat-label" id="statStudentsLabel">طالب مسجل</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container" id="bannersContainer" style="margin-bottom:80px;display:none">
+  <div id="bannersSlider" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:20px;border-radius:24px"></div>
+</section>
+
+<section class="container" id="courses" style="margin-bottom:90px">
+  <div class="section-header">
+    <div class="section-tag">📚 كورسات مميزة</div>
+    <h2 class="section-title">أحدث الكورسات المتاحة على المنصة</h2>
+  </div>
+  <div class="cards-grid" id="coursesGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:40px">جاري تحميل الكورسات...</div>
+  </div>
+</section>
+
+<section class="container" id="books" style="margin-bottom:90px">
+  <div class="section-header">
+    <div class="section-tag">📖 المكتبة والمذكرات</div>
+    <h2 class="section-title">كتب ومذكرات مراجعة معتمدة</h2>
+  </div>
+  <div class="cards-grid" id="booksGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:40px">جاري تحميل الكتب...</div>
+  </div>
+</section>
+
+<section class="container" id="about" style="margin-bottom:90px">
+  <div class="about-banner" style="background:linear-gradient(135deg, #0a1333, #060c1e);color:#ffffff;text-align:center;position:relative;overflow:hidden">
+    <div style="font-size:40px;margin-bottom:12px">🎓</div>
+    <h2 class="section-title" id="aboutTitle" style="color:#ffffff;margin-bottom:16px">من نحن</h2>
+    <p id="aboutDesc" style="font-size:18px;color:var(--slate-300);max-width:800px;margin:0 auto;line-height:1.7">منصة ناجح التعليمية، وجهتك لتعلّم مستمر بلا حدود...</p>
+    
+    <div style="display:flex;justify-content:center;gap:40px;margin-top:40px;flex-wrap:wrap">
+      <div><div style="font-size:32px;font-weight:900;color:var(--amber-primary)" id="aboutStatCourses">150+</div><div style="font-size:13px;color:var(--slate-400)">كورس تعليمي</div></div>
+      <div><div style="font-size:32px;font-weight:900;color:var(--amber-primary)" id="aboutStatBooks">40+</div><div style="font-size:13px;color:var(--slate-400)">كتاب تعليمي</div></div>
+      <div><div style="font-size:32px;font-weight:900;color:var(--amber-primary)" id="aboutStatStudents">20,000+</div><div style="font-size:13px;color:var(--slate-400)">طالب وطالبة</div></div>
+    </div>
+  </div>
+
+  <div style="background:#ffffff;border-radius:var(--radius-xl);padding:40px;border:1px solid var(--slate-200);margin-bottom:50px">
+    <div class="section-tag" style="margin-bottom:10px">🎯 رؤيتنا ونهجنا</div>
+    <h2 class="section-title" id="missionTitle" style="margin-bottom:16px;text-align:right">رسالتنا</h2>
+    <p id="missionText" style="font-size:16px;color:var(--slate-600);line-height:1.8;max-width:950px">نؤمن أن التعليم الجيد يجب أن يكون متاحاً للجميع...</p>
+  </div>
+
+  <div class="section-header">
+    <div class="section-tag">✨ خدمات المنصة</div>
+    <h2 class="section-title">ماذا نقدم في ناجح</h2>
+  </div>
+  <div class="about-grid" id="offeringsGrid" style="margin-bottom:70px"></div>
+
+  <div class="section-header">
+    <div class="section-tag">💎 ميزات تنافسية</div>
+    <h2 class="section-title">قيمنا الأساسية</h2>
+  </div>
+  <div class="cards-grid" id="valuesGrid" style="margin-bottom:70px"></div>
+
+  <div style="background:linear-gradient(135deg, #0a1333, #09102a);border-radius:var(--radius-xl);padding:60px 40px;text-align:center;color:#ffffff;box-shadow:var(--shadow-xl)">
+    <h2 id="aboutCtaTitle" style="font-size:32px;font-weight:900;margin-bottom:12px">ابداً رحلتك التعليمية مع ناجح اليوم</h2>
+    <p id="aboutCtaSubtitle" style="font-size:16px;color:var(--slate-300);margin-bottom:30px">انضم إلى آلاف المتعلمين الذين اختاروا ناجح لتطوير مهاراتهم</p>
+    <a href="/dashboard/student/" class="btn-primary" style="padding:14px 36px;font-size:16px">تصفح الكورسات وقم بالتسجيل</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="brand-logo" style="margin-bottom:10px">
+          <div class="logo-badge">🎓</div>
+          <div class="brand-text">
+            <span class="brand-title" style="color:#ffffff">NAJEH</span>
+            <span class="brand-subtitle">BY IBRAHIM AL OBEID</span>
+          </div>
+        </div>
+        <p class="footer-desc" id="footerDesc">منصة تعليمية شاملة بتساعد الطالب يذاكر ويتابع تقدمه ويحقق أعلى الدرجات براحته.</p>
+      </div>
+
+      <div>
+        <h4 class="footer-title">المنصة</h4>
+        <ul class="footer-links">
+          <li><a href="#courses">الكورسات</a></li>
+          <li><a href="#books">المكتبة</a></li>
+          <li><a href="#about">من نحن</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="footer-title">الدعم الفني</h4>
+        <ul class="footer-links">
+          <li><a href="#">مركز المساعدة</a></li>
+          <li><a href="#">الأسئلة الشائعة</a></li>
+          <li><a href="#">تواصل معنا</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="footer-title">تابعنا</h4>
+        <ul class="footer-links">
+          <li><a href="#" id="footerFb" target="_blank">فيسبوك</a></li>
+          <li><a href="#" id="footerIg" target="_blank">إنستجرام</a></li>
+          <li><a href="#" id="footerYt" target="_blank">يوتيوب</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 منصة ناجح التعليمية. كل الحقوق محفوظة.</div>
+      <div>
+        <a href="#" style="color:var(--slate-400);margin-left:15px">سياسة الخصوصية</a>
+        <a href="#" style="color:var(--slate-400)">الشروط والأحكام</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+
+<!-- WhatsApp Floating Button -->
+<a
+  id="whatsapp-float"
+  href="#"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="تواصل عبر واتساب"
+  title="تواصل عبر واتساب"
+  style="
+    position: fixed;
+    bottom: 28px;
+    left: 28px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background-color: #25D366;
+    box-shadow: 0 4px 20px rgba(37,211,102,0.45);
+    text-decoration: none;
+    animation: wa-pulse 2.5s infinite;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  "
+  onmouseover="this.style.transform='scale(1.12)';this.style.boxShadow='0 6px 28px rgba(37,211,102,0.65)'"
+  onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(37,211,102,0.45)'"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30" fill="white" aria-hidden="true">
+    <path d="M16.004 2C8.28 2 2 8.28 2 16.004c0 2.487.65 4.818 1.784 6.84L2 30l7.348-1.766A13.945 13.945 0 0016.004 30C23.72 30 30 23.72 30 16.004 30 8.28 23.72 2 16.004 2zm0 25.452a11.64 11.64 0 01-5.94-1.627l-.426-.254-4.358 1.048 1.076-4.25-.278-.44a11.606 11.606 0 01-1.622-5.92c0-6.417 5.222-11.637 11.548-11.637 6.327 0 11.55 5.22 11.55 11.637 0 6.418-5.223 11.443-11.55 11.443zm6.34-8.74c-.347-.173-2.056-1.013-2.374-1.13-.32-.116-.552-.173-.783.174-.232.347-.9 1.13-1.1 1.362-.2.232-.404.26-.75.087-.348-.174-1.47-.54-2.8-1.724-1.034-.921-1.733-2.059-1.936-2.406-.203-.347-.022-.534.152-.707.156-.155.347-.405.52-.607.174-.203.232-.347.348-.578.116-.232.058-.434-.029-.607-.086-.174-.783-1.882-1.073-2.578-.282-.676-.569-.585-.783-.596l-.666-.012c-.231 0-.608.087-.927.434-.318.347-1.216 1.188-1.216 2.896s1.246 3.356 1.42 3.588c.173.231 2.45 3.74 5.937 5.244.83.358 1.478.572 1.982.732.833.265 1.591.228 2.19.138.668-.1 2.056-.84 2.346-1.652.29-.812.29-1.508.203-1.652-.086-.145-.318-.232-.665-.405z"/>
+  </svg>
+</a>
+<style>
+  @keyframes wa-pulse {
+    0%   { box-shadow: 0 4px 20px rgba(37,211,102,0.45), 0 0 0 0 rgba(37,211,102,0.5); }
+    70%  { box-shadow: 0 4px 20px rgba(37,211,102,0.45), 0 0 0 14px rgba(37,211,102,0); }
+    100% { box-shadow: 0 4px 20px rgba(37,211,102,0.45), 0 0 0 0 rgba(37,211,102,0); }
+  }
+</style>
+
+</body>
+</html>
