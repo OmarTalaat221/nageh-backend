@@ -81,7 +81,7 @@ if (!function_exists('adminGetStudent')) {
             return ['status' => 'error', 'message' => 'Student ID is required'];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, city_id, school_id, study_language, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, city_id, school_id, academic_year_id, study_language, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $id);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -98,6 +98,7 @@ if (!function_exists('adminGetStudent')) {
         $row['id'] = $stId;
         $row['city_id'] = $cId;
         $row['school_id'] = $sId;
+        $row['academic_year_id'] = !empty($row['academic_year_id']) ? (int)$row['academic_year_id'] : null;
         $row['age'] = $row['age'] ? (int)$row['age'] : null;
         $row['is_email_verified'] = (int)$row['is_email_verified'];
         $row['is_active'] = (int)$row['is_active'];
@@ -121,6 +122,7 @@ if (!function_exists('adminCreateStudent')) {
         $age = isset($body['age']) ? (int)$body['age'] : null;
         $schoolId = isset($body['school_id']) ? (int)$body['school_id'] : null;
         $cityId = isset($body['city_id']) ? (int)$body['city_id'] : null;
+        $academicYearId = isset($body['academic_year_id']) && (int)$body['academic_year_id'] > 0 ? (int)$body['academic_year_id'] : null;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
         $isVerified = isset($body['is_email_verified']) ? (int)$body['is_email_verified'] : 1;
         $allowedLanguages = ['arabic', 'english', 'french'];
@@ -139,8 +141,8 @@ if (!function_exists('adminCreateStudent')) {
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, age, school_id, city_id, study_language, is_email_verified, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "sssssiiisii", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $studyLanguage, $isVerified, $isActive);
+        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, age, school_id, city_id, academic_year_id, study_language, is_email_verified, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "sssssiiiisii", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $isVerified, $isActive);
 
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create student: ' . mysqli_error($con)];
@@ -229,6 +231,12 @@ if (!function_exists('adminUpdateStudent')) {
         if ($studyLanguageUpdate !== null && in_array($studyLanguageUpdate, $allowedLanguages)) {
             $stmt = mysqli_prepare($con, "UPDATE students SET study_language = ? WHERE id = ?");
             mysqli_stmt_bind_param($stmt, "si", $studyLanguageUpdate, $id);
+            mysqli_stmt_execute($stmt);
+        }
+        if (array_key_exists('academic_year_id', $body)) {
+            $academicYearUpdate = ($body['academic_year_id'] !== null && (int)$body['academic_year_id'] > 0) ? (int)$body['academic_year_id'] : null;
+            $stmt = mysqli_prepare($con, "UPDATE students SET academic_year_id = ? WHERE id = ?");
+            mysqli_stmt_bind_param($stmt, "ii", $academicYearUpdate, $id);
             mysqli_stmt_execute($stmt);
         }
 

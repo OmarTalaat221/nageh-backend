@@ -77,13 +77,11 @@ if (!function_exists('studentHome')) {
             $subWhere[] = "course_id IN ({$cList})";
         }
 
-        if (!empty($subWhere)) {
+        if (empty($subWhere)) {
+            $sessRes = false;
+        } else {
             $sessionWhere[] = "(" . implode(' OR ', $subWhere) . ")";
-        }
-
-        $sessRes = mysqli_query($con, "SELECT id FROM class_sessions WHERE " . implode(' AND ', $sessionWhere) . " ORDER BY start_time ASC");
-        if (!$sessRes || mysqli_num_rows($sessRes) === 0) {
-            $sessRes = mysqli_query($con, "SELECT id FROM class_sessions WHERE is_active = 1 AND day_of_week = '{$todayName}' ORDER BY start_time ASC LIMIT 10");
+            $sessRes = mysqli_query($con, "SELECT id FROM class_sessions WHERE " . implode(' AND ', $sessionWhere) . " ORDER BY start_time ASC");
         }
 
         if ($sessRes) {

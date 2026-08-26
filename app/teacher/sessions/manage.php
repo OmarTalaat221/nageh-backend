@@ -594,9 +594,13 @@ if (!function_exists('studentRequestReschedule')) {
         }
 
         $accessible = get_student_accessible_entities($con, $studentId);
-        $hasAccess = $session['course_id']
-            ? in_array($session['course_id'], $accessible['course_ids'])
-            : in_array($session['subject_id'], $accessible['subject_ids']);
+        $sessionCourseId = (int)($session['course_id'] ?? 0);
+        $sessionSubjectId = (int)($session['subject_id'] ?? 0);
+        $sessionTeacherId = (int)($session['teacher_id'] ?? 0);
+        $hasAccess =
+            ($sessionCourseId > 0 && in_array($sessionCourseId, $accessible['course_ids'] ?? [])) ||
+            ($sessionSubjectId > 0 && in_array($sessionSubjectId, $accessible['subject_ids'] ?? [])) ||
+            ($sessionTeacherId > 0 && in_array($sessionTeacherId, $accessible['teacher_ids'] ?? []));
         if (!$hasAccess) {
             return ['status' => 'error', 'message' => trans('not_subscribed_to_session')];
         }

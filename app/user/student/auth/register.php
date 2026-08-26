@@ -13,6 +13,7 @@ if (!function_exists('studentRegister')) {
         $age = (isset($body['age']) && is_numeric($body['age']) && (int)$body['age'] > 0) ? (int)$body['age'] : null;
         $schoolId = (isset($body['school_id']) && is_numeric($body['school_id']) && (int)$body['school_id'] > 0) ? (int)$body['school_id'] : null;
         $cityId = (isset($body['city_id']) && is_numeric($body['city_id']) && (int)$body['city_id'] > 0) ? (int)$body['city_id'] : null;
+        $academicYearId = (isset($body['academic_year_id']) && is_numeric($body['academic_year_id']) && (int)$body['academic_year_id'] > 0) ? (int)$body['academic_year_id'] : null;
         $image = !empty(trim($body['image'] ?? '')) ? trim($body['image']) : null;
         $allowedLanguages = ['arabic', 'english', 'french'];
         $studyLanguage = strtolower(trim($body['study_language'] ?? 'arabic'));
@@ -64,8 +65,8 @@ if (!function_exists('studentRegister')) {
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, age, school_id, city_id, study_language, is_email_verified, referred_by_student_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
-        mysqli_stmt_bind_param($stmt, "sssssiiisi", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $studyLanguage, $referredByStudentId);
+        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, age, school_id, city_id, academic_year_id, study_language, is_email_verified, referred_by_student_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
+        mysqli_stmt_bind_param($stmt, "sssssiiiisi", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $referredByStudentId);
 
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create student account: ' . mysqli_error($con)];

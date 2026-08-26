@@ -92,6 +92,16 @@ if (!function_exists('adminListCourses')) {
             }
         }
 
+        $filterCourseIds = parse_int_list_param($_GET['course_ids'] ?? null);
+        if (!empty($filterCourseIds)) {
+            $inPlaceholders = implode(',', array_fill(0, count($filterCourseIds), '?'));
+            $whereConditions[] = "c.id IN ({$inPlaceholders})";
+            foreach ($filterCourseIds as $cIdFilter) {
+                $params[] = $cIdFilter;
+                $types .= "i";
+            }
+        }
+
         $ayIds = parse_int_list_param($_GET['academic_year_ids'] ?? $_GET['academic_year_id'] ?? $_GET['academic_years'] ?? null);
         if (!empty($ayIds)) {
             $inPlaceholders = implode(',', array_fill(0, count($ayIds), '?'));

@@ -510,8 +510,8 @@ if (!function_exists('get_student_accessible_entities')) {
         }
         $derivedSubjectIds = array_values(array_unique(array_filter($derivedSubjectIds)));
 
-        if (!empty($derivedSubjectIds)) {
-            $dsListStr = implode(',', $derivedSubjectIds);
+        if (!empty($directSubjectIds)) {
+            $dsListStr = implode(',', array_unique($directSubjectIds));
             $scRes = mysqli_query($con, "SELECT id FROM courses WHERE subject_id IN ({$dsListStr}) AND is_active = 1");
             if ($scRes) {
                 while ($row = mysqli_fetch_assoc($scRes)) {
@@ -568,6 +568,7 @@ if (!function_exists('studentGetMySubscribedCourses')) {
         }
 
         $_GET['course_ids'] = $courseIds;
+        $_GET['is_active'] = 1;
         require_once __DIR__ . '/../../../admin/courses/manage.php';
         return adminListCourses($con);
     }

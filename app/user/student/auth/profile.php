@@ -29,7 +29,7 @@ if (!function_exists('studentProfile')) {
             ensure_affiliate_commissions_extended_columns($con);
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, school_id, city_id, affiliate_code, points_balance, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, school_id, city_id, academic_year_id, study_language, affiliate_code, points_balance, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $studentId);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -51,6 +51,7 @@ if (!function_exists('studentProfile')) {
         $student['id'] = (int)$student['id'];
         $student['city_id'] = $cityId;
         $student['school_id'] = $schoolId;
+        $student['academic_year_id'] = !empty($student['academic_year_id']) ? (int)$student['academic_year_id'] : null;
         $student['age'] = $student['age'] ? (int)$student['age'] : null;
         $student['affiliate_code'] = $affCode;
         // $student['referral_code'] = $affCode;
@@ -133,6 +134,12 @@ if (!function_exists('studentUpdateProfile')) {
         if (array_key_exists('school_id', $body)) {
             $updateFields[] = "school_id = ?";
             $params[] = ($body['school_id'] !== null && is_numeric($body['school_id']) && (int)$body['school_id'] > 0) ? (int)$body['school_id'] : null;
+            $types .= "i";
+        }
+
+        if (array_key_exists('academic_year_id', $body)) {
+            $updateFields[] = "academic_year_id = ?";
+            $params[] = ($body['academic_year_id'] !== null && is_numeric($body['academic_year_id']) && (int)$body['academic_year_id'] > 0) ? (int)$body['academic_year_id'] : null;
             $types .= "i";
         }
 
