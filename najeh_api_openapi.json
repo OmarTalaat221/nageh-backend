@@ -5568,6 +5568,708 @@
           }
         }
       }
+    },
+    "/admin/subscriptions": {
+      "get": {
+        "tags": [
+          "Admin / Subscriptions (update-1)"
+        ],
+        "summary": "update-1: List student subscriptions (grants)",
+        "description": "update-1: paginated list of student_subscriptions rows, each with resolved subjects/teachers/courses and student summary.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids"
+          },
+          {
+            "name": "teacher_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids"
+          },
+          {
+            "name": "course_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          {
+            "name": "subscription_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "course",
+                "subject",
+                "teacher",
+                "custom"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Subscriptions (update-1)"
+        ],
+        "summary": "update-1 (NEW UI capability, pre-existing backend): Grant a subscription directly to a student, with NO code",
+        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "student_id"
+                ],
+                "properties": {
+                  "student_id": {
+                    "type": "integer"
+                  },
+                  "course_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "subject_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "duration_days": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  }
+                }
+              },
+              "example": "// update-1: CASE course: send course_ids only. CASE subject: send subject_ids only (auto-expands to that subject’s courses, grade-scoped). CASE teacher: send teacher_ids only (auto-expands to everything that teacher teaches, grade-scoped). Sending a mix of two or more of these creates subscription_type=custom.\n\n{\n  \"student_id\": 10,\n  \"subject_ids\": [\n    3\n  ],\n  \"duration_days\": 30\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "full subscription details: subjects[], teachers[], courses[], student{}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Student not found / no target selected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscription-codes": {
+      "get": {
+        "tags": [
+          "Admin / Subscription Codes (update-1)"
+        ],
+        "summary": "update-1: List subscription codes",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "subject_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teacher_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "course_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          {
+            "name": "valid_only",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "id",
+                "code",
+                "title",
+                "price",
+                "used_count",
+                "created_at"
+              ]
+            }
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — includes statistics{total_count, active_count, total_redemptions}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Subscription Codes (update-1)"
+        ],
+        "summary": "update-1 (NEW UI capability, pre-existing backend): Create subscription code(s) targeting a course, subject, or teacher",
+        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "optional, auto-generated if omitted or if batch_count > 1"
+                  },
+                  "code_prefix": {
+                    "type": "string",
+                    "default": "NAJEH"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "max_uses": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "duration_days": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "valid_from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "valid_to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1
+                  },
+                  "batch_count": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "generate up to 100 codes at once with the same targets"
+                  },
+                  "course_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "subject_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": "// update-1: CASE course code: course_ids only, NOT grade-limited (gives access to exactly those courses regardless of student grade). CASE subject/teacher code: subject_ids or teacher_ids only, grade-scoped on redemption exactly like direct grant.\n\n{\n  \"title\": \"Full course access - Math\",\n  \"course_ids\": [\n    5,\n    6\n  ],\n  \"max_uses\": 50,\n  \"duration_days\": 90\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK — data is a single object, or an array when batch_count > 1",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Subscription Codes (update-1)"
+        ],
+        "summary": "update-1 (NEW UI capability, pre-existing backend): Update a subscription code, including switching its type",
+        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "max_uses": {
+                    "type": "integer"
+                  },
+                  "duration_days": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "valid_from": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "valid_to": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "course_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "subject_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": "// update-1: switching this code from subject-type to teacher-type: subject_ids sent empty to clear the old targets, teacher_ids sent with the new target\n\n{\n  \"id\": 12,\n  \"subject_ids\": [],\n  \"teacher_ids\": [\n    7\n  ],\n  \"course_ids\": []\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Code not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin / Subscription Codes (update-1)"
+        ],
+        "summary": "update-1: Delete a subscription code",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscription-codes/show": {
+      "get": {
+        "tags": [
+          "Admin / Subscription Codes (update-1)"
+        ],
+        "summary": "update-1: Get one subscription code's full details (subjects/teachers/courses)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/subscriptions/redeem-code": {
+      "post": {
+        "tags": [
+          "Student / Subscriptions (update-1)"
+        ],
+        "summary": "update-1: Redeem a subscription code as a logged-in student",
+        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone).",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "// update-1: claimed_by_student_id gets set on this student the first time this code is redeemed by anyone\n\n{\n  \"code\": \"ABCD1234\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid / inactive / expired / exhausted code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
