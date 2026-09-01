@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../subscriptions/manage.php';
 
 if (!function_exists('studentLogin')) {
     function studentLogin($con) {
@@ -68,6 +69,9 @@ if (!function_exists('studentLogin')) {
         $student['school'] = get_school_details($con, $schoolId);
         $student['parents'] = get_student_parents_details($con, $stId);
         $student['parent_ids'] = array_values(array_map(function($p) { return (int)$p['id']; }, $student['parents']));
+
+        $accessible = get_student_accessible_entities($con, $stId);
+        $student['is_subscribed'] = !empty($accessible['course_ids']);
 
         return [
             'status' => 'success',

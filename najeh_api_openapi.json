@@ -5051,6 +5051,523 @@
           }
         }
       }
+    },
+    "/student/onboard/start": {
+      "post": {
+        "tags": [
+          "Student / Onboard (NEW - update-1)"
+        ],
+        "summary": "update-1 (NEW): Validate a subscription code before registration (no account yet)",
+        "description": "update-1 (NEW): First step of \"join with a code\" flow. No auth required. Validates the code (exists, active, within valid_from/valid_to, under max_uses) WITHOUT consuming it or creating any account. On success returns a short-lived (30 min) onboarding_token (JWT, student-scoped, purpose=student_onboarding) that must be sent as Bearer token to /student/onboard/complete. This token cannot be used on any normal student-authenticated endpoint.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Subscription code to validate"
+                  }
+                }
+              },
+              "example": "// update-1: validates the code only, does not create the student or consume the code yet\n\n{\n  \"code\": \"ABCD1234\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "onboarding_token": {
+                          "type": "string",
+                          "description": "Bearer token to send to /student/onboard/complete"
+                        },
+                        "expires_in": {
+                          "type": "integer",
+                          "example": 1800
+                        },
+                        "code_title": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid / inactive / expired / exhausted code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/onboard/complete": {
+      "post": {
+        "tags": [
+          "Student / Onboard (NEW - update-1)"
+        ],
+        "summary": "update-1 (NEW): Complete profile and register as a student, auto-applying the code's subscription",
+        "description": "update-1 (NEW): Second step. Auth: Bearer onboarding_token from /student/onboard/start (NOT a normal student session token — verified separately, purpose must be student_onboarding). Body is identical to normal /student/register (name/email/password required, phone/age/school_id/city_id/academic_year_id/study_language optional). Internally calls the same studentRegister() used by normal registration, then immediately redeems the onboarding code for the new student (subscription + subscription_status added to the response). Response then continues through the EXISTING email-OTP verification flow exactly like normal registration (verification.otp_code/expires_at, tokens).",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "age": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "school_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "city_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "study_language": {
+                    "type": "string",
+                    "enum": [
+                      "arabic",
+                      "english",
+                      "french"
+                    ]
+                  }
+                }
+              },
+              "example": "// update-1: same body as normal /student/register, code itself comes from the onboarding_token, not from this body\n\n{\n  \"name\": \"Ahmed Ali\",\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"01000000000\",\n  \"academic_year_id\": 1,\n  \"city_id\": 1,\n  \"study_language\": \"arabic\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK — same shape as /student/register, plus subscription/subscription_status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "student": {
+                          "type": "object"
+                        },
+                        "verification": {
+                          "type": "object",
+                          "properties": {
+                            "otp_code": {
+                              "type": "string"
+                            },
+                            "expires_at": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "tokens": {
+                          "type": "object"
+                        },
+                        "subscription": {
+                          "type": "object",
+                          "nullable": true,
+                          "description": "update-1 (NEW): result of auto-redeeming the code for this new student"
+                        },
+                        "subscription_status": {
+                          "type": "string",
+                          "description": "update-1 (NEW): success/error of the auto-redeem step"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired onboarding token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/onboard/start": {
+      "post": {
+        "tags": [
+          "Parent / Onboard (NEW - update-1)"
+        ],
+        "summary": "update-1 (NEW): Validate a subscription code already claimed by a student, before parent registration",
+        "description": "update-1 (NEW): First step of \"join with a code\" flow for a parent. No auth required. Requires the code to already have claimed_by_student_id set (i.e. some student already completed /student/onboard/complete or redeemed it) — otherwise returns an error asking the child to activate the code first. On success returns a short-lived (30 min) onboarding_token (JWT, parent-scoped, purpose=parent_onboarding, carries the bound student_id) plus the linked student's {id, name} for a confirmation UI.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "// update-1: code must already be claimed by a student (claimed_by_student_id set) — otherwise error\n\n{\n  \"code\": \"ABCD1234\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "onboarding_token": {
+                          "type": "string"
+                        },
+                        "expires_in": {
+                          "type": "integer",
+                          "example": 1800
+                        },
+                        "student": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid code, or code not yet activated by any student",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/onboard/complete": {
+      "post": {
+        "tags": [
+          "Parent / Onboard (NEW - update-1)"
+        ],
+        "summary": "update-1 (NEW): Complete profile, register as a parent, and auto-link to the code's student",
+        "description": "update-1 (NEW): Second step. Auth: Bearer onboarding_token from /parent/onboard/start (NOT a normal parent session token — verified separately, purpose must be parent_onboarding). Body is identical to normal /parent/register (name/email/password required, city_id optional) — no student_id needed in the body, it comes from the token. Internally calls parentRegister(), then inserts a parent_students link row to the student bound in the token. Response adds linked_student_id. Unlike student onboarding, parent login has no OTP gate in this app, so the frontend logs the parent in immediately after this call.",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "city_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              },
+              "example": "// update-1: no student_id in body — the linked student comes from the onboarding_token issued by /parent/onboard/start\n\n{\n  \"name\": \"Mona Ali\",\n  \"email\": \"mona@example.com\",\n  \"password\": \"secret123\",\n  \"city_id\": 1\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK — same shape as /parent/register, plus linked_student_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "parent": {
+                          "type": "object"
+                        },
+                        "verification": {
+                          "type": "object"
+                        },
+                        "tokens": {
+                          "type": "object"
+                        },
+                        "linked_student_id": {
+                          "type": "integer",
+                          "description": "update-1 (NEW): the student this parent got auto-linked to via parent_students"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired onboarding token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/auth/login": {
+      "post": {
+        "tags": [
+          "Student / Auth"
+        ],
+        "summary": "Student login",
+        "description": "update-1: response now also includes is_subscribed on the student object (same computation as the one already returned by the profile endpoint: true if the student has at least one accessible course via get_student_accessible_entities()).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "email": "ahmed@example.com",
+                "password": "secret123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "student": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            },
+                            "image": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "age": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "city_id": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "school_id": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "is_email_verified": {
+                              "type": "integer"
+                            },
+                            "is_active": {
+                              "type": "integer"
+                            },
+                            "city": {
+                              "type": "object",
+                              "nullable": true
+                            },
+                            "school": {
+                              "type": "object",
+                              "nullable": true
+                            },
+                            "parents": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "parent_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer"
+                              }
+                            },
+                            "is_subscribed": {
+                              "type": "boolean",
+                              "description": "update-1 (NEW on this endpoint): true if student has at least one accessible course, same rule already used on the profile endpoint"
+                            }
+                          }
+                        },
+                        "tokens": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials / email not verified / account inactive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
