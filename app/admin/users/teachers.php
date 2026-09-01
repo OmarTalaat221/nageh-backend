@@ -3,6 +3,37 @@ require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 
+if (!function_exists('parse_teacher_subject_assignments')) {
+    // Accepts either the richer `subjects: [{subject_id, academic_year_id}]` shape, or the
+    // legacy flat `subject_ids: [1,2,3]` array (each treated as "all grades" / academic_year_id null).
+    function parse_teacher_subject_assignments(array $body): array {
+        $assignments = [];
+
+        if (isset($body['subjects']) && is_array($body['subjects'])) {
+            foreach ($body['subjects'] as $entry) {
+                if (!is_array($entry)) continue;
+                $subjectId = (int)($entry['subject_id'] ?? 0);
+                if ($subjectId <= 0) continue;
+                $academicYearId = isset($entry['academic_year_id']) && $entry['academic_year_id'] ? (int)$entry['academic_year_id'] : null;
+                $assignments[] = ['subject_id' => $subjectId, 'academic_year_id' => $academicYearId];
+            }
+            return $assignments;
+        }
+
+        if (isset($body['subject_ids']) && is_array($body['subject_ids'])) {
+            foreach ($body['subject_ids'] as $sid) {
+                if ((int)$sid > 0) {
+                    $assignments[] = ['subject_id' => (int)$sid, 'academic_year_id' => null];
+                }
+            }
+        } elseif (isset($body['subject_id']) && (int)$body['subject_id'] > 0) {
+            $assignments[] = ['subject_id' => (int)$body['subject_id'], 'academic_year_id' => null];
+        }
+
+        return $assignments;
+    }
+}
+
 if (!function_exists('adminListTeachers')) {
     function adminListTeachers($con) {
         ensure_teachers_schema($con);
@@ -66,6 +97,7 @@ if (!function_exists('adminListTeachers')) {
             $row['is_active'] = (int)$row['is_active'];
             $row['subjects'] = get_teacher_subjects_details($con, $tId);
             $row['subject_ids'] = array_values(array_map(function($s) { return (int)$s['id']; }, $row['subjects']));
+            $row['subject_assignments'] = get_teacher_subject_assignments($con, $tId);
             $row['city'] = get_city_details($con, $cId);
 
             $teachers[] = $row;
@@ -102,6 +134,7 @@ if (!function_exists('adminGetTeacher')) {
         $row['is_active'] = (int)$row['is_active'];
         $row['subjects'] = get_teacher_subjects_details($con, $tId);
         $row['subject_ids'] = array_values(array_map(function($s) { return (int)$s['id']; }, $row['subjects']));
+        $row['subject_assignments'] = get_teacher_subject_assignments($con, $tId);
         $row['city'] = get_city_details($con, $cId);
 
         return ['status' => 'success', 'data' => format_response_images($row)];
@@ -127,20 +160,14 @@ if (!function_exists('adminCreateTeacher')) {
         $isVerified = isset($body['is_email_verified']) ? (int)$body['is_email_verified'] : 1;
         $canViewProfile = isset($body['can_view_profile']) ? (int)$body['can_view_profile'] : 1;
 
-        $subjectIds = [];
-        if (isset($body['subject_ids']) && is_array($body['subject_ids'])) {
-            foreach ($body['subject_ids'] as $sid) {
-                if ((int)$sid > 0) $subjectIds[] = (int)$sid;
-            }
-        } elseif (isset($body['subject_id']) && (int)$body['subject_id'] > 0) {
-            $subjectIds[] = (int)$body['subject_id'];
-        }
+        $subjectAssignments = parse_teacher_subject_assignments($body);
+        $subjectIds = array_values(array_unique(array_column($subjectAssignments, 'subject_id')));
 
         if (empty($name) || empty($email) || empty($password)) {
             return ['status' => 'error', 'message' => 'Name, email, and password are required'];
         }
 
-        if (empty($subjectIds)) {
+        if (empty($subjectAssignments)) {
             return ['status' => 'error', 'message' => 'At least one subject_id is required'];
         }
 
@@ -163,9 +190,9 @@ if (!function_exists('adminCreateTeacher')) {
 
         $teacherId = mysqli_insert_id($con);
 
-        $pivotStmt = mysqli_prepare($con, "INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE is_active = 1");
-        foreach ($subjectIds as $subId) {
-            mysqli_stmt_bind_param($pivotStmt, "ii", $teacherId, $subId);
+        $pivotStmt = mysqli_prepare($con, "INSERT INTO teacher_subjects (teacher_id, subject_id, academic_year_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_active = 1");
+        foreach ($subjectAssignments as $assignment) {
+            mysqli_stmt_bind_param($pivotStmt, "iii", $teacherId, $assignment['subject_id'], $assignment['academic_year_id']);
             mysqli_stmt_execute($pivotStmt);
         }
 
@@ -277,15 +304,13 @@ if (!function_exists('adminUpdateTeacher')) {
             mysqli_stmt_execute($stmt);
         }
 
-        if (isset($body['subject_ids']) && is_array($body['subject_ids'])) {
+        if (isset($body['subjects']) || isset($body['subject_ids'])) {
+            $subjectAssignments = parse_teacher_subject_assignments($body);
             mysqli_query($con, "DELETE FROM teacher_subjects WHERE teacher_id = {$id}");
-            $pivotStmt = mysqli_prepare($con, "INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE is_active = 1");
-            foreach ($body['subject_ids'] as $sid) {
-                $subId = (int)$sid;
-                if ($subId > 0) {
-                    mysqli_stmt_bind_param($pivotStmt, "ii", $id, $subId);
-                    mysqli_stmt_execute($pivotStmt);
-                }
+            $pivotStmt = mysqli_prepare($con, "INSERT INTO teacher_subjects (teacher_id, subject_id, academic_year_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_active = 1");
+            foreach ($subjectAssignments as $assignment) {
+                mysqli_stmt_bind_param($pivotStmt, "iii", $id, $assignment['subject_id'], $assignment['academic_year_id']);
+                mysqli_stmt_execute($pivotStmt);
             }
         }
 

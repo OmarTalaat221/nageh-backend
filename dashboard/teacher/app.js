@@ -1455,8 +1455,8 @@ async function renderConsultationsView(root) {
       </div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>التاريخ</th><th>الوقت</th><th>نوع اللقاء</th><th>المادة</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-          <tbody id="csTbody"><tr class="loading-row"><td colspan="6"><span class="spinner spinner-dark"></span></td></tr></tbody>
+          <thead><tr><th>التاريخ</th><th>الوقت</th><th>نوع الاستشارة</th><th>نوع اللقاء</th><th>المادة</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <tbody id="csTbody"><tr class="loading-row"><td colspan="7"><span class="spinner spinner-dark"></span></td></tr></tbody>
         </table>
       </div>
     </div>`;

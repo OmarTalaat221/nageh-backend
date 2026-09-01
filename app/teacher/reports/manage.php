@@ -54,8 +54,22 @@ if (!function_exists('get_student_report_details')) {
             $row['improvements'] = [];
         }
 
-        $senderName = $row['sender_type'] === 'admin' ? ($row['admin_name'] ?: 'إدارة المدرسة') : ($row['teacher_name'] ?: '-');
-        $senderRole = $row['sender_type'] === 'admin' ? 'إدارة' : 'معلم';
+        if ($row['sender_type'] === 'system' && !empty($row['teacher_id'])) {
+            $senderName = $row['teacher_name'] ?: '-';
+            $senderRole = 'معلم (تلقائي)';
+        } elseif ($row['sender_type'] === 'system' && !empty($row['admin_id'])) {
+            $senderName = $row['admin_name'] ?: 'إدارة المدرسة';
+            $senderRole = 'إدارة (تلقائي)';
+        } elseif ($row['sender_type'] === 'system') {
+            $senderName = 'منصة نجاح';
+            $senderRole = 'تقرير تلقائي';
+        } elseif ($row['sender_type'] === 'admin') {
+            $senderName = $row['admin_name'] ?: 'إدارة المدرسة';
+            $senderRole = 'إدارة';
+        } else {
+            $senderName = $row['teacher_name'] ?: '-';
+            $senderRole = 'معلم';
+        }
 
         $row['sender'] = [
             'type' => $row['sender_type'],

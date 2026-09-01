@@ -1,0 +1,5056 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Najeh Backend - Session Changelog API",
+    "version": "1.0.0",
+    "description": "OpenAPI spec covering every endpoint ADDED or CHANGED across this project's uncommitted work (vs base commit). Import into Apidog via Import > OpenAPI/Swagger. Auth: each role has its own Bearer JWT (Admin/Teacher/Student/Parent security schemes below); AnyAuth accepts a JWT from any one of the 4 roles."
+  },
+  "servers": [
+    {
+      "url": "https://YOUR_HOST/najeh"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "AdminAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Admin role JWT"
+      },
+      "TeacherAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Teacher role JWT"
+      },
+      "StudentAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Student role JWT (some endpoints accept this OPTIONALLY, falling back to ?student_id=)"
+      },
+      "ParentAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Parent role JWT"
+      },
+      "AnyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Any ONE of admin/teacher/student/parent JWTs, tried in that order"
+      }
+    },
+    "schemas": {
+      "ApiSuccess": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success"
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {}
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/upload/audio": {
+      "post": {
+        "tags": [
+          "Chat / Upload"
+        ],
+        "summary": "Upload voice/audio file (server storage, not Firebase)",
+        "description": "Same handler also reachable at /common/upload/audio. Was previously UNAUTHENTICATED — now requires any-role Bearer JWT.",
+        "security": [
+          {
+            "AnyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Alternate accepted field names, first non-empty wins: file, audio, record, voice, sound, attachment, media"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "file_path": {
+                              "type": "string",
+                              "example": "uploads/audio/64f...abc.webm"
+                            },
+                            "file_url": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "audio_url": {
+                              "type": "string",
+                              "format": "uri",
+                              "description": "alias of file_url"
+                            },
+                            "link": {
+                              "type": "string",
+                              "format": "uri",
+                              "description": "alias of file_url"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/common/upload/audio": {
+      "$ref": "#/paths/~1upload~1audio"
+    },
+    "/admin/notifications/send": {
+      "post": {
+        "tags": [
+          "Admin / Notifications"
+        ],
+        "summary": "Broadcast a push and/or email notification",
+        "description": "CASE (which id field is required depends on target_type):\n- target_type=all_users -> sends to every active student+teacher+parent, no *_ids needed.\n- target_type=all_students / all_teachers / all_parents -> sends to every active user of that ONE role, no *_ids needed.\n- target_type=students -> student_ids[] REQUIRED (or generic ids[] as fallback).\n- target_type=teachers -> teacher_ids[] REQUIRED (or ids[]).\n- target_type=parents -> parent_ids[] REQUIRED (or ids[]).\nchannels[] is independent of target_type: push and/or email, applies the same way regardless of who's targeted.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "target_type",
+                  "title",
+                  "body"
+                ],
+                "properties": {
+                  "target_type": {
+                    "type": "string",
+                    "enum": [
+                      "all_users",
+                      "all_students",
+                      "all_teachers",
+                      "all_parents",
+                      "students",
+                      "teachers",
+                      "parents"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "alias of body, used only if body absent"
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "push",
+                        "email"
+                      ]
+                    },
+                    "default": [
+                      "push"
+                    ]
+                  },
+                  "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "student_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "required when target_type=students"
+                  },
+                  "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "required when target_type=teachers"
+                  },
+                  "parent_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "required when target_type=parents"
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "generic alias for whichever *_ids applies"
+                  }
+                }
+              },
+              "example": "// CASE (which id field is required depends on target_type):\n// - target_type=all_users -> sends to every active student+teacher+parent, no *_ids needed.\n// - target_type=all_students / all_teachers / all_parents -> sends to every active user of that ONE role, no *_ids needed.\n// - target_type=students -> student_ids[] REQUIRED (or generic ids[] as fallback).\n// - target_type=teachers -> teacher_ids[] REQUIRED (or ids[]).\n// - target_type=parents -> parent_ids[] REQUIRED (or ids[]).\n// channels[] is independent of target_type: push and/or email, applies the same way regardless of who's targeted.\n\n{\n  \"target_type\": \"all_users\",\n  \"title\": \"string\",\n  \"body\": \"string\",\n  \"message\": \"string\",\n  \"channels\": [\n    \"push\"\n  ],\n  \"data\": {},\n  \"student_ids\": [\n    1\n  ],\n  \"teacher_ids\": [\n    1\n  ],\n  \"parent_ids\": [\n    1\n  ],\n  \"ids\": [\n    1\n  ]\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "notification_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "nullable": true
+                              }
+                            },
+                            "total_recipients": {
+                              "type": "integer"
+                            },
+                            "sent_count": {
+                              "type": "integer"
+                            },
+                            "failed_count": {
+                              "type": "integer"
+                            },
+                            "no_token_count": {
+                              "type": "integer"
+                            },
+                            "email_sent_count": {
+                              "type": "integer"
+                            },
+                            "email_failed_count": {
+                              "type": "integer"
+                            },
+                            "email_skipped_count": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications": {
+      "get": {
+        "tags": [
+          "Admin / Notifications"
+        ],
+        "summary": "List sent notifications",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "sender_type": {
+                                "type": "string",
+                                "enum": [
+                                  "teacher",
+                                  "admin",
+                                  "system"
+                                ]
+                              },
+                              "sender_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "target_type": {
+                                "type": "string",
+                                "enum": [
+                                  "student",
+                                  "teacher",
+                                  "parent"
+                                ]
+                              },
+                              "channels": {
+                                "type": "string",
+                                "example": "push,email"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "data": {
+                                "type": "object",
+                                "nullable": true
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "total_recipients": {
+                                "type": "integer"
+                              },
+                              "sent_count": {
+                                "type": "integer"
+                              },
+                              "email_sent_count": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Get unread notification count",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "fallback if no Bearer token"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "unread_count": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/notifications/read": {
+      "post": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read (alias of /mark-read)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "alias of notification_id"
+                  },
+                  "all": {
+                    "type": "boolean",
+                    "description": "mark ALL unread as read"
+                  },
+                  "mark_all": {
+                    "type": "boolean",
+                    "description": "alias of all"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer",
+                          "description": "present only when all=true"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read (alias of /mark-read)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "alias of notification_id"
+                  },
+                  "all": {
+                    "type": "boolean",
+                    "description": "mark ALL unread as read"
+                  },
+                  "mark_all": {
+                    "type": "boolean",
+                    "description": "alias of all"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer",
+                          "description": "present only when all=true"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/notifications/mark-read": {
+      "post": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "alias of notification_id"
+                  },
+                  "all": {
+                    "type": "boolean",
+                    "description": "mark ALL unread as read"
+                  },
+                  "mark_all": {
+                    "type": "boolean",
+                    "description": "alias of all"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer",
+                          "description": "present only when all=true"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/notifications": {
+      "delete": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Delete a notification (alias of POST /delete)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "notification_id": {
+                    "type": "integer",
+                    "description": "alias of id"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "notification_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/notifications/delete": {
+      "post": {
+        "tags": [
+          "Student / Notifications"
+        ],
+        "summary": "Delete a notification",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "notification_id": {
+                    "type": "integer",
+                    "description": "alias of id"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "notification_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/parent/notifications": {
+      "get": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "List notifications for parent + linked children (NEW - was dead code before)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "is_read",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "notification_id": {
+                                "type": "integer"
+                              },
+                              "user_type": {
+                                "type": "string",
+                                "enum": [
+                                  "parent",
+                                  "student"
+                                ]
+                              },
+                              "user_id": {
+                                "type": "integer"
+                              },
+                              "is_read": {
+                                "type": "integer",
+                                "enum": [
+                                  0,
+                                  1
+                                ]
+                              },
+                              "received_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "sender_type": {
+                                "type": "string",
+                                "enum": [
+                                  "teacher",
+                                  "admin",
+                                  "system"
+                                ]
+                              },
+                              "sender_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "data": {
+                                "type": "object",
+                                "nullable": true
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "is_for_child": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/notifications": {
+      "$ref": "#/paths/~1user~1parent~1notifications"
+    },
+    "/parent/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "Get unread notification count (parent + children combined)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "unread_count": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/notifications/read": {
+      "post": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read (alias of /mark-read)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer"
+                  },
+                  "all": {
+                    "type": "boolean"
+                  },
+                  "mark_all": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read (alias of /mark-read)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer"
+                  },
+                  "all": {
+                    "type": "boolean"
+                  },
+                  "mark_all": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/notifications/mark-read": {
+      "post": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "Mark one or all notifications as read",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notification_id": {
+                    "type": "integer"
+                  },
+                  "id": {
+                    "type": "integer"
+                  },
+                  "all": {
+                    "type": "boolean"
+                  },
+                  "mark_all": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "notification_id": 1,
+                "id": 1,
+                "all": true,
+                "mark_all": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "updated_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/notifications/delete": {
+      "post": {
+        "tags": [
+          "Parent / Notifications"
+        ],
+        "summary": "Delete a notification (own or linked child's)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "notification_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "notification_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/fcm-token": {
+      "post": {
+        "tags": [
+          "FCM Token"
+        ],
+        "summary": "Register/overwrite admin's FCM push token",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fcm_token"
+                ],
+                "properties": {
+                  "fcm_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "fcm_token": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/fcm-token": {
+      "post": {
+        "tags": [
+          "FCM Token"
+        ],
+        "summary": "Register/overwrite teacher's FCM push token",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fcm_token"
+                ],
+                "properties": {
+                  "fcm_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "fcm_token": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/student/fcm-token": {
+      "post": {
+        "tags": [
+          "FCM Token"
+        ],
+        "summary": "Register/overwrite student's FCM push token",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fcm_token"
+                ],
+                "properties": {
+                  "fcm_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "fcm_token": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/parent/fcm-token": {
+      "post": {
+        "tags": [
+          "FCM Token"
+        ],
+        "summary": "Register/overwrite parent's FCM push token",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fcm_token"
+                ],
+                "properties": {
+                  "fcm_token": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "fcm_token": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/admins": {
+      "get": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "List admins (now includes direct permissions)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "not touched this diff, included for completeness"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              },
+                              "role_id": {
+                                "type": "integer"
+                              },
+                              "is_active": {
+                                "type": "integer",
+                                "enum": [
+                                  0,
+                                  1
+                                ]
+                              },
+                              "permissions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "integer"
+                                    },
+                                    "code": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "module": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "permission_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "Create admin",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "role_id": {
+                    "type": "integer"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "permission_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "NEW: sets initial direct permission grants"
+                  }
+                }
+              },
+              "example": {
+                "name": "string",
+                "email": "string",
+                "password": "string",
+                "role_id": 1,
+                "is_active": 0,
+                "permission_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "Update admin",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "role_id": {
+                    "type": "integer"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "permission_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "NEW: REPLACES the admin's full permission set"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "name": "string",
+                "email": "string",
+                "role_id": 1,
+                "is_active": 0,
+                "permission_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "Delete admin (now also cascades admin_permissions cleanup)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/admins/show": {
+      "get": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "Get one admin (now includes direct permissions)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/auth/profile": {
+      "get": {
+        "tags": [
+          "Admin / Admins & RBAC"
+        ],
+        "summary": "Admin's own profile (now includes permissions/permission_codes)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "permissions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "module": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "permission_codes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/books/show": {
+      "get": {
+        "tags": [
+          "Admin / Books"
+        ],
+        "summary": "Get book detail (now includes allow_download, unit/course/subject objects)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "allow_download": {
+                              "type": "integer",
+                              "enum": [
+                                0,
+                                1
+                              ]
+                            },
+                            "unit": {
+                              "type": "object",
+                              "nullable": true
+                            },
+                            "course": {
+                              "type": "object",
+                              "nullable": true
+                            },
+                            "subject": {
+                              "type": "object",
+                              "nullable": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/books": {
+      "post": {
+        "tags": [
+          "Admin / Books"
+        ],
+        "summary": "Create book",
+        "description": "CASE (course_id/unit_id set vs both null):\n- course_id and/or unit_id SET -> this is a course/unit-bundled book: price is FORCED to 0.00 server-side no matter what you send, and students can ONLY access it via their course/unit subscription (POST /student/books/subscribe will actively REJECT a standalone purchase attempt on it).\n- course_id and unit_id BOTH null -> standalone book: submitted price is honored as-is, and students buy it individually via /student/books/subscribe.\nCASE (allow_download): 1 (default) = student gets a direct downloadable link; 0 = file_path/link are hidden from the student response entirely and they must use GET /student/books/stream instead.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "CASE: set together with/without unit_id -> forces price to 0, see operation description"
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "CASE: set -> forces price to 0, see operation description"
+                  },
+                  "file_type": {
+                    "type": "string"
+                  },
+                  "extension": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "file_path": {
+                    "type": "string"
+                  },
+                  "cover_image": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number",
+                    "description": "SERVER FORCES to 0.00 when course_id or unit_id is set"
+                  },
+                  "allow_download": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1,
+                    "description": "NEW"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  }
+                }
+              },
+              "example": "// CASE (course_id/unit_id set vs both null):\n// - course_id and/or unit_id SET -> this is a course/unit-bundled book: price is FORCED to 0.00 server-side no matter what you send, and students can ONLY access it via their course/unit subscription (POST /student/books/subscribe will actively REJECT a standalone purchase attempt on it).\n// - course_id and unit_id BOTH null -> standalone book: submitted price is honored as-is, and students buy it individually via /student/books/subscribe.\n// CASE (allow_download): 1 (default) = student gets a direct downloadable link; 0 = file_path/link are hidden from the student response entirely and they must use GET /student/books/stream instead.\n\n{\n  \"subject_id\": 1,\n  \"course_id\": 1,\n  \"unit_id\": 1,\n  \"file_type\": \"string\",\n  \"extension\": \"string\",\n  \"link\": \"string\",\n  \"file_path\": \"string\",\n  \"cover_image\": \"string\",\n  \"price\": 1,\n  \"allow_download\": 1,\n  \"is_active\": 0\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Books"
+        ],
+        "summary": "Update book",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "price": {
+                    "type": "number",
+                    "description": "forced to 0 if book is course/unit-linked"
+                  },
+                  "allow_download": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "price": 1,
+                "allow_download": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/books/purchase-requests": {
+      "get": {
+        "tags": [
+          "Admin / Books"
+        ],
+        "summary": "List book purchase requests (now includes book_price, book_allow_download)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/units": {
+      "get": {
+        "tags": [
+          "Admin / Units"
+        ],
+        "summary": "List units (default sort now order_num)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "id",
+                "order_num"
+              ],
+              "default": "order_num"
+            },
+            "description": "CHANGED default"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "order_num": {
+                                "type": "integer",
+                                "description": "NEW"
+                              },
+                              "videos_drip_enabled": {
+                                "type": "integer",
+                                "enum": [
+                                  0,
+                                  1
+                                ],
+                                "description": "NEW"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Units"
+        ],
+        "summary": "Create unit (order_num auto-assigned server-side)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "course_id": {
+                    "type": "integer"
+                  },
+                  "subject_id": {
+                    "type": "integer"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "videos_drip_enabled": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 0,
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": {
+                "course_id": 1,
+                "subject_id": 1,
+                "code": "string",
+                "is_active": 0,
+                "videos_drip_enabled": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Units"
+        ],
+        "summary": "Update unit",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "videos_drip_enabled": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "videos_drip_enabled": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/units/reorder": {
+      "post": {
+        "tags": [
+          "Admin / Units"
+        ],
+        "summary": "NEW: reorder units within a course",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "course_id",
+                  "ordered_ids"
+                ],
+                "properties": {
+                  "course_id": {
+                    "type": "integer"
+                  },
+                  "ordered_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "order": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "alias of ordered_ids"
+                  }
+                }
+              },
+              "example": {
+                "course_id": 1,
+                "ordered_ids": [
+                  1
+                ],
+                "order": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/units/reorder": {
+      "$ref": "#/paths/~1admin~1units~1reorder"
+    },
+    "/admin/sessions": {
+      "get": {
+        "tags": [
+          "Admin / Sessions"
+        ],
+        "summary": "List sessions (NEW date_from/date_to range filter)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "NEW, takes precedence over day/date when combined with date_to"
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "NEW"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Sessions"
+        ],
+        "summary": "Create session",
+        "description": "CASE (validation path depends on which of course_id/subject_id is sent):\n- course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n- course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\nCASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "description": "CASE: used for validation only when course_id is empty — see operation description"
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "description": "CASE: when set, takes precedence over subject_id for validation — see operation description"
+                  },
+                  "day_of_week": {
+                    "type": "string",
+                    "enum": [
+                      "Sun",
+                      "Mon",
+                      "Tue",
+                      "Wed",
+                      "Thu",
+                      "Fri",
+                      "Sat"
+                    ]
+                  },
+                  "start_time": {
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "grade": {
+                    "type": "string"
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": "// CASE (validation path depends on which of course_id/subject_id is sent):\n// - course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n// - course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\n// CASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\n\n{\n  \"teacher_id\": 1,\n  \"subject_id\": 1,\n  \"course_id\": 1,\n  \"day_of_week\": \"Sun\",\n  \"start_time\": \"string\",\n  \"end_time\": \"string\",\n  \"room\": \"string\",\n  \"is_online\": 0,\n  \"meeting_link\": \"string\",\n  \"grade\": \"string\",\n  \"academic_year_id\": 1\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Sessions"
+        ],
+        "summary": "Update session",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "academic_year_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reschedule-requests": {
+      "put": {
+        "tags": [
+          "Admin / Sessions"
+        ],
+        "summary": "Review a reschedule request (NEW: teacher reassignment + time override on approval)",
+        "description": "CASE (decision=rejected): only id/decision/admin_note matter, everything else below is ignored.\nCASE (decision=approved, 3 sub-scenarios):\n1) Default (no keep_original_schedule, no new_day/time overrides) -> applies the teacher's own originally-requested new_day/new_start_time/new_end_time as-is.\n2) new_day/new_start_time/new_end_time sent -> OVERRIDES the teacher's requested time with the admin's own choice instead.\n3) keep_original_schedule=true -> ignores any new day/time entirely, keeps the session at its CURRENT day/time, and instead REASSIGNS it to new_teacher_id (which becomes REQUIRED in this case and is validated against that teacher's course/subject+grade assignment).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "decision"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "admin_note": {
+                    "type": "string"
+                  },
+                  "keep_original_schedule": {
+                    "type": "boolean",
+                    "description": "NEW: keep original day/time, reassign teacher instead (requires new_teacher_id)"
+                  },
+                  "new_teacher_id": {
+                    "type": "integer",
+                    "description": "NEW"
+                  },
+                  "new_day": {
+                    "type": "string",
+                    "description": "NEW override"
+                  },
+                  "new_start_time": {
+                    "type": "string",
+                    "description": "NEW override"
+                  },
+                  "new_end_time": {
+                    "type": "string",
+                    "description": "NEW override"
+                  }
+                }
+              },
+              "example": "// CASE (decision=rejected): only id/decision/admin_note matter, everything else below is ignored.\n// CASE (decision=approved, 3 sub-scenarios):\n// 1) Default (no keep_original_schedule, no new_day/time overrides) -> applies the teacher's own originally-requested new_day/new_start_time/new_end_time as-is.\n// 2) new_day/new_start_time/new_end_time sent -> OVERRIDES the teacher's requested time with the admin's own choice instead.\n// 3) keep_original_schedule=true -> ignores any new day/time entirely, keeps the session at its CURRENT day/time, and instead REASSIGNS it to new_teacher_id (which becomes REQUIRED in this case and is validated against that teacher's course/subject+grade assignment).\n\n{\n  \"id\": 1,\n  \"decision\": \"approved\",\n  \"admin_note\": \"string\",\n  \"keep_original_schedule\": true,\n  \"new_teacher_id\": 1,\n  \"new_day\": \"string\",\n  \"new_start_time\": \"string\",\n  \"new_end_time\": \"string\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions/end": {
+      "post": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "NEW: explicitly end a live session",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions": {
+      "post": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "Create session",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject_id": {
+                    "type": "integer"
+                  },
+                  "course_id": {
+                    "type": "integer"
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "description": "NEW"
+                  },
+                  "day_of_week": {
+                    "type": "string"
+                  },
+                  "start_time": {
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "subject_id": 1,
+                "course_id": 1,
+                "academic_year_id": 1,
+                "day_of_week": "string",
+                "start_time": "string",
+                "end_time": "string",
+                "room": "string",
+                "is_online": 0,
+                "meeting_link": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "Update session (day/time change now BLOCKED - use reschedule-request flow)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "description": "NEW"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "day_of_week": {
+                    "type": "string",
+                    "description": "BREAKING: request errors if this differs from stored value - use reschedule-request instead"
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "description": "BREAKING: same restriction"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "description": "BREAKING: same restriction"
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "academic_year_id": 1,
+                "room": "string",
+                "is_online": 0,
+                "meeting_link": "string",
+                "is_active": 0,
+                "day_of_week": "string",
+                "start_time": "string",
+                "end_time": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Attempted direct day/time change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions/attendance/mark": {
+      "post": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "Mark attendance (NEW side effect: auto-writes student_reports rows)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "session_id": {
+                    "type": "integer"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "present_student_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "session_id": 1,
+                "date": "2026-08-31",
+                "present_student_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teachers": {
+      "get": {
+        "tags": [
+          "Admin / Teachers"
+        ],
+        "summary": "List teachers (now includes subject_assignments)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "not touched this diff, included for completeness"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "subject_assignments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "subject_id": {
+                                      "type": "integer"
+                                    },
+                                    "subject": {
+                                      "type": "object"
+                                    },
+                                    "academic_year_id": {
+                                      "type": "integer",
+                                      "nullable": true
+                                    },
+                                    "academic_year": {
+                                      "type": "object",
+                                      "nullable": true
+                                    }
+                                  }
+                                },
+                                "description": "NEW"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Teachers"
+        ],
+        "summary": "Create teacher (NEW: per-grade subjects[] shape)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "subjects": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "subject_id": {
+                          "type": "integer"
+                        },
+                        "academic_year_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "description": "NEW preferred shape"
+                  },
+                  "subject_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "legacy, still accepted"
+                  }
+                }
+              },
+              "example": {
+                "name": "string",
+                "email": "string",
+                "password": "string",
+                "subjects": [
+                  {
+                    "subject_id": 1,
+                    "academic_year_id": 1
+                  }
+                ],
+                "subject_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Teachers"
+        ],
+        "summary": "Update teacher",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "subjects": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "subject_id": {
+                          "type": "integer"
+                        },
+                        "academic_year_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "description": "NEW"
+                  },
+                  "subject_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "id": 1,
+                "subjects": [
+                  {
+                    "subject_id": 1,
+                    "academic_year_id": 1
+                  }
+                ],
+                "subject_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teachers/show": {
+      "get": {
+        "tags": [
+          "Admin / Teachers"
+        ],
+        "summary": "Get one teacher (now includes subject_assignments)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/auth/profile": {
+      "get": {
+        "tags": [
+          "Teacher / Profile"
+        ],
+        "summary": "Teacher's own profile (now includes subject_assignments)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "subject_assignments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "subject_id": {
+                                    "type": "integer"
+                                  },
+                                  "subject": {
+                                    "type": "object"
+                                  },
+                                  "academic_year_id": {
+                                    "type": "integer",
+                                    "nullable": true
+                                  },
+                                  "academic_year": {
+                                    "type": "object",
+                                    "nullable": true
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/academic-years": {
+      "get": {
+        "tags": [
+          "Teacher / Profile"
+        ],
+        "summary": "List teacher's assigned grades (NEW subject_id filter)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "NEW: if >0, returns only grades for this specific subject"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/books/purchase-requests": {
+      "get": {
+        "tags": [
+          "Teacher / Books"
+        ],
+        "summary": "List purchase requests (now includes book_allow_download)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "book_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/students/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export students to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teachers/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export teachers to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file"
+          }
+        }
+      }
+    },
+    "/admin/parents/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export parents to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file"
+          }
+        }
+      }
+    },
+    "/admin/cities/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export cities to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file"
+          }
+        }
+      }
+    },
+    "/admin/subjects/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export subjects to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file"
+          }
+        }
+      }
+    },
+    "/admin/academic-years/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "Export academic years to .xlsx",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file"
+          }
+        }
+      }
+    },
+    "/admin/exams": {
+      "get": {
+        "tags": [
+          "Content / Exams"
+        ],
+        "summary": "List exams",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "alias: q"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "alias of search"
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "CASE: filters to exams belonging to this course (whole-course exams AND unit-scoped exams inside it both match, since unit-scoped exams also carry the parent course_id)"
+          },
+          {
+            "name": "unit_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "CASE: filters to exams scoped to this SPECIFIC unit only (excludes whole-course exams, which have unit_id=NULL)"
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "when passed, each returned exam gains a can_edit boolean reflecting that teacher's ownership"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Content / Exams"
+        ],
+        "summary": "Create exam",
+        "description": "CASE (3 scenarios, decided by which of course_id/unit_id/subject_id you send):\n1) course_id ONLY -> exam applies to the WHOLE course (all units) — unit_id must be omitted/null.\n2) course_id + unit_id -> exam is scoped to that ONE unit inside the course only — students only see it while inside that unit.\n3) course_id + subject_id (course spans multiple subjects) -> further narrows the whole-course exam to just that subject's students.\nsubject_id and unit_id can be combined with course_id independently; there is no exam scoped by subject_id alone without a course_id.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "course_id"
+                ],
+                "properties": {
+                  "course_id": {
+                    "type": "integer",
+                    "description": "REQUIRED in all cases — every exam belongs to a course"
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "CASE: omit/null = exam covers the whole course. Set = exam is scoped to only this unit within course_id."
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "CASE: only meaningful when the course itself spans multiple subjects — narrows a whole-course exam to one subject's students."
+                  },
+                  "duration_minutes": {
+                    "type": "integer",
+                    "default": 30
+                  },
+                  "total_marks": {
+                    "type": "integer",
+                    "default": 100
+                  },
+                  "pass_marks": {
+                    "type": "integer",
+                    "default": 50
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1
+                  },
+                  "title_ar": {
+                    "type": "string"
+                  },
+                  "title_en": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description_ar": {
+                    "type": "string"
+                  },
+                  "description_en": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "// CASE (3 scenarios, decided by which of course_id/unit_id/subject_id you send):\n// 1) course_id ONLY -> exam applies to the WHOLE course (all units) — unit_id must be omitted/null.\n// 2) course_id + unit_id -> exam is scoped to that ONE unit inside the course only — students only see it while inside that unit.\n// 3) course_id + subject_id (course spans multiple subjects) -> further narrows the whole-course exam to just that subject's students.\n// subject_id and unit_id can be combined with course_id independently; there is no exam scoped by subject_id alone without a course_id.\n\n{\n  \"course_id\": 1,\n  \"unit_id\": 1,\n  \"subject_id\": 1,\n  \"duration_minutes\": 30,\n  \"total_marks\": 100,\n  \"pass_marks\": 50,\n  \"is_active\": 1,\n  \"title_ar\": \"string\",\n  \"title_en\": \"string\",\n  \"title\": \"string\",\n  \"description_ar\": \"string\",\n  \"description_en\": \"string\",\n  \"description\": \"string\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Content / Exams"
+        ],
+        "summary": "Update exam",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Content / Exams"
+        ],
+        "summary": "Delete exam",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/exams/show": {
+      "get": {
+        "tags": [
+          "Content / Exams"
+        ],
+        "summary": "Get exam detail",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/exams": {
+      "$ref": "#/paths/~1admin~1exams"
+    },
+    "/teacher/exams/attempts": {
+      "post": {
+        "tags": [
+          "Teacher / Exams"
+        ],
+        "summary": "Grade an exam attempt (NEW side effect: auto-writes an exam_result student_reports row; ownership check widened)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attempt_id",
+                  "answers"
+                ],
+                "properties": {
+                  "attempt_id": {
+                    "type": "integer"
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question_id": {
+                          "type": "integer"
+                        },
+                        "score_awarded": {
+                          "type": "number"
+                        },
+                        "teacher_note": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "attempt_id": 1,
+                "answers": [
+                  {
+                    "question_id": 1,
+                    "score_awarded": 1,
+                    "teacher_note": "string"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Graded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Teacher / Exams"
+        ],
+        "summary": "Grade an exam attempt (alias of POST)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attempt_id",
+                  "answers"
+                ],
+                "properties": {
+                  "attempt_id": {
+                    "type": "integer"
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question_id": {
+                          "type": "integer"
+                        },
+                        "score_awarded": {
+                          "type": "number"
+                        },
+                        "teacher_note": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "attempt_id": 1,
+                "answers": [
+                  {
+                    "question_id": 1,
+                    "score_awarded": 1,
+                    "teacher_note": "string"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Graded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/reports": {
+      "get": {
+        "tags": [
+          "Teacher / Reports"
+        ],
+        "summary": "List student reports (sender display now handles sender_type=system)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sender_type": {
+                                "type": "string",
+                                "enum": [
+                                  "teacher",
+                                  "admin",
+                                  "system"
+                                ]
+                              },
+                              "report_type": {
+                                "type": "string",
+                                "enum": [
+                                  "exam_result",
+                                  "attendance",
+                                  "academic_performance"
+                                ]
+                              },
+                              "sender": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "type": "string"
+                                  },
+                                  "specialization": {
+                                    "type": "string",
+                                    "nullable": true
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/reports/show": {
+      "get": {
+        "tags": [
+          "Teacher / Reports"
+        ],
+        "summary": "Get one student report",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/questions": {
+      "get": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "List questions (default sort now order_num)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "exam_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "unit_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "Create question (NEW: order_num, mcq_options alias, written type)",
+        "description": "CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\nCASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n- question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n- question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n- question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "exam_id",
+                  "question_type"
+                ],
+                "properties": {
+                  "exam_id": {
+                    "type": "integer"
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "description": "CASE: optional, auto-resolved from exam_id if omitted"
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "description": "CASE: optional, auto-resolved from exam_id if omitted"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "description": "CASE: optional, auto-resolved from exam_id if omitted"
+                  },
+                  "question_type": {
+                    "type": "string",
+                    "enum": [
+                      "mcq",
+                      "true_false",
+                      "written"
+                    ],
+                    "description": "CASE: determines which of mcq_options / correct_answer / model_answer_* is used — see operation description above"
+                  },
+                  "order_num": {
+                    "type": "integer",
+                    "description": "NEW, auto-assigned if omitted"
+                  },
+                  "score": {
+                    "type": "number"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "question_text_ar": {
+                    "type": "string"
+                  },
+                  "question_text_en": {
+                    "type": "string"
+                  },
+                  "question_text": {
+                    "type": "string"
+                  },
+                  "mcq_options": {
+                    "type": "array",
+                    "description": "NEW preferred key (legacy: options)",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "option_key": {
+                          "type": "string"
+                        },
+                        "is_correct": {
+                          "type": "boolean"
+                        },
+                        "option_image": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "option_text_ar": {
+                          "type": "string"
+                        },
+                        "option_text_en": {
+                          "type": "string"
+                        },
+                        "option_text": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "correct_answer": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "description": "used when question_type=true_false"
+                  },
+                  "model_answer_ar": {
+                    "type": "string",
+                    "description": "NEW, used when question_type=written"
+                  },
+                  "model_answer_en": {
+                    "type": "string",
+                    "description": "NEW"
+                  },
+                  "model_answer": {
+                    "type": "string",
+                    "description": "NEW"
+                  }
+                }
+              },
+              "example": "// CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\n// CASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n// - question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n// - question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n// - question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.\n\n{\n  \"exam_id\": 1,\n  \"course_id\": 1,\n  \"unit_id\": 1,\n  \"subject_id\": 1,\n  \"question_type\": \"mcq\",\n  \"order_num\": 1,\n  \"score\": 1,\n  \"is_active\": 0,\n  \"question_text_ar\": \"string\",\n  \"question_text_en\": \"string\",\n  \"question_text\": \"string\",\n  \"mcq_options\": [\n    {\n      \"option_key\": \"string\",\n      \"is_correct\": true,\n      \"option_image\": \"string\",\n      \"option_text_ar\": \"string\",\n      \"option_text_en\": \"string\",\n      \"option_text\": \"string\"\n    }\n  ],\n  \"correct_answer\": 0,\n  \"model_answer_ar\": \"string\",\n  \"model_answer_en\": \"string\",\n  \"model_answer\": \"string\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "Update question (fully re-saves/clears data on type switch)",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "Delete question",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/questions/show": {
+      "get": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "Get question detail",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/questions/reorder": {
+      "post": {
+        "tags": [
+          "Content / Questions"
+        ],
+        "summary": "NEW: reorder questions within an exam",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "exam_id",
+                  "ordered_ids"
+                ],
+                "properties": {
+                  "exam_id": {
+                    "type": "integer"
+                  },
+                  "ordered_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "exam_id": 1,
+                "ordered_ids": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/questions": {
+      "$ref": "#/paths/~1admin~1questions"
+    },
+    "/teacher/questions/reorder": {
+      "$ref": "#/paths/~1admin~1questions~1reorder"
+    },
+    "/student/sessions/today": {
+      "get": {
+        "tags": [
+          "Student / Sessions"
+        ],
+        "summary": "Today's sessions (now grade-filtered by academic_year_id)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/sessions": {
+      "get": {
+        "tags": [
+          "Parent / Sessions"
+        ],
+        "summary": "Children's sessions (now grade-filtered by academic_year_id)",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/home": {
+      "get": {
+        "tags": [
+          "Student / Home"
+        ],
+        "summary": "Student home/dashboard (now grade-filtered sessions)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/exams/submit": {
+      "post": {
+        "tags": [
+          "Student / Exams"
+        ],
+        "summary": "Submit exam attempt (NEW side effect: auto-writes exam_result report when fully graded)",
+        "description": "CASE (per answer item, only ONE of the 3 answer fields applies, matching that question's question_type): mcq_option_id for question_type=mcq (auto-graded); true_false_answer (0/1) for question_type=true_false (auto-graded); written_answer_text for question_type=written (NOT auto-graded — needs a teacher to grade it via /teacher/exams/attempts before the attempt's overall status becomes 'graded').\nCASE (auto report side effect): if the attempt has ZERO written questions, grading completes immediately in this same request and auto_generate_exam_result_report fires right away; if it has ANY written question, status stays pending and the report only gets auto-generated later once a teacher grades the written answers.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attempt_id",
+                  "answers"
+                ],
+                "properties": {
+                  "attempt_id": {
+                    "type": "integer"
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question_id": {
+                          "type": "integer"
+                        },
+                        "mcq_option_id": {
+                          "type": "integer",
+                          "description": "CASE: only for question_type=mcq"
+                        },
+                        "true_false_answer": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ],
+                          "description": "CASE: only for question_type=true_false"
+                        },
+                        "written_answer_text": {
+                          "type": "string",
+                          "description": "CASE: only for question_type=written, requires manual teacher grading"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": "// CASE (per answer item, only ONE of the 3 answer fields applies, matching that question's question_type): mcq_option_id for question_type=mcq (auto-graded); true_false_answer (0/1) for question_type=true_false (auto-graded); written_answer_text for question_type=written (NOT auto-graded — needs a teacher to grade it via /teacher/exams/attempts before the attempt's overall status becomes 'graded').\n// CASE (auto report side effect): if the attempt has ZERO written questions, grading completes immediately in this same request and auto_generate_exam_result_report fires right away; if it has ANY written question, status stays pending and the report only gets auto-generated later once a teacher grades the written answers.\n\n{\n  \"attempt_id\": 1,\n  \"answers\": [\n    {\n      \"question_id\": 1,\n      \"mcq_option_id\": 1,\n      \"true_false_answer\": 0,\n      \"written_answer_text\": \"string\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/questions/answer": {
+      "post": {
+        "tags": [
+          "Student / Questions"
+        ],
+        "summary": "Submit a question answer (now returns correct answer immediately)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "correct_option_id": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "NEW"
+                            },
+                            "correct_answer": {
+                              "description": "NEW"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/questions/submit-answer": {
+      "$ref": "#/paths/~1student~1questions~1answer"
+    },
+    "/student/books": {
+      "get": {
+        "tags": [
+          "Student / Books"
+        ],
+        "summary": "List books (NEW allow_download + view_url; view-only books hide file_path/link)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "allow_download": {
+                                "type": "integer",
+                                "enum": [
+                                  0,
+                                  1
+                                ]
+                              },
+                              "view_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "NEW - use this instead of file_path/link"
+                              },
+                              "file_path": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "NULLED OUT when allow_download=0"
+                              },
+                              "link": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "NULLED OUT when allow_download=0"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/my-subscribed-books": {
+      "$ref": "#/paths/~1student~1books"
+    },
+    "/student/books/subscribe": {
+      "post": {
+        "tags": [
+          "Student / Books"
+        ],
+        "summary": "Subscribe/purchase a standalone book (BREAKING: now rejects course/unit-linked books)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "book_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "book_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Book is course/unit-linked - rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/books/buy": {
+      "$ref": "#/paths/~1student~1books~1subscribe"
+    },
+    "/student/books/stream": {
+      "get": {
+        "tags": [
+          "Student / Books"
+        ],
+        "summary": "NEW: stream a view-only book file (binary, not JSON)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "book_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file stream",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/courses/units": {
+      "get": {
+        "tags": [
+          "Student / Units"
+        ],
+        "summary": "List course units (NEW order_num sort, books_count)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "books_count": {
+                              "type": "integer",
+                              "description": "NEW, per unit"
+                            },
+                            "total_books_count": {
+                              "type": "integer",
+                              "description": "NEW"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/units": {
+      "$ref": "#/paths/~1student~1courses~1units"
+    },
+    "/student/units/videos": {
+      "get": {
+        "tags": [
+          "Student / Units"
+        ],
+        "summary": "List unit videos (NEW drip-lock)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unit_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "videos_drip_enabled": {
+                              "type": "integer",
+                              "enum": [
+                                0,
+                                1
+                              ],
+                              "description": "NEW"
+                            },
+                            "videos": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "lock_reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "not_subscribed",
+                                      "sequential_drip"
+                                    ],
+                                    "nullable": true,
+                                    "description": "NEW"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/unit/videos": {
+      "$ref": "#/paths/~1student~1units~1videos"
+    },
+    "/student/units/questions": {
+      "get": {
+        "tags": [
+          "Student / Units"
+        ],
+        "summary": "List unit questions (NEW order_num sort)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unit_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/unit/questions": {
+      "$ref": "#/paths/~1student~1units~1questions"
+    },
+    "/student/videos/show": {
+      "get": {
+        "tags": [
+          "Student / Videos"
+        ],
+        "summary": "Video detail (NEW lock_reason)",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "lock_reason": {
+                              "type": "string",
+                              "enum": [
+                                "not_subscribed",
+                                "sequential_drip"
+                              ],
+                              "nullable": true,
+                              "description": "NEW"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/videos/details": {
+      "$ref": "#/paths/~1student~1videos~1show"
+    },
+    "/student/videos/track-progress": {
+      "post": {
+        "tags": [
+          "Student / Videos"
+        ],
+        "summary": "Update video progress (NEW side effect: auto course-completion report at 100%)",
+        "description": "CASE (is_completed=1): fires an internal course-progress check on EVERY such call, but only actually writes a student_reports row (report_type=academic_performance, one-time) on whichever specific call happens to push the student's overall course progress to exactly 100% — earlier completions in the same course write no report. CASE (is_completed=0 or omitted): no side effect, just updates watch position.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "video_id"
+                ],
+                "properties": {
+                  "video_id": {
+                    "type": "integer"
+                  },
+                  "watched_seconds": {
+                    "type": "number"
+                  },
+                  "total_seconds": {
+                    "type": "number"
+                  },
+                  "last_position_seconds": {
+                    "type": "number"
+                  },
+                  "is_completed": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  }
+                }
+              },
+              "example": "// CASE (is_completed=1): fires an internal course-progress check on EVERY such call, but only actually writes a student_reports row (report_type=academic_performance, one-time) on whichever specific call happens to push the student's overall course progress to exactly 100% — earlier completions in the same course write no report. CASE (is_completed=0 or omitted): no side effect, just updates watch position.\n\n{\n  \"video_id\": 1,\n  \"watched_seconds\": 1,\n  \"total_seconds\": 1,\n  \"last_position_seconds\": 1,\n  \"is_completed\": 0\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

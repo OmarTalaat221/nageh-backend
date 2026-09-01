@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/manage.php'; // get_class_session_details()
+require_once __DIR__ . '/../../../helpers/auto_reports.php';
 
 if (!function_exists('session_attendance_table_exists')) {
     function session_attendance_table_exists($con): bool {
@@ -104,6 +105,8 @@ if (!function_exists('teacherMarkSessionAttendance')) {
                 mysqli_stmt_execute($insStmt);
             }
         }
+
+        auto_generate_attendance_reports($con, $session, $date, get_session_expected_students($con, $session), $presentIds);
 
         return teacherGetSessionAttendanceRoster($con, $teacherData, $sessionId, $date);
     }

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 25, 2026 at 04:31 AM
+-- Generation Time: Aug 26, 2026 at 09:39 AM
 -- Server version: 10.11.18-MariaDB-cll-lve-log
 -- PHP Version: 8.4.24
 
@@ -223,7 +223,8 @@ INSERT INTO `affiliates` (`id`, `student_id`, `teacher_id`, `affiliate_code`, `c
 (1, 1062, NULL, 'NAJEH-STU-1062', 'fixed', 0.00, 1, '2026-08-19 15:32:10', '2026-08-19 15:32:10'),
 (2, 1001, NULL, 'NAJEH-STU-1001', 'fixed', 0.00, 1, '2026-08-19 16:04:51', '2026-08-19 16:04:51'),
 (3, 1025, NULL, 'NAJEH-STU-1025', 'fixed', 0.00, 1, '2026-08-20 08:11:54', '2026-08-20 08:11:54'),
-(4, 1063, NULL, 'NAJEH-STU-1063', 'fixed', 0.00, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27');
+(4, 1063, NULL, 'NAJEH-STU-1063', 'fixed', 0.00, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27'),
+(6, 1065, NULL, 'NAJEH-STU-1065', 'fixed', 0.00, 1, '2026-08-26 08:51:31', '2026-08-26 08:51:31');
 
 -- --------------------------------------------------------
 
@@ -254,7 +255,9 @@ CREATE TABLE `affiliate_commissions` (
 
 INSERT INTO `affiliate_commissions` (`id`, `affiliate_id`, `referred_student_id`, `item_type`, `item_id`, `purchase_amount`, `amount`, `commission_date`, `status`, `notes`, `approved_by_admin_id`, `is_active`, `created_at`, `updated_at`) VALUES
 (4, 2, 1062, 'subscription_code', 115, 800.00, 50.00, '2026-08-19 16:08:18', 'approved', 'تم إضافة 50 نقطة للطالب الداعي بنجاح', 1, 1, '2026-08-19 16:08:18', '2026-08-19 16:09:35'),
-(5, 2, 1062, 'subscription_code', 116, 500.00, 50.00, '2026-08-19 16:15:45', 'approved', 'تم إضافة 50 نقطة للطالب الداعي بنجاح', 1, 1, '2026-08-19 16:15:45', '2026-08-19 16:16:08');
+(5, 2, 1062, 'subscription_code', 116, 500.00, 50.00, '2026-08-19 16:15:45', 'approved', 'تم إضافة 50 نقطة للطالب الداعي بنجاح', 1, 1, '2026-08-19 16:15:45', '2026-08-19 16:16:08'),
+(6, 2, 1065, 'subscription_code', 117, 0.00, 0.00, '2026-08-26 09:03:04', 'approved', '', 1, 1, '2026-08-26 09:03:04', '2026-08-26 09:09:50'),
+(7, 2, 1065, 'subscription_code', 118, 400.00, 20.00, '2026-08-26 09:05:37', 'approved', 'تيست', 1, 1, '2026-08-26 09:05:37', '2026-08-26 09:10:10');
 
 -- --------------------------------------------------------
 
@@ -839,7 +842,9 @@ INSERT INTO `code_redemptions_log` (`id`, `subscription_code_id`, `student_id`, 
 (1066, 113, 1062, 1071, '2026-08-19 15:56:46', '156.203.199.95'),
 (1067, 114, 1062, 1072, '2026-08-19 16:04:51', '156.203.199.95'),
 (1068, 115, 1062, 1073, '2026-08-19 16:08:16', '156.203.199.95'),
-(1069, 116, 1062, 1074, '2026-08-19 16:15:45', '156.203.199.95');
+(1069, 116, 1062, 1074, '2026-08-19 16:15:45', '156.203.199.95'),
+(1070, 117, 1065, 1075, '2026-08-26 09:03:04', '156.203.248.206'),
+(1071, 118, 1065, 1076, '2026-08-26 09:05:37', '156.203.248.206');
 
 -- --------------------------------------------------------
 
@@ -897,7 +902,8 @@ INSERT INTO `consultation_slots` (`id`, `teacher_id`, `subject_id`, `type`, `mee
 (128, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 0, NULL, NULL, 'available', 1, '2026-08-15 07:33:25'),
 (130, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 1, 1001, '2026-08-20 09:32:29', 'pending', 1, '2026-08-15 07:37:07'),
 (131, 201, 1, 'educational', 'offline', '2026-08-15', '18:00:00', 'حجز استشاره', 0, NULL, NULL, 'available', 1, '2026-08-15 10:25:52'),
-(132, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 0, NULL, NULL, 'available', 1, '2026-08-15 10:26:26');
+(132, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 0, NULL, NULL, 'available', 1, '2026-08-15 10:26:26'),
+(133, 201, 1, 'educational', 'video_call', '2025-06-20', '16:00:00', 'متاح لمراجعة وحل الاستفسارات قبل الامتحان', 0, NULL, NULL, 'available', 1, '2026-08-25 14:32:51');
 
 -- --------------------------------------------------------
 
@@ -1994,7 +2000,10 @@ INSERT INTO `email_verification_codes` (`id`, `user_type`, `user_id`, `email`, `
 (5, 'student', 1061, 'ahmed.student2@example.com', '886576', '2026-08-19 15:42:00', 1, '2026-08-19 15:27:00'),
 (6, 'student', 1062, 'ahmed.student2@example.com', '174228', '2026-08-19 15:47:10', 1, '2026-08-19 15:32:10'),
 (7, 'student', 1062, 'ahmed.student2@example.com', '858436', '2026-08-19 15:47:33', 1, '2026-08-19 15:32:33'),
-(8, 'student', 1063, 'maldb0907@gmail.com', '678342', '2026-08-20 13:52:27', 0, '2026-08-20 13:37:27');
+(8, 'student', 1063, 'maldb0907@gmail.com', '678342', '2026-08-20 13:52:27', 0, '2026-08-20 13:37:27'),
+(9, 'student', 1064, 'omartalaat1276@gmail.com', '976089', '2026-08-26 07:39:57', 1, '2026-08-26 07:24:57'),
+(10, 'student', 1064, 'omartalaat1276@gmail.com', '639682', '2026-08-26 07:40:22', 1, '2026-08-26 07:25:22'),
+(11, 'student', 1065, 'omartalaat1276@gmail.com', '656417', '2026-08-26 09:06:31', 1, '2026-08-26 08:51:31');
 
 -- --------------------------------------------------------
 
@@ -5100,7 +5109,8 @@ INSERT INTO `session_reschedule_requests` (`id`, `session_id`, `teacher_id`, `re
 (109, 101, 201, 'student', 1025, 'Wednesday', '12:00:00', '15:00:00', '12344455', 'approved', 'تيست', 'teacher', 201, '2026-08-11 12:02:43', '2026-08-12 23:11:41'),
 (110, 102, 201, 'student', 1049, 'Monday', '17:00:00', '18:00:00', 'تيستتتت', 'rejected', '', 'teacher', 201, '2026-08-15 13:06:17', '2026-08-15 13:16:00'),
 (111, 102, 201, 'teacher', 201, 'Sunday', '13:00:00', '14:00:00', 'Dff', 'pending', NULL, NULL, NULL, '2026-08-15 13:51:58', NULL),
-(112, 102, 201, 'teacher', 201, 'Monday', '11:00:00', '12:00:00', 'تعارض', 'pending', NULL, NULL, NULL, '2026-08-16 08:24:16', NULL);
+(112, 102, 201, 'teacher', 201, 'Monday', '11:00:00', '12:00:00', 'تعارض', 'pending', NULL, NULL, NULL, '2026-08-16 08:24:16', NULL),
+(113, 2, 1, 'student', 1001, 'Tuesday', '09:00:00', '10:30:00', '1234', 'pending', NULL, NULL, NULL, '2026-08-25 11:53:53', NULL);
 
 -- --------------------------------------------------------
 
@@ -5241,68 +5251,69 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `school_id`, `city_id`, `referred_by_student_id`, `affiliate_code`, `points_balance`, `study_language`, `name`, `age`, `phone`, `email`, `password`, `image`, `is_email_verified`, `is_active`, `created_at`, `updated_at`, `fcm_token`, `academic_year_id`) VALUES
-(1001, 1, 1, NULL, 'NAJEH-STU-1001', 60.00, 'english', 'أحمد', 14, '01099998888', 'student1001@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-23 11:46:27', 'fd7eFyMMSCqssBAkLklQMj:APA91bHIeNkVUtdj9DYT4khqj7B8vtFDJzTKzhvQhLNKLtzXiMSaQ_jry9Ks6uRbp99POkKYIwqNVefdyavKKYHnQ3bi3fXA9y_xv-xQY6hThmRQHPvuHXY', NULL),
-(1002, 2, 2, NULL, 'NAJEH-STU-1002', 0.00, 'arabic', 'مريم إبراهيم عبد الله', 15, '01077001002', 'student1002@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=43', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1003, 3, 3, NULL, 'NAJEH-STU-1003', 0.00, 'arabic', 'عمر طارق السيد', 16, '01077001003', 'student1003@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=44', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1004, 4, 4, NULL, 'NAJEH-STU-1004', 0.00, 'arabic', 'سلمى أحمد سعيد', 17, '01077001004', 'student1004@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=45', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1005, 5, 5, NULL, 'NAJEH-STU-1005', 0.00, 'arabic', 'آدم حسام محمد', 18, '01077001005', 'student1005@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=46', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1006, 6, 6, NULL, 'NAJEH-STU-1006', 0.00, 'arabic', 'ليلى عماد حسن', 14, '01077001006', 'student1006@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=47', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1007, 7, 7, NULL, 'NAJEH-STU-1007', 0.00, 'arabic', 'محمد جمال فتحي', 15, '01077001007', 'student1007@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=48', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1008, 8, 8, NULL, 'NAJEH-STU-1008', 0.00, 'arabic', 'نور خالد علي', 16, '01077001008', 'student1008@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=49', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1009, 9, 9, NULL, 'NAJEH-STU-1009', 0.00, 'arabic', 'عبد الرحمن سامح فؤاد', 17, '01077001009', 'student1009@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=50', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1010, 10, 10, NULL, 'NAJEH-STU-1010', 0.00, 'arabic', 'جنى رضا مصطفى', 18, '01077001010', 'student1010@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=51', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1011, 1, 11, NULL, 'NAJEH-STU-1011', 0.00, 'arabic', 'أحمد رامي محمود', 14, '01077001011', 'student1011@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=52', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1012, 2, 1, NULL, 'NAJEH-STU-1012', 0.00, 'arabic', 'حبيبة شريف كمال', 15, '01077001012', 'student1012@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=53', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1013, 3, 2, NULL, 'NAJEH-STU-1013', 0.00, 'arabic', 'علي أشرف عبد الحميد', 16, '01077001013', 'student1013@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=54', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1014, 4, 3, NULL, 'NAJEH-STU-1014', 0.00, 'arabic', 'ملك سمير ناصر', 17, '01077001014', 'student1014@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=55', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1015, 5, 4, NULL, 'NAJEH-STU-1015', 0.00, 'arabic', 'كريم محمود حسن', 18, '01077001015', 'student1015@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=56', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1016, 6, 5, NULL, 'NAJEH-STU-1016', 0.00, 'arabic', 'فاطمة وائل شريف', 14, '01077001016', 'student1016@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=57', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1017, 7, 6, NULL, 'NAJEH-STU-1017', 0.00, 'arabic', 'زياد حسام الدين', 15, '01077001017', 'student1017@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=58', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1018, 8, 7, NULL, 'NAJEH-STU-1018', 0.00, 'arabic', 'بسملة عمرو السيد', 16, '01077001018', 'student1018@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=59', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1019, 9, 8, NULL, 'NAJEH-STU-1019', 0.00, 'arabic', 'محمود محمد عادل', 17, '01077001019', 'student1019@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=60', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1020, 10, 9, NULL, 'NAJEH-STU-1020', 0.00, 'arabic', 'ندى أحمد صبري', 18, '01077001020', 'student1020@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=1', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1021, 1, 10, NULL, 'NAJEH-STU-1021', 0.00, 'arabic', 'مصطفى أحمد محمد', 14, '01077001021', 'student1021@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=2', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1022, 2, 11, NULL, 'NAJEH-STU-1022', 0.00, 'arabic', 'روان إبراهيم عبد الله', 15, '01077001022', 'student1022@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=3', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1023, 3, 1, NULL, 'NAJEH-STU-1023', 0.00, 'arabic', 'ياسين طارق السيد', 16, '01077001023', 'student1023@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=4', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1024, 4, 2, NULL, 'NAJEH-STU-1024', 0.00, 'arabic', 'فرح أحمد سعيد', 17, '01077001024', 'student1024@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=5', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1025, 4, 9, NULL, 'NAJEH-STU-1025', 0.00, 'arabic', 'أحمد محمود', 18, '01099998888', 'student1025@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-20 08:08:19', 'fPdydHRRRe-Tz0xPn3LGRa:APA91bGpGyk_TA1fE-QoaCtYRbAPB0m1j7IejtJuq73gQAGq-Dye5vgyR1BhQ38ikB67YoH5-6koTLcfL2P8KpB2QwM7tBFWEPDU55Yc9PAA34cvgEb2bok', NULL),
-(1026, 6, 4, NULL, 'NAJEH-STU-1026', 0.00, 'arabic', 'شهد عماد حسن', 14, '01077001026', 'student1026@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=7', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1027, 7, 5, NULL, 'NAJEH-STU-1027', 0.00, 'arabic', 'حمزة جمال فتحي', 15, '01077001027', 'student1027@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=8', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1028, 8, 6, NULL, 'NAJEH-STU-1028', 0.00, 'arabic', 'لارا خالد علي', 16, '01077001028', 'student1028@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=9', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1029, 9, 7, NULL, 'NAJEH-STU-1029', 0.00, 'arabic', 'سيف سامح فؤاد', 17, '01077001029', 'student1029@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1030, 10, 8, NULL, 'NAJEH-STU-1030', 0.00, 'arabic', 'منة رضا مصطفى', 18, '01077001030', 'student1030@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=11', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1031, 1, 9, NULL, 'NAJEH-STU-1031', 0.00, 'arabic', 'يوسف رامي محمود', 14, '01077001031', 'student1031@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=12', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1032, 2, 10, NULL, 'NAJEH-STU-1032', 0.00, 'arabic', 'مريم شريف كمال', 15, '01077001032', 'student1032@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=13', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1033, 3, 11, NULL, 'NAJEH-STU-1033', 0.00, 'arabic', 'عمر أشرف عبد الحميد', 16, '01077001033', 'student1033@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=14', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1034, 4, 1, NULL, 'NAJEH-STU-1034', 0.00, 'arabic', 'سلمى سمير ناصر', 17, '01077001034', 'student1034@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=15', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1035, 5, 2, NULL, 'NAJEH-STU-1035', 0.00, 'arabic', 'آدم محمود حسن', 18, '01077001035', 'student1035@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=16', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1036, 6, 3, NULL, 'NAJEH-STU-1036', 0.00, 'arabic', 'ليلى وائل شريف', 14, '01077001036', 'student1036@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=17', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1037, 7, 4, NULL, 'NAJEH-STU-1037', 0.00, 'arabic', 'محمد حسام الدين', 15, '01077001037', 'student1037@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=18', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1038, 8, 5, NULL, 'NAJEH-STU-1038', 0.00, 'arabic', 'نور عمرو السيد', 16, '01077001038', 'student1038@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=19', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1039, 9, 6, NULL, 'NAJEH-STU-1039', 0.00, 'arabic', 'عبد الرحمن محمد عادل', 17, '01077001039', 'student1039@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=20', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1040, 10, 7, NULL, 'NAJEH-STU-1040', 0.00, 'arabic', 'جنى أحمد صبري', 18, '01077001040', 'student1040@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=21', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1041, 1, 8, NULL, 'NAJEH-STU-1041', 0.00, 'arabic', 'أحمد أحمد محمد', 14, '01077001041', 'student1041@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=22', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1042, 2, 9, NULL, 'NAJEH-STU-1042', 0.00, 'arabic', 'حبيبة إبراهيم عبد الله', 15, '01077001042', 'student1042@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=23', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1043, 3, 10, NULL, 'NAJEH-STU-1043', 0.00, 'arabic', 'علي طارق السيد', 16, '01077001043', 'student1043@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=24', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1044, 4, 11, NULL, 'NAJEH-STU-1044', 0.00, 'arabic', 'ملك أحمد سعيد', 17, '01077001044', 'student1044@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=25', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1045, 5, 1, NULL, 'NAJEH-STU-1045', 0.00, 'arabic', 'كريم حسام محمد', 18, '01077001045', 'student1045@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=26', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1046, 6, 2, NULL, 'NAJEH-STU-1046', 0.00, 'arabic', 'فاطمة عماد حسن', 14, '01077001046', 'student1046@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=27', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1047, 7, 3, NULL, 'NAJEH-STU-1047', 0.00, 'arabic', 'زياد جمال فتحي', 15, '01077001047', 'student1047@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=28', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1048, 8, 4, NULL, 'NAJEH-STU-1048', 0.00, 'arabic', 'بسملة خالد علي', 16, '01077001048', 'student1048@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=29', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1049, 9, 5, NULL, 'NAJEH-STU-1049', 0.00, 'arabic', 'محمود سامح فؤاد', 17, '01077001049', 'student1049@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=30', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1050, 10, 6, NULL, 'NAJEH-STU-1050', 0.00, 'arabic', 'ندى رضا مصطفى', 18, '01077001050', 'student1050@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=31', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1051, 1, 7, NULL, 'NAJEH-STU-1051', 0.00, 'arabic', 'مصطفى رامي محمود', 14, '01077001051', 'student1051@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=32', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1052, 2, 8, NULL, 'NAJEH-STU-1052', 0.00, 'arabic', 'روان شريف كمال', 15, '01077001052', 'student1052@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=33', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1053, 3, 9, NULL, 'NAJEH-STU-1053', 0.00, 'arabic', 'ياسين أشرف عبد الحميد', 16, '01077001053', 'student1053@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=34', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1054, 4, 10, NULL, 'NAJEH-STU-1054', 0.00, 'arabic', 'فرح سمير ناصر', 17, '01077001054', 'student1054@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=35', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1055, 5, 11, NULL, 'NAJEH-STU-1055', 0.00, 'arabic', 'إياد محمود حسن', 18, '01077001055', 'student1055@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=36', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1056, 6, 1, NULL, 'NAJEH-STU-1056', 0.00, 'arabic', 'شهد وائل شريف', 14, '01077001056', 'student1056@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=37', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1057, 7, 2, NULL, 'NAJEH-STU-1057', 0.00, 'arabic', 'حمزة حسام الدين', 15, '01077001057', 'student1057@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=38', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1058, 8, 3, NULL, 'NAJEH-STU-1058', 0.00, 'arabic', 'لارا عمرو السيد', 16, '01077001058', 'student1058@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=39', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1059, 9, 4, NULL, 'NAJEH-STU-1059', 0.00, 'arabic', 'سيف محمد عادل', 17, '01077001059', 'student1059@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=40', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1060, 10, 5, NULL, 'NAJEH-STU-1060', 0.00, 'arabic', 'منة أحمد صبري', 18, '01077001060', 'student1060@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'uploads/avatars/img_6a79d43bec99a7.02642927.webp', 1, 1, '2026-06-01 13:00:00', '2026-08-19 15:25:25', NULL, NULL),
-(1062, NULL, NULL, 1001, 'NAJEH-STU-1062', 0.00, 'arabic', 'Ahmed Mohamed', NULL, '01012345678', 'ahmed.student2@example.com', '$2y$10$lGvcx1x0jfjbeUKjMQV4ROPrP91I9I48wBjKpBhQ/b.rUHdmsMxIm', NULL, 1, 1, '2026-08-19 15:32:10', '2026-08-19 15:32:40', NULL, NULL),
-(1063, 6, 10, NULL, 'NAJEH-STU-1063', 0.00, 'english', 'Mohammad', 24, '01093413220', 'maldb0907@gmail.com', '$2y$10$1TbPoUV0arwVjHiTuRzyve2nhAmVcRUXB6kaIYGZOC12bzTOfkbRC', NULL, 0, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27', NULL, NULL);
+(1001, 1, 1, NULL, 'NAJEH-STU-1001', 80.00, 'english', 'أحمد', 14, '01099998888', 'student1001@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-26 09:10:10', 'fd7eFyMMSCqssBAkLklQMj:APA91bHIeNkVUtdj9DYT4khqj7B8vtFDJzTKzhvQhLNKLtzXiMSaQ_jry9Ks6uRbp99POkKYIwqNVefdyavKKYHnQ3bi3fXA9y_xv-xQY6hThmRQHPvuHXY', NULL),
+(1002, 2, 2, NULL, 'NAJEH-STU-1002', 0.00, 'english', 'مريم إبراهيم عبد الله', 15, '01077001002', 'student1002@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=43', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1003, 3, 3, NULL, 'NAJEH-STU-1003', 0.00, 'english', 'عمر طارق السيد', 16, '01077001003', 'student1003@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=44', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1004, 4, 4, NULL, 'NAJEH-STU-1004', 0.00, 'english', 'سلمى أحمد سعيد', 17, '01077001004', 'student1004@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=45', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1005, 5, 5, NULL, 'NAJEH-STU-1005', 0.00, 'english', 'آدم حسام محمد', 18, '01077001005', 'student1005@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=46', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1006, 6, 6, NULL, 'NAJEH-STU-1006', 0.00, 'english', 'ليلى عماد حسن', 14, '01077001006', 'student1006@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=47', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1007, 7, 7, NULL, 'NAJEH-STU-1007', 0.00, 'english', 'محمد جمال فتحي', 15, '01077001007', 'student1007@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=48', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1008, 8, 8, NULL, 'NAJEH-STU-1008', 0.00, 'english', 'نور خالد علي', 16, '01077001008', 'student1008@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=49', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1009, 9, 9, NULL, 'NAJEH-STU-1009', 0.00, 'english', 'عبد الرحمن سامح فؤاد', 17, '01077001009', 'student1009@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=50', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1010, 10, 10, NULL, 'NAJEH-STU-1010', 0.00, 'english', 'جنى رضا مصطفى', 18, '01077001010', 'student1010@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=51', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1011, 1, 11, NULL, 'NAJEH-STU-1011', 0.00, 'english', 'أحمد رامي محمود', 14, '01077001011', 'student1011@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=52', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1012, 2, 1, NULL, 'NAJEH-STU-1012', 0.00, 'english', 'حبيبة شريف كمال', 15, '01077001012', 'student1012@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=53', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1013, 3, 2, NULL, 'NAJEH-STU-1013', 0.00, 'english', 'علي أشرف عبد الحميد', 16, '01077001013', 'student1013@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=54', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1014, 4, 3, NULL, 'NAJEH-STU-1014', 0.00, 'english', 'ملك سمير ناصر', 17, '01077001014', 'student1014@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=55', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1015, 5, 4, NULL, 'NAJEH-STU-1015', 0.00, 'english', 'كريم محمود حسن', 18, '01077001015', 'student1015@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=56', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1016, 6, 5, NULL, 'NAJEH-STU-1016', 0.00, 'english', 'فاطمة وائل شريف', 14, '01077001016', 'student1016@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=57', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1017, 7, 6, NULL, 'NAJEH-STU-1017', 0.00, 'english', 'زياد حسام الدين', 15, '01077001017', 'student1017@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=58', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1018, 8, 7, NULL, 'NAJEH-STU-1018', 0.00, 'english', 'بسملة عمرو السيد', 16, '01077001018', 'student1018@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=59', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1019, 9, 8, NULL, 'NAJEH-STU-1019', 0.00, 'english', 'محمود محمد عادل', 17, '01077001019', 'student1019@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=60', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1020, 10, 9, NULL, 'NAJEH-STU-1020', 0.00, 'english', 'ندى أحمد صبري', 18, '01077001020', 'student1020@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=1', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1021, 1, 10, NULL, 'NAJEH-STU-1021', 0.00, 'english', 'مصطفى أحمد محمد', 14, '01077001021', 'student1021@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=2', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1022, 2, 11, NULL, 'NAJEH-STU-1022', 0.00, 'english', 'روان إبراهيم عبد الله', 15, '01077001022', 'student1022@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=3', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1023, 3, 1, NULL, 'NAJEH-STU-1023', 0.00, 'english', 'ياسين طارق السيد', 16, '01077001023', 'student1023@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=4', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1024, 4, 2, NULL, 'NAJEH-STU-1024', 0.00, 'english', 'فرح أحمد سعيد', 17, '01077001024', 'student1024@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=5', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1025, 4, 9, NULL, 'NAJEH-STU-1025', 0.00, 'english', 'أحمد محمود', 18, '01099998888', 'student1025@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', 'fPdydHRRRe-Tz0xPn3LGRa:APA91bGpGyk_TA1fE-QoaCtYRbAPB0m1j7IejtJuq73gQAGq-Dye5vgyR1BhQ38ikB67YoH5-6koTLcfL2P8KpB2QwM7tBFWEPDU55Yc9PAA34cvgEb2bok', NULL),
+(1026, 6, 4, NULL, 'NAJEH-STU-1026', 0.00, 'english', 'شهد عماد حسن', 14, '01077001026', 'student1026@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=7', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1027, 7, 5, NULL, 'NAJEH-STU-1027', 0.00, 'english', 'حمزة جمال فتحي', 15, '01077001027', 'student1027@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=8', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1028, 8, 6, NULL, 'NAJEH-STU-1028', 0.00, 'english', 'لارا خالد علي', 16, '01077001028', 'student1028@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=9', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1029, 9, 7, NULL, 'NAJEH-STU-1029', 0.00, 'english', 'سيف سامح فؤاد', 17, '01077001029', 'student1029@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1030, 10, 8, NULL, 'NAJEH-STU-1030', 0.00, 'english', 'منة رضا مصطفى', 18, '01077001030', 'student1030@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=11', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1031, 1, 9, NULL, 'NAJEH-STU-1031', 0.00, 'english', 'يوسف رامي محمود', 14, '01077001031', 'student1031@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=12', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1032, 2, 10, NULL, 'NAJEH-STU-1032', 0.00, 'english', 'مريم شريف كمال', 15, '01077001032', 'student1032@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=13', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1033, 3, 11, NULL, 'NAJEH-STU-1033', 0.00, 'english', 'عمر أشرف عبد الحميد', 16, '01077001033', 'student1033@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=14', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1034, 4, 1, NULL, 'NAJEH-STU-1034', 0.00, 'english', 'سلمى سمير ناصر', 17, '01077001034', 'student1034@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=15', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1035, 5, 2, NULL, 'NAJEH-STU-1035', 0.00, 'english', 'آدم محمود حسن', 18, '01077001035', 'student1035@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=16', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1036, 6, 3, NULL, 'NAJEH-STU-1036', 0.00, 'english', 'ليلى وائل شريف', 14, '01077001036', 'student1036@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=17', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1037, 7, 4, NULL, 'NAJEH-STU-1037', 0.00, 'english', 'محمد حسام الدين', 15, '01077001037', 'student1037@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=18', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1038, 8, 5, NULL, 'NAJEH-STU-1038', 0.00, 'english', 'نور عمرو السيد', 16, '01077001038', 'student1038@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=19', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1039, 9, 6, NULL, 'NAJEH-STU-1039', 0.00, 'english', 'عبد الرحمن محمد عادل', 17, '01077001039', 'student1039@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=20', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1040, 10, 7, NULL, 'NAJEH-STU-1040', 0.00, 'english', 'جنى أحمد صبري', 18, '01077001040', 'student1040@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=21', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1041, 1, 8, NULL, 'NAJEH-STU-1041', 0.00, 'english', 'أحمد أحمد محمد', 14, '01077001041', 'student1041@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=22', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1042, 2, 9, NULL, 'NAJEH-STU-1042', 0.00, 'english', 'حبيبة إبراهيم عبد الله', 15, '01077001042', 'student1042@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=23', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1043, 3, 10, NULL, 'NAJEH-STU-1043', 0.00, 'english', 'علي طارق السيد', 16, '01077001043', 'student1043@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=24', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1044, 4, 11, NULL, 'NAJEH-STU-1044', 0.00, 'english', 'ملك أحمد سعيد', 17, '01077001044', 'student1044@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=25', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1045, 5, 1, NULL, 'NAJEH-STU-1045', 0.00, 'english', 'كريم حسام محمد', 18, '01077001045', 'student1045@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=26', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1046, 6, 2, NULL, 'NAJEH-STU-1046', 0.00, 'english', 'فاطمة عماد حسن', 14, '01077001046', 'student1046@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=27', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1047, 7, 3, NULL, 'NAJEH-STU-1047', 0.00, 'english', 'زياد جمال فتحي', 15, '01077001047', 'student1047@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=28', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1048, 8, 4, NULL, 'NAJEH-STU-1048', 0.00, 'english', 'بسملة خالد علي', 16, '01077001048', 'student1048@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=29', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1049, 9, 5, NULL, 'NAJEH-STU-1049', 0.00, 'english', 'محمود سامح فؤاد', 17, '01077001049', 'student1049@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=30', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1050, 10, 6, NULL, 'NAJEH-STU-1050', 0.00, 'english', 'ندى رضا مصطفى', 18, '01077001050', 'student1050@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=31', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1051, 1, 7, NULL, 'NAJEH-STU-1051', 0.00, 'english', 'مصطفى رامي محمود', 14, '01077001051', 'student1051@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=32', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1052, 2, 8, NULL, 'NAJEH-STU-1052', 0.00, 'english', 'روان شريف كمال', 15, '01077001052', 'student1052@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=33', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1053, 3, 9, NULL, 'NAJEH-STU-1053', 0.00, 'english', 'ياسين أشرف عبد الحميد', 16, '01077001053', 'student1053@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=34', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1054, 4, 10, NULL, 'NAJEH-STU-1054', 0.00, 'english', 'فرح سمير ناصر', 17, '01077001054', 'student1054@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=35', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1055, 5, 11, NULL, 'NAJEH-STU-1055', 0.00, 'english', 'إياد محمود حسن', 18, '01077001055', 'student1055@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=36', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1056, 6, 1, NULL, 'NAJEH-STU-1056', 0.00, 'english', 'شهد وائل شريف', 14, '01077001056', 'student1056@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=37', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1057, 7, 2, NULL, 'NAJEH-STU-1057', 0.00, 'english', 'حمزة حسام الدين', 15, '01077001057', 'student1057@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=38', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1058, 8, 3, NULL, 'NAJEH-STU-1058', 0.00, 'english', 'لارا عمرو السيد', 16, '01077001058', 'student1058@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=39', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1059, 9, 4, NULL, 'NAJEH-STU-1059', 0.00, 'english', 'سيف محمد عادل', 17, '01077001059', 'student1059@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=40', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1060, 10, 5, NULL, 'NAJEH-STU-1060', 0.00, 'english', 'منة أحمد صبري', 18, '01077001060', 'student1060@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'uploads/avatars/img_6a79d43bec99a7.02642927.webp', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
+(1062, NULL, NULL, 1001, 'NAJEH-STU-1062', 0.00, 'english', 'Ahmed Mohamed', NULL, '01012345678', 'ahmed.student2@example.com', '$2y$10$lGvcx1x0jfjbeUKjMQV4ROPrP91I9I48wBjKpBhQ/b.rUHdmsMxIm', NULL, 1, 1, '2026-08-19 15:32:10', '2026-08-26 12:20:55', NULL, NULL),
+(1063, 6, 10, NULL, 'NAJEH-STU-1063', 0.00, 'english', 'Mohammad', 24, '01093413220', 'maldb0907@gmail.com', '$2y$10$1TbPoUV0arwVjHiTuRzyve2nhAmVcRUXB6kaIYGZOC12bzTOfkbRC', NULL, 0, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27', NULL, NULL),
+(1065, 9, 8, 1001, 'NAJEH-STU-1065', 0.00, 'english', 'عمر طلعت', 18, '01098476530', 'omartalaat1276@gmail.com', '$2y$10$latrUEfpCty8IdOgKFAvsOxv52YlSJGdIoj8QaZr4DcOE4tk9XEjK', NULL, 1, 1, '2026-08-26 08:51:31', '2026-08-26 08:51:47', NULL, 7);
 
 -- --------------------------------------------------------
 
@@ -5459,7 +5470,9 @@ INSERT INTO `student_point_transactions` (`id`, `student_id`, `points`, `type`, 
 (1, 1001, 50.00, 'earn_referral_purchase', 'affiliate_commission', 4, 1062, 'مكافأة إحالة عن شراء الطالب (Ahmed Mohamed)', '2026-08-19 16:09:35'),
 (2, 1001, -20.00, 'redeem', NULL, NULL, NULL, 'خصم نقاط مقابل استبدال كورس أو كتاب مجاني', '2026-08-19 16:10:27'),
 (3, 1001, 50.00, 'earn_referral_purchase', 'affiliate_commission', 5, 1062, 'مكافأة إحالة عن شراء الطالب (Ahmed Mohamed)', '2026-08-19 16:16:08'),
-(4, 1001, -20.00, 'redeem', NULL, NULL, NULL, 'خصم نقاط مقابل استبدال كورس أو كتاب مجاني', '2026-08-19 16:16:21');
+(4, 1001, -20.00, 'redeem', NULL, NULL, NULL, 'خصم نقاط مقابل استبدال كورس أو كتاب مجاني', '2026-08-19 16:16:21'),
+(5, 1001, 0.00, 'earn_referral_purchase', 'affiliate_commission', 6, 1065, 'مكافأة إحالة عن شراء الطالب (عمر طلعت)', '2026-08-26 09:09:50'),
+(6, 1001, 20.00, 'earn_referral_purchase', 'affiliate_commission', 7, 1065, 'مكافأة إحالة عن شراء الطالب (عمر طلعت)', '2026-08-26 09:10:10');
 
 -- --------------------------------------------------------
 
@@ -5628,7 +5641,8 @@ CREATE TABLE `student_referrals` (
 --
 
 INSERT INTO `student_referrals` (`id`, `referrer_student_id`, `referred_student_id`, `affiliate_code`, `created_at`) VALUES
-(1, 1001, 1062, 'NAJEH-STU-1001', '2026-08-19 15:32:10');
+(1, 1001, 1062, 'NAJEH-STU-1001', '2026-08-19 15:32:10'),
+(2, 1001, 1065, 'NAJEH-STU-1001', '2026-08-26 08:51:31');
 
 -- --------------------------------------------------------
 
@@ -5817,7 +5831,9 @@ INSERT INTO `student_subscriptions` (`id`, `student_id`, `subscription_code_id`,
 (1071, 1062, 113, 'course', '2026-08-19 15:56:46', '2026-09-04 18:56:00', 1, '2026-08-19 15:56:46', '2026-08-19 15:56:46'),
 (1072, 1062, 114, 'course', '2026-08-19 16:04:51', '2026-08-21 19:04:00', 1, '2026-08-19 16:04:51', '2026-08-19 16:04:51'),
 (1073, 1062, 115, 'teacher', '2026-08-19 16:08:16', '2026-08-28 19:07:00', 1, '2026-08-19 16:08:16', '2026-08-19 16:08:16'),
-(1074, 1062, 116, 'course', '2026-08-19 16:15:45', NULL, 1, '2026-08-19 16:15:45', '2026-08-19 16:15:45');
+(1074, 1062, 116, 'course', '2026-08-19 16:15:45', NULL, 1, '2026-08-19 16:15:45', '2026-08-19 16:15:45'),
+(1075, 1065, 117, 'subject', '2026-08-26 09:03:04', '2026-09-25 09:03:04', 1, '2026-08-26 09:03:04', '2026-08-26 09:03:04'),
+(1076, 1065, 118, 'subject', '2026-08-26 09:05:37', '2026-09-25 09:05:37', 1, '2026-08-26 09:05:37', '2026-08-26 09:05:37');
 
 -- --------------------------------------------------------
 
@@ -5990,7 +6006,9 @@ INSERT INTO `student_subscription_subjects` (`id`, `student_subscription_id`, `s
 (1040, 1067, 1),
 (1041, 1068, 11),
 (1042, 1069, 10),
-(1043, 1070, 15);
+(1043, 1070, 15),
+(1044, 1075, 3),
+(1045, 1076, 13);
 
 -- --------------------------------------------------------
 
@@ -6071,6 +6089,13 @@ CREATE TABLE `student_video_progress` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `student_video_progress`
+--
+
+INSERT INTO `student_video_progress` (`id`, `student_id`, `video_id`, `is_completed`, `watched_seconds`, `total_seconds`, `last_position_seconds`, `completed_at`, `created_at`, `updated_at`) VALUES
+(1, 1001, 2139, 0, 56, 635, 314, NULL, '2026-08-25 12:40:10', '2026-08-25 12:48:44');
 
 -- --------------------------------------------------------
 
@@ -6271,7 +6296,9 @@ INSERT INTO `subscription_codes` (`id`, `code`, `title`, `description`, `price`,
 (113, '64484446762567', 'dsf', '', 900.00, 1, 1, '2026-07-27 18:56:00', '2026-09-04 18:56:00', NULL, 1, 1, '2026-08-19 15:56:19', '2026-08-19 15:56:46'),
 (114, '30622633565524', 'هعهخع', '', 500.00, 1, 1, NULL, '2026-08-21 19:04:00', NULL, 1, 1, '2026-08-19 16:04:34', '2026-08-19 16:04:51'),
 (115, '94185970236080', 'dhhhd', '', 800.00, 1, 1, NULL, '2026-08-28 19:07:00', NULL, 1, 1, '2026-08-19 16:08:01', '2026-08-19 16:08:16'),
-(116, '61001613468746', 'ijkj', '', 500.00, 1, 1, NULL, NULL, NULL, 1, 1, '2026-08-19 16:15:36', '2026-08-19 16:15:45');
+(116, '61001613468746', 'ijkj', '', 500.00, 1, 1, NULL, NULL, NULL, 1, 1, '2026-08-19 16:15:36', '2026-08-19 16:15:45'),
+(117, '38931243322307', 'تيست', 'تيست', 0.00, 1, 1, NULL, NULL, 30, 1, 1, '2026-08-26 09:00:55', '2026-08-26 09:03:04'),
+(118, '47246005255006', 'تيست', 'تيست', 400.00, 1, 1, NULL, NULL, 30, 1, 1, '2026-08-26 09:04:45', '2026-08-26 09:05:37');
 
 -- --------------------------------------------------------
 
@@ -6348,7 +6375,9 @@ INSERT INTO `subscription_code_subjects` (`id`, `subscription_code_id`, `subject
 (1009, 109, 9),
 (1010, 110, 10),
 (1011, 111, 11),
-(1012, 112, 15);
+(1012, 112, 15),
+(1013, 117, 3),
+(1014, 118, 13);
 
 -- --------------------------------------------------------
 
@@ -9113,13 +9142,13 @@ ALTER TABLE `advertisements_translations`
 -- AUTO_INCREMENT for table `affiliates`
 --
 ALTER TABLE `affiliates`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `affiliate_commissions`
 --
 ALTER TABLE `affiliate_commissions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `banners`
@@ -9185,13 +9214,13 @@ ALTER TABLE `class_session_notification_log`
 -- AUTO_INCREMENT for table `code_redemptions_log`
 --
 ALTER TABLE `code_redemptions_log`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1070;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1072;
 
 --
 -- AUTO_INCREMENT for table `consultation_slots`
 --
 ALTER TABLE `consultation_slots`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=133;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=134;
 
 --
 -- AUTO_INCREMENT for table `courses`
@@ -9269,7 +9298,7 @@ ALTER TABLE `course_videos_translations`
 -- AUTO_INCREMENT for table `email_verification_codes`
 --
 ALTER TABLE `email_verification_codes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `exam_attempts`
@@ -9461,7 +9490,7 @@ ALTER TABLE `session_file_submissions`
 -- AUTO_INCREMENT for table `session_reschedule_requests`
 --
 ALTER TABLE `session_reschedule_requests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 --
 -- AUTO_INCREMENT for table `site_settings`
@@ -9473,7 +9502,7 @@ ALTER TABLE `site_settings`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1064;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1066;
 
 --
 -- AUTO_INCREMENT for table `student_book_progress`
@@ -9503,7 +9532,7 @@ ALTER TABLE `student_certificates`
 -- AUTO_INCREMENT for table `student_point_transactions`
 --
 ALTER TABLE `student_point_transactions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `student_question_answers`
@@ -9515,7 +9544,7 @@ ALTER TABLE `student_question_answers`
 -- AUTO_INCREMENT for table `student_referrals`
 --
 ALTER TABLE `student_referrals`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `student_reports`
@@ -9527,7 +9556,7 @@ ALTER TABLE `student_reports`
 -- AUTO_INCREMENT for table `student_subscriptions`
 --
 ALTER TABLE `student_subscriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1075;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1077;
 
 --
 -- AUTO_INCREMENT for table `student_subscription_books`
@@ -9545,7 +9574,7 @@ ALTER TABLE `student_subscription_courses`
 -- AUTO_INCREMENT for table `student_subscription_subjects`
 --
 ALTER TABLE `student_subscription_subjects`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1044;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1046;
 
 --
 -- AUTO_INCREMENT for table `student_subscription_teachers`
@@ -9557,7 +9586,7 @@ ALTER TABLE `student_subscription_teachers`
 -- AUTO_INCREMENT for table `student_video_progress`
 --
 ALTER TABLE `student_video_progress`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `subjects`
@@ -9581,7 +9610,7 @@ ALTER TABLE `subject_academic_years`
 -- AUTO_INCREMENT for table `subscription_codes`
 --
 ALTER TABLE `subscription_codes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
 
 --
 -- AUTO_INCREMENT for table `subscription_code_courses`
@@ -9593,7 +9622,7 @@ ALTER TABLE `subscription_code_courses`
 -- AUTO_INCREMENT for table `subscription_code_subjects`
 --
 ALTER TABLE `subscription_code_subjects`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1013;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1015;
 
 --
 -- AUTO_INCREMENT for table `subscription_code_teachers`

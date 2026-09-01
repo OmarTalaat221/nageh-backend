@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../content/units.php';
 
 if (!function_exists('ensure_books_schema')) {
     function ensure_books_schema($con) {
@@ -14,7 +15,7 @@ if (!function_exists('adminGetBookDetails')) {
         if (!$bookId) return null;
         $langInfo = get_language_info($con);
 
-        $res = mysqli_query($con, "SELECT id, subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, order_num, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $res = mysqli_query($con, "SELECT id, subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, allow_download, order_num, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_books WHERE id = {$bookId} LIMIT 1");
         if (!$res || !($row = mysqli_fetch_assoc($res))) {
             return null;
         }
@@ -24,10 +25,12 @@ if (!function_exists('adminGetBookDetails')) {
         $row['subject_id'] = !empty($row['subject_id']) ? (int)$row['subject_id'] : null;
         $row['course_id'] = !empty($row['course_id']) ? (int)$row['course_id'] : null;
         $row['price'] = (float)($row['price'] ?? 0.00);
+        $row['allow_download'] = (int)($row['allow_download'] ?? 1);
         $row['is_active'] = (int)$row['is_active'];
+        $rawLink = $row['link'];
         $row['link'] = format_image_url($row['link']);
-        $row['file_path'] = format_image_url($row['link']);
-        $row['cover_image'] = format_image_url(!empty($row['cover_image']) ? $row['cover_image'] : $row['link']);
+        $row['file_path'] = format_image_url($row['file_path'] ?: $rawLink);
+        $row['cover_image'] = format_image_url(!empty($row['cover_image']) ? $row['cover_image'] : $rawLink);
 
         $translations = [];
         $titleAr = null;
@@ -61,6 +64,11 @@ if (!function_exists('adminGetBookDetails')) {
         $row['title_en'] = $titleEn;
         $row['description_ar'] = $descAr;
         $row['description_en'] = $descEn;
+
+        $row['unit'] = $row['unit_id'] ? get_unit_details($con, $row['unit_id']) : null;
+        $courseIdForLookup = $row['course_id'] ?: (int)($row['unit']['course_id'] ?? 0);
+        $row['course'] = $courseIdForLookup ? get_course_details($con, $courseIdForLookup) : null;
+        $row['subject'] = $row['subject_id'] ? get_subject_details($con, $row['subject_id']) : null;
 
         return format_response_images($row);
     }
@@ -172,7 +180,6 @@ if (!function_exists('adminCreateBook')) {
         $descAr = trim($body['description_ar'] ?? $body['description'] ?? '');
         $descEn = trim($body['description_en'] ?? $descAr);
 
-        $price = (float)($body['price'] ?? 0.00);
         $filePath = trim($body['file_path'] ?? '');
         $link = trim($body['link'] ?? '');
         $coverImage = trim($body['cover_image'] ?? $body['image'] ?? '');
@@ -183,11 +190,18 @@ if (!function_exists('adminCreateBook')) {
         $subjectId = isset($body['subject_id']) && (int)$body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
 
+        // Books tied to a course/unit are bundled with the course purchase and
+        // must never carry their own separate price — only standalone
+        // (external) books, with no course_id/unit_id, are individually priced.
+        $isCourseLinked = ($courseId !== null || $unitId !== null);
+        $price = $isCourseLinked ? 0.00 : (float)($body['price'] ?? 0.00);
+        $allowDownload = isset($body['allow_download']) ? (int)(bool)$body['allow_download'] : 1;
+
         $cbSub = $subjectId ? $subjectId : 'NULL';
         $cbCourse = $courseId ? $courseId : 'NULL';
         $cbUnit = $unitId ? $unitId : 'NULL';
 
-        $cbSql = "INSERT INTO course_books (subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, is_active, created_by_type, created_by_id) VALUES ({$cbSub}, {$cbCourse}, {$cbUnit}, '" . mysqli_real_escape_string($con, $fileType) . "', '" . mysqli_real_escape_string($con, $extension) . "', '" . mysqli_real_escape_string($con, $link) . "', '" . mysqli_real_escape_string($con, $filePath) . "', '" . mysqli_real_escape_string($con, $coverImage) . "', {$price}, {$isActive}, '{$creatorType}', {$creatorId})";
+        $cbSql = "INSERT INTO course_books (subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, allow_download, is_active, created_by_type, created_by_id) VALUES ({$cbSub}, {$cbCourse}, {$cbUnit}, '" . mysqli_real_escape_string($con, $fileType) . "', '" . mysqli_real_escape_string($con, $extension) . "', '" . mysqli_real_escape_string($con, $link) . "', '" . mysqli_real_escape_string($con, $filePath) . "', '" . mysqli_real_escape_string($con, $coverImage) . "', {$price}, {$allowDownload}, {$isActive}, '{$creatorType}', {$creatorId})";
         if (!mysqli_query($con, $cbSql)) {
             return ['status' => 'error', 'message' => 'Failed to create book: ' . mysqli_error($con)];
         }
@@ -219,15 +233,28 @@ if (!function_exists('adminUpdateBook')) {
             return ['status' => 'error', 'message' => 'Book ID is required'];
         }
 
-        $checkRes = mysqli_query($con, "SELECT id FROM course_books WHERE id = {$id} LIMIT 1");
-        if (!$checkRes || !mysqli_fetch_assoc($checkRes)) {
+        $existingRes = mysqli_query($con, "SELECT course_id, unit_id FROM course_books WHERE id = {$id} LIMIT 1");
+        $existingRow = $existingRes ? mysqli_fetch_assoc($existingRes) : null;
+        if (!$existingRow) {
             return ['status' => 'error', 'message' => 'Book not found'];
         }
 
+        $resolvedCourseId = isset($body['course_id']) ? (int)$body['course_id'] : (int)($existingRow['course_id'] ?? 0);
+        $resolvedUnitId = isset($body['unit_id']) ? (int)$body['unit_id'] : (int)($existingRow['unit_id'] ?? 0);
+        // Books tied to a course/unit are bundled with the course purchase —
+        // force their price to 0 regardless of what was submitted.
+        $isCourseLinked = ($resolvedCourseId > 0 || $resolvedUnitId > 0);
+
         $updateFields = [];
-        if (isset($body['price'])) {
+        if ($isCourseLinked) {
+            $updateFields[] = "price = 0";
+        } elseif (isset($body['price'])) {
             $price = (float)$body['price'];
             $updateFields[] = "price = {$price}";
+        }
+        if (isset($body['allow_download'])) {
+            $allowDownload = (int)(bool)$body['allow_download'];
+            $updateFields[] = "allow_download = {$allowDownload}";
         }
         if (isset($body['file_path'])) {
             $fpEsc = mysqli_real_escape_string($con, trim($body['file_path']));
@@ -484,7 +511,9 @@ if (!function_exists('adminListBookPurchaseRequests')) {
 
                 cbt.description AS book_description,
                 cb.file_path AS book_file_path,
-                cb.link AS book_cover_image
+                cb.link AS book_cover_image,
+                cb.price AS book_price,
+                cb.allow_download AS book_allow_download
 
             FROM student_book_purchase_requests sbpr
 
@@ -531,6 +560,9 @@ if (!function_exists('adminListBookPurchaseRequests')) {
                 $row['book_file_path'] = !empty($row['book_file_path'])
                     ? format_image_url($row['book_file_path'])
                     : null;
+
+                $row['book_price'] = (float)($row['book_price'] ?? 0.00);
+                $row['book_allow_download'] = (int)($row['book_allow_download'] ?? 1);
 
                 $items[] = $row;
             }

@@ -74,6 +74,7 @@ if (!function_exists('studentTodaySessions')) {
         $courseIds = $accessible['course_ids'] ?? [];
         $subjectIds = $accessible['subject_ids'] ?? [];
         $teacherIds = $accessible['teacher_ids'] ?? [];
+        $studentAcademicYearId = get_student_academic_year_id($con, $studentId);
 
         $where = ["is_active = 1"];
         $params = [];
@@ -92,8 +93,18 @@ if (!function_exists('studentTodaySessions')) {
         $entityWhere = [];
         if (!empty($subjectIds)) {
             $placeholders = implode(',', array_fill(0, count($subjectIds), '?'));
-            $entityWhere[] = "subject_id IN ({$placeholders})";
-            foreach ($subjectIds as $sId) { $params[] = (int)$sId; $types .= "i"; }
+            // Subject-scoped sessions (no course) can be tagged with a specific academic_year_id
+            // (a grade) - only show them to a student of that same grade, or to everyone when the
+            // session was left ungraded (academic_year_id IS NULL, the legacy/blanket behavior).
+            if ($studentAcademicYearId) {
+                $entityWhere[] = "(subject_id IN ({$placeholders}) AND (academic_year_id IS NULL OR academic_year_id = ?))";
+                foreach ($subjectIds as $sId) { $params[] = (int)$sId; $types .= "i"; }
+                $params[] = $studentAcademicYearId;
+                $types .= "i";
+            } else {
+                $entityWhere[] = "(subject_id IN ({$placeholders}) AND academic_year_id IS NULL)";
+                foreach ($subjectIds as $sId) { $params[] = (int)$sId; $types .= "i"; }
+            }
         }
         if (!empty($courseIds)) {
             $placeholders = implode(',', array_fill(0, count($courseIds), '?'));

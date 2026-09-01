@@ -125,7 +125,8 @@ if (!function_exists('teacherListBookPurchaseRequests')) {
                    cbt.description AS book_description,
                    cb.file_path AS book_file_path,
                    cb.cover_image AS book_cover_image,
-                   cb.price AS book_price
+                   cb.price AS book_price,
+                   cb.allow_download AS book_allow_download
             FROM student_book_purchase_requests sbpr
             JOIN students st ON sbpr.student_id = st.id
             LEFT JOIN course_books cb ON sbpr.book_id = cb.id
@@ -144,6 +145,7 @@ if (!function_exists('teacherListBookPurchaseRequests')) {
                 $row['book_id'] = (int)$row['book_id'];
                 $row['reviewed_by_id'] = $row['reviewed_by_id'] ? (int)$row['reviewed_by_id'] : null;
                 $row['book_price'] = (float)($row['book_price'] ?? 0.00);
+                $row['book_allow_download'] = (int)($row['book_allow_download'] ?? 1);
                 $row['student_image'] = format_image_url($row['student_image']);
                 $row['book_cover_image'] = format_image_url($row['book_cover_image']);
                 $row['book_file_path'] = format_image_url($row['book_file_path']);

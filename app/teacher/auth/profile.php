@@ -88,6 +88,7 @@ if (!function_exists('teacherProfile')) {
 
         $teacher['subjects'] = get_teacher_subjects_details($con, $teacherId);
         $teacher['subject_ids'] = array_values(array_map(function($s) { return (int)$s['id']; }, $teacher['subjects']));
+        $teacher['subject_assignments'] = get_teacher_subject_assignments($con, $teacherId);
         $teacher['city'] = get_city_details($con, $cityId);
 
         return [

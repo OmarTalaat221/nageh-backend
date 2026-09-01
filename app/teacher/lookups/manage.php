@@ -25,7 +25,14 @@ if (!function_exists('teacherListMyAcademicYears')) {
             return ['status' => 'error', 'message' => 'Unauthorized teacher token'];
         }
 
-        $academicYears = get_teacher_academic_years_details($con, $teacherId);
+        // Passing subject_id narrows the list to the grades this teacher is actually assigned
+        // for THAT subject (used by the session-creation form); without it, every grade the
+        // teacher touches across all subjects/courses is returned (used e.g. by certificates).
+        $subjectId = (int)($_GET['subject_id'] ?? 0);
+        $academicYears = $subjectId > 0
+            ? get_teacher_academic_years_for_subject($con, $teacherId, $subjectId)
+            : get_teacher_academic_years_details($con, $teacherId);
+
         return [
             'status' => 'success',
             'data' => $academicYears

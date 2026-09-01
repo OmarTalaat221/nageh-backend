@@ -4,6 +4,32 @@ require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../teacher/sessions/manage.php';
 
+/**
+ * class_sessions only has a day_of_week (no calendar date of its own), so a "date range" filter
+ * means: which weekday names fall inside [from, to]. Capped at 7 unique days - once every weekday
+ * name has been seen the range can't add more, so it stops early even for long ranges.
+ */
+if (!function_exists('get_day_names_in_date_range')) {
+    function get_day_names_in_date_range(string $from, string $to): array {
+        $start = strtotime($from);
+        $end = strtotime($to);
+        if ($start === false || $end === false || $end < $start) return [];
+
+        $days = [];
+        $seen = [];
+        $cursor = $start;
+        while ($cursor <= $end && count($days) < 7) {
+            $name = date('l', $cursor);
+            if (!isset($seen[$name])) {
+                $seen[$name] = true;
+                $days[] = $name;
+            }
+            $cursor = strtotime('+1 day', $cursor);
+        }
+        return $days;
+    }
+}
+
 if (!function_exists('adminListSessions')) {
     function adminListSessions($con) {
         $page = max(1, (int)($_GET['page'] ?? 1));
@@ -15,13 +41,18 @@ if (!function_exists('adminListSessions')) {
         $courseId = (int)($_GET['course_id'] ?? 0);
         $requestedDay = trim($_GET['day'] ?? $_GET['day_of_week'] ?? '');
         $inputDate = trim($_GET['date'] ?? $_GET['session_date'] ?? '');
+        $dateFrom = trim($_GET['date_from'] ?? $_GET['from'] ?? '');
+        $dateTo = trim($_GET['date_to'] ?? $_GET['to'] ?? '');
         $isOnline = isset($_GET['is_online']) && $_GET['is_online'] !== '' ? (int)$_GET['is_online'] : null;
         $isActive = isset($_GET['is_active']) && $_GET['is_active'] !== '' ? (int)$_GET['is_active'] : null;
         $search = trim($_GET['search'] ?? $_GET['q'] ?? '');
 
         $day = null;
+        $days = [];
         $overrideDate = null;
-        if (!empty($inputDate) && strtotime($inputDate) !== false) {
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            $days = get_day_names_in_date_range($dateFrom, $dateTo);
+        } elseif (!empty($inputDate) && strtotime($inputDate) !== false) {
             $overrideDate = date('Y-m-d', strtotime($inputDate));
             $day = date('l', strtotime($inputDate));
         } elseif (!empty($requestedDay)) {
@@ -50,7 +81,14 @@ if (!function_exists('adminListSessions')) {
             $params[] = $courseId;
             $types .= "i";
         }
-        if ($day !== null) {
+        if (!empty($days)) {
+            $inPlaceholders = implode(',', array_fill(0, count($days), '?'));
+            $where[] = "cs.day_of_week IN ({$inPlaceholders})";
+            foreach ($days as $d) {
+                $params[] = $d;
+                $types .= "s";
+            }
+        } elseif ($day !== null) {
             $where[] = "cs.day_of_week = ?";
             $params[] = $day;
             $types .= "s";
@@ -123,6 +161,7 @@ if (!function_exists('adminCreateSession')) {
         $meetingLink = trim($body['meeting_link'] ?? '');
         $isOnline = isset($body['is_online']) ? (int)$body['is_online'] : 0;
         $grade = trim($body['grade'] ?? '');
+        $academicYearId = isset($body['academic_year_id']) && $body['academic_year_id'] > 0 ? (int)$body['academic_year_id'] : null;
 
         if ($teacherId <= 0) {
             return ['status' => 'error', 'message' => 'teacher_id is required'];
@@ -130,6 +169,13 @@ if (!function_exists('adminCreateSession')) {
 
         $err = validate_session_linkage($subjectId, $courseId);
         if ($err) return $err;
+
+        if ($courseId && !teacher_can_use_course_for_session($con, $teacherId, $courseId)) {
+            return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected course and it already has another assigned teacher'];
+        }
+        if (!$courseId && $subjectId && !is_subject_assigned_to_teacher($con, $teacherId, $subjectId, $academicYearId)) {
+            return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected subject and grade'];
+        }
 
         $allowedDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         if (empty($dayOfWeek) || !in_array($dayOfWeek, $allowedDays, true)) {
@@ -141,8 +187,8 @@ if (!function_exists('adminCreateSession')) {
 
         $code = uniqid('SESS-');
 
-        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
-        mysqli_stmt_bind_param($stmt, "iiisssssiss", $teacherId, $subjectId, $courseId, $code, $dayOfWeek, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade);
+        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+        mysqli_stmt_bind_param($stmt, "iiisssssissi", $teacherId, $subjectId, $courseId, $code, $dayOfWeek, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId);
 
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create class session: ' . mysqli_error($con)];
@@ -165,11 +211,38 @@ if (!function_exists('adminUpdateSession')) {
             return ['status' => 'error', 'message' => trans('session_id_required')];
         }
 
-        $checkStmt = mysqli_prepare($con, "SELECT id FROM class_sessions WHERE id = ? LIMIT 1");
+        $checkStmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, course_id, academic_year_id FROM class_sessions WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($checkStmt, "i", $sessionId);
         mysqli_stmt_execute($checkStmt);
-        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+        $currentSession = mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt));
+        if (!$currentSession) {
             return ['status' => 'error', 'message' => 'Class session not found'];
+        }
+
+        $scopeFieldsTouched = array_key_exists('teacher_id', $body) || array_key_exists('subject_id', $body) || array_key_exists('course_id', $body) || array_key_exists('academic_year_id', $body);
+        if ($scopeFieldsTouched) {
+            $finalTeacherId = (array_key_exists('teacher_id', $body) && (int)$body['teacher_id'] > 0)
+                ? (int)$body['teacher_id']
+                : (int)$currentSession['teacher_id'];
+            $finalSubjectId = array_key_exists('subject_id', $body)
+                ? ($body['subject_id'] ? (int)$body['subject_id'] : null)
+                : ($currentSession['subject_id'] !== null ? (int)$currentSession['subject_id'] : null);
+            $finalCourseId = array_key_exists('course_id', $body)
+                ? ($body['course_id'] ? (int)$body['course_id'] : null)
+                : ($currentSession['course_id'] !== null ? (int)$currentSession['course_id'] : null);
+            $finalAcademicYearId = array_key_exists('academic_year_id', $body)
+                ? ($body['academic_year_id'] ? (int)$body['academic_year_id'] : null)
+                : ($currentSession['academic_year_id'] !== null ? (int)$currentSession['academic_year_id'] : null);
+
+            $err = validate_session_linkage($finalSubjectId, $finalCourseId);
+            if ($err) return $err;
+
+            if ($finalCourseId && !teacher_can_use_course_for_session($con, $finalTeacherId, $finalCourseId)) {
+                return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected course and it already has another assigned teacher'];
+            }
+            if (!$finalCourseId && $finalSubjectId && !is_subject_assigned_to_teacher($con, $finalTeacherId, $finalSubjectId, $finalAcademicYearId)) {
+                return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected subject and grade'];
+            }
         }
 
         $updateFields = [];
@@ -189,6 +262,11 @@ if (!function_exists('adminUpdateSession')) {
         if (array_key_exists('course_id', $body)) {
             $updateFields[] = "course_id = ?";
             $params[] = $body['course_id'] ? (int)$body['course_id'] : null;
+            $types .= "i";
+        }
+        if (array_key_exists('academic_year_id', $body)) {
+            $updateFields[] = "academic_year_id = ?";
+            $params[] = $body['academic_year_id'] ? (int)$body['academic_year_id'] : null;
             $types .= "i";
         }
         if (!empty($body['day_of_week'])) {

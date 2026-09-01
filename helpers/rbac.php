@@ -11,30 +11,21 @@ if (!function_exists('hasPermission')) {
         $adminId = (int)($adminData['id'] ?? 0);
         if ($adminId <= 0) return false;
 
-        $adminStmt = mysqli_prepare($con, "
-            SELECT a.role, a.role_id, r.code AS role_code 
-            FROM admins a 
-            LEFT JOIN roles r ON a.role_id = r.id 
-            WHERE a.id = ? LIMIT 1
-        ");
+        $adminStmt = mysqli_prepare($con, "SELECT role FROM admins WHERE id = ? LIMIT 1");
         if ($adminStmt) {
             mysqli_stmt_bind_param($adminStmt, "i", $adminId);
             mysqli_stmt_execute($adminStmt);
-            $adminRes = mysqli_stmt_get_result($adminStmt);
-            $adminRow = mysqli_fetch_assoc($adminRes);
-            if ($adminRow) {
-                if (strtolower($adminRow['role'] ?? '') === 'super_admin' || strtolower($adminRow['role_code'] ?? '') === 'super_admin') {
-                    return true;
-                }
+            $adminRow = mysqli_fetch_assoc(mysqli_stmt_get_result($adminStmt));
+            if ($adminRow && strtolower($adminRow['role'] ?? '') === 'super_admin') {
+                return true;
             }
         }
 
         $stmt = mysqli_prepare($con, "
-            SELECT p.id 
+            SELECT p.id
             FROM permissions p
-            JOIN role_permissions rp ON p.id = rp.permission_id
-            JOIN admins a ON a.role_id = rp.role_id
-            WHERE a.id = ? AND p.code = ? LIMIT 1
+            JOIN admin_permissions ap ON p.id = ap.permission_id
+            WHERE ap.admin_id = ? AND p.code = ? LIMIT 1
         ");
         if (!$stmt) return false;
 

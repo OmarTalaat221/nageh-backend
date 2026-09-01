@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../../helpers/notifications.php';
+require_once __DIR__ . '/../admins/manage.php';
 
 if (!function_exists('adminProfile')) {
     function adminProfile($con, $adminData) {
@@ -13,6 +14,11 @@ if (!function_exists('adminProfile')) {
 
         if (!$admin) {
             return ['status' => 'error', 'message' => trans('profile_not_found')];
+        }
+
+        if (function_exists('get_admin_permissions')) {
+            $admin['permissions'] = get_admin_permissions($con, $adminId);
+            $admin['permission_codes'] = array_map(fn($p) => $p['code'], $admin['permissions']);
         }
 
         return [

@@ -79,11 +79,20 @@ if (!function_exists('parentGetChildSessions')) {
             $types .= "s";
         }
 
+        $studentAcademicYearId = get_student_academic_year_id($con, $studentId);
+
         $entityWhereParts = [];
         if (!empty($subjectIds)) {
             $placeholders = implode(',', array_fill(0, count($subjectIds), '?'));
-            $entityWhereParts[] = "subject_id IN ({$placeholders})";
-            foreach ($subjectIds as $sId) { $params[] = $sId; $types .= "i"; }
+            if ($studentAcademicYearId) {
+                $entityWhereParts[] = "(subject_id IN ({$placeholders}) AND (academic_year_id IS NULL OR academic_year_id = ?))";
+                foreach ($subjectIds as $sId) { $params[] = $sId; $types .= "i"; }
+                $params[] = $studentAcademicYearId;
+                $types .= "i";
+            } else {
+                $entityWhereParts[] = "(subject_id IN ({$placeholders}) AND academic_year_id IS NULL)";
+                foreach ($subjectIds as $sId) { $params[] = $sId; $types .= "i"; }
+            }
         }
         if (!empty($courseIds)) {
             $placeholders = implode(',', array_fill(0, count($courseIds), '?'));

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../student/homework/manage.php'; // get_student_subscribed_subject_ids / course_ids
+require_once __DIR__ . '/../../../helpers/auto_reports.php';
 
 if (!function_exists('get_exam_summary')) {
     function get_exam_summary($con, int $examId) {
@@ -302,6 +303,10 @@ if (!function_exists('studentSubmitExamAttempt')) {
         $uStmt = mysqli_prepare($con, "UPDATE exam_attempts SET status = ?, total_score = ?, submitted_at = NOW()" . ($hasWritten ? "" : ", graded_at = NOW()") . " WHERE id = ?");
         mysqli_stmt_bind_param($uStmt, "sdi", $newStatus, $totalScore, $attemptId);
         mysqli_stmt_execute($uStmt);
+
+        if ($newStatus === 'graded') {
+            auto_generate_exam_result_report($con, $attemptId);
+        }
 
         return ['status' => 'success', 'message' => 'Exam submitted successfully', 'data' => get_exam_attempt_details($con, $attemptId, true)];
     }

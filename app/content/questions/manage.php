@@ -16,12 +16,43 @@ if (!function_exists('json_error')) {
     }
 }
 
+if (!function_exists('save_written_model_answer')) {
+    // Replaces the written-question model answer with the given text (per
+    // active language). Always clears the old row first so switching a
+    // question's type away from "written" leaves no orphaned answer behind.
+    function save_written_model_answer($con, int $questionId, string $modelAnswerAr, string $modelAnswerEn, array $languages): void {
+        mysqli_query($con, "DELETE FROM written_model_answers WHERE question_id = {$questionId}");
+
+        if ($modelAnswerAr === '' && $modelAnswerEn === '') {
+            return;
+        }
+
+        mysqli_query($con, "INSERT INTO written_model_answers (question_id, is_active) VALUES ({$questionId}, 1)");
+        $waId = (int)mysqli_insert_id($con);
+
+        foreach ($languages as $lang) {
+            $lId = (int)$lang['id'];
+            $lCode = strtolower($lang['code']);
+            $val = ($lCode === 'en') ? ($modelAnswerEn ?: $modelAnswerAr) : ($modelAnswerAr ?: $modelAnswerEn);
+
+            if ($val !== '') {
+                $stmt = mysqli_prepare($con, "INSERT INTO written_model_answers_translations (written_model_answer_id, language_id, model_answer) VALUES (?, ?, ?)");
+                if ($stmt) {
+                    mysqli_stmt_bind_param($stmt, "iis", $waId, $lId, $val);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+                }
+            }
+        }
+    }
+}
+
 if (!function_exists('adminGetQuestionDetails')) {
     function adminGetQuestionDetails($con, $questionId) {
         if (!$questionId) return null;
         $langInfo = get_language_info($con);
 
-        $stmt = mysqli_prepare($con, "SELECT id, exam_id, course_id, unit_id, subject_id, question_type, score, is_active, created_by_type, created_by_id, created_at, updated_at FROM questions WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, exam_id, course_id, unit_id, subject_id, question_type, order_num, score, is_active, created_by_type, created_by_id, created_at, updated_at FROM questions WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $questionId);
         mysqli_stmt_execute($stmt);
@@ -34,6 +65,7 @@ if (!function_exists('adminGetQuestionDetails')) {
         $row['course_id'] = (int)$row['course_id'];
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
+        $row['order_num'] = (int)($row['order_num'] ?? 0);
         $row['score'] = (float)$row['score'];
         $row['is_active'] = (int)$row['is_active'];
 
@@ -102,6 +134,23 @@ if (!function_exists('adminGetQuestionDetails')) {
                     $row['correct_answer'] = 1;
                 }
             }
+        } elseif ($row['question_type'] === 'written') {
+            $waRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT id FROM written_model_answers WHERE question_id = {$questionId} LIMIT 1"));
+            $modelAr = null;
+            $modelEn = null;
+            if ($waRow) {
+                $waId = (int)$waRow['id'];
+                $wtRes = mysqli_query($con, "SELECT wmat.language_id, l.code AS language_code, wmat.model_answer FROM written_model_answers_translations wmat JOIN languages l ON wmat.language_id = l.id WHERE wmat.written_model_answer_id = {$waId}");
+                if ($wtRes) {
+                    while ($wtRow = mysqli_fetch_assoc($wtRes)) {
+                        if ($wtRow['language_code'] === 'ar') $modelAr = $wtRow['model_answer'];
+                        if ($wtRow['language_code'] === 'en') $modelEn = $wtRow['model_answer'];
+                    }
+                }
+            }
+            $row['model_answer_ar'] = $modelAr;
+            $row['model_answer_en'] = $modelEn;
+            $row['model_answer'] = strtolower($langInfo['code'] ?? 'ar') === 'en' ? ($modelEn ?: $modelAr) : ($modelAr ?: $modelEn);
         }
 
         return format_response_images($row);
@@ -136,7 +185,7 @@ if (!function_exists('adminListQuestions')) {
         $countRes = mysqli_query($con, "SELECT COUNT(*) AS total FROM questions q WHERE {$whereSql}");
         $totalRecords = $countRes ? (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0) : 0;
 
-        $sql = "SELECT q.id FROM questions q WHERE {$whereSql} ORDER BY q.id DESC LIMIT {$limit} OFFSET {$offset}";
+        $sql = "SELECT q.id FROM questions q WHERE {$whereSql} ORDER BY q.order_num ASC, q.id ASC LIMIT {$limit} OFFSET {$offset}";
         $res = mysqli_query($con, $sql);
 
         $items = [];
@@ -179,6 +228,33 @@ if (!function_exists('adminCreateQuestion')) {
         $courseId = isset($input['course_id']) && $input['course_id'] !== '' ? (int)$input['course_id'] : 0;
         $unitId = isset($input['unit_id']) && $input['unit_id'] !== '' ? (int)$input['unit_id'] : null;
         $subjectId = isset($input['subject_id']) && $input['subject_id'] !== '' ? (int)$input['subject_id'] : null;
+
+        // Frontends only ever send exam_id when creating an exam question — the
+        // course/unit/subject scope is derived from the exam itself, since
+        // questions.course_id is NOT NULL and must reference a real course.
+        if ($examId > 0 && ($courseId <= 0 || $unitId === null || $subjectId === null)) {
+            $examRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT course_id, unit_id, subject_id FROM course_exams WHERE id = {$examId} LIMIT 1"));
+            if ($examRow) {
+                if ($unitId === null && !empty($examRow['unit_id'])) {
+                    $unitId = (int)$examRow['unit_id'];
+                }
+                if ($subjectId === null && !empty($examRow['subject_id'])) {
+                    $subjectId = (int)$examRow['subject_id'];
+                }
+                if ($courseId <= 0) {
+                    $courseId = (int)($examRow['course_id'] ?? 0);
+                    if ($courseId <= 0 && $unitId) {
+                        $uRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT course_id FROM units WHERE id = {$unitId} LIMIT 1"));
+                        $courseId = (int)($uRow['course_id'] ?? 0);
+                    }
+                }
+            }
+        }
+
+        if ($courseId <= 0) {
+            return json_error('Unable to resolve the course for this question', 422);
+        }
+
         $qType = trim($input['question_type'] ?? 'mcq');
         $score = isset($input['score']) ? (float)$input['score'] : 1.00;
         $isActive = isset($input['is_active']) ? (int)$input['is_active'] : 1;
@@ -201,12 +277,15 @@ if (!function_exists('adminCreateQuestion')) {
             }
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO questions (exam_id, course_id, unit_id, subject_id, question_type, score, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $nextOrderRes = mysqli_query($con, "SELECT COALESCE(MAX(order_num), 0) + 1 AS next_order FROM questions WHERE exam_id = {$examId}");
+        $orderNum = $nextOrderRes ? (int)(mysqli_fetch_assoc($nextOrderRes)['next_order'] ?? 1) : 1;
+
+        $stmt = mysqli_prepare($con, "INSERT INTO questions (exam_id, course_id, unit_id, subject_id, question_type, order_num, score, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) {
             return json_error('Database error: ' . mysqli_error($con), 500);
         }
 
-        mysqli_stmt_bind_param($stmt, "iiiisdisi", $examId, $courseId, $unitId, $subjectId, $qType, $score, $isActive, $createdByType, $createdById);
+        mysqli_stmt_bind_param($stmt, "iiiisidisi", $examId, $courseId, $unitId, $subjectId, $qType, $orderNum, $score, $isActive, $createdByType, $createdById);
 
         if (!mysqli_stmt_execute($stmt)) {
             return json_error('Failed to create question: ' . mysqli_stmt_error($stmt), 500);
@@ -231,8 +310,9 @@ if (!function_exists('adminCreateQuestion')) {
             }
         }
 
-        if ($qType === 'mcq' && !empty($input['options']) && is_array($input['options'])) {
-            foreach ($input['options'] as $idx => $opt) {
+        $mcqOptionsInput = $input['mcq_options'] ?? $input['options'] ?? null;
+        if ($qType === 'mcq' && !empty($mcqOptionsInput) && is_array($mcqOptionsInput)) {
+            foreach ($mcqOptionsInput as $idx => $opt) {
                 $optKey = trim($opt['option_key'] ?? chr(65 + $idx));
                 $isCorr = !empty($opt['is_correct']) ? 1 : 0;
                 $optImage = trim($opt['option_image'] ?? '');
@@ -270,6 +350,10 @@ if (!function_exists('adminCreateQuestion')) {
                 mysqli_stmt_execute($tfStmt);
                 mysqli_stmt_close($tfStmt);
             }
+        } elseif ($qType === 'written') {
+            $modelAnswerAr = trim($input['model_answer_ar'] ?? $input['model_answer'] ?? '');
+            $modelAnswerEn = trim($input['model_answer_en'] ?? $input['model_answer'] ?? '');
+            save_written_model_answer($con, $questionId, $modelAnswerAr, $modelAnswerEn, $languages);
         }
 
         $result = adminGetQuestionDetails($con, $questionId);
@@ -295,13 +379,14 @@ if (!function_exists('adminUpdateQuestion')) {
         $unitId = isset($input['unit_id']) ? (int)$input['unit_id'] : $existing['unit_id'];
         $subjectId = isset($input['subject_id']) ? (int)$input['subject_id'] : $existing['subject_id'];
         $qType = trim($input['question_type'] ?? $existing['question_type']);
+        $orderNum = isset($input['order_num']) ? (int)$input['order_num'] : $existing['order_num'];
         $score = isset($input['score']) ? (float)$input['score'] : $existing['score'];
         $isActive = isset($input['is_active']) ? (int)$input['is_active'] : $existing['is_active'];
 
-        $stmt = mysqli_prepare($con, "UPDATE questions SET exam_id = ?, course_id = ?, unit_id = ?, subject_id = ?, question_type = ?, score = ?, is_active = ? WHERE id = ?");
+        $stmt = mysqli_prepare($con, "UPDATE questions SET exam_id = ?, course_id = ?, unit_id = ?, subject_id = ?, question_type = ?, order_num = ?, score = ?, is_active = ? WHERE id = ?");
         if (!$stmt) return json_error('Database error: ' . mysqli_error($con), 500);
 
-        mysqli_stmt_bind_param($stmt, "iiiisdii", $examId, $courseId, $unitId, $subjectId, $qType, $score, $isActive, $id);
+        mysqli_stmt_bind_param($stmt, "iiiisidii", $examId, $courseId, $unitId, $subjectId, $qType, $orderNum, $score, $isActive, $id);
 
         if (!mysqli_stmt_execute($stmt)) {
             return json_error('Failed to update question: ' . mysqli_stmt_error($stmt), 500);
@@ -327,45 +412,69 @@ if (!function_exists('adminUpdateQuestion')) {
             }
         }
 
-        if ($qType === 'mcq' && !empty($input['options']) && is_array($input['options'])) {
-            mysqli_query($con, "DELETE FROM mcq_options WHERE question_id = {$id}");
-            foreach ($input['options'] as $idx => $opt) {
-                $optKey = trim($opt['option_key'] ?? chr(65 + $idx));
-                $isCorr = !empty($opt['is_correct']) ? 1 : 0;
-                $optImage = trim($opt['option_image'] ?? '');
+        // Comprehensive, like create: whichever type the question now has,
+        // its answer data is fully (re)saved and the other two types' leftover
+        // rows are cleared — so switching type or editing options/correct
+        // answer/model answer all work from this one endpoint, not just text/score/status.
+        if ($qType === 'mcq') {
+            mysqli_query($con, "DELETE FROM true_false_answers WHERE question_id = {$id}");
+            mysqli_query($con, "DELETE FROM written_model_answers WHERE question_id = {$id}");
 
-                $optStmt = mysqli_prepare($con, "INSERT INTO mcq_options (question_id, option_key, option_image, is_correct, is_active) VALUES (?, ?, ?, ?, 1)");
-                if ($optStmt) {
-                    mysqli_stmt_bind_param($optStmt, "issi", $id, $optKey, $optImage, $isCorr);
-                    mysqli_stmt_execute($optStmt);
-                    $optId = (int)mysqli_insert_id($con);
-                    mysqli_stmt_close($optStmt);
+            $mcqOptionsInput = $input['mcq_options'] ?? $input['options'] ?? null;
+            if (!empty($mcqOptionsInput) && is_array($mcqOptionsInput)) {
+                mysqli_query($con, "DELETE FROM mcq_options WHERE question_id = {$id}");
+                foreach ($mcqOptionsInput as $idx => $opt) {
+                    $optKey = trim($opt['option_key'] ?? chr(65 + $idx));
+                    $isCorr = !empty($opt['is_correct']) ? 1 : 0;
+                    $optImage = trim($opt['option_image'] ?? '');
 
-                    $optTextAr = trim($opt['option_text_ar'] ?? $opt['option_text'] ?? '');
-                    $optTextEn = trim($opt['option_text_en'] ?? $opt['option_text'] ?? '');
+                    $optStmt = mysqli_prepare($con, "INSERT INTO mcq_options (question_id, option_key, option_image, is_correct, is_active) VALUES (?, ?, ?, ?, 1)");
+                    if ($optStmt) {
+                        mysqli_stmt_bind_param($optStmt, "issi", $id, $optKey, $optImage, $isCorr);
+                        mysqli_stmt_execute($optStmt);
+                        $optId = (int)mysqli_insert_id($con);
+                        mysqli_stmt_close($optStmt);
 
-                    foreach ($languages as $lang) {
-                        $lId = (int)$lang['id'];
-                        $lCode = strtolower($lang['code']);
-                        $optVal = ($lCode === 'en') ? ($optTextEn ?: $optTextAr) : ($optTextAr ?: $optTextEn);
-                        if ($optVal) {
-                            $optTStmt = mysqli_prepare($con, "INSERT INTO mcq_options_translations (mcq_option_id, language_id, option_text) VALUES (?, ?, ?)");
-                            if ($optTStmt) {
-                                mysqli_stmt_bind_param($optTStmt, "iis", $optId, $lId, $optVal);
-                                mysqli_stmt_execute($optTStmt);
-                                mysqli_stmt_close($optTStmt);
+                        $optTextAr = trim($opt['option_text_ar'] ?? $opt['option_text'] ?? '');
+                        $optTextEn = trim($opt['option_text_en'] ?? $opt['option_text'] ?? '');
+
+                        foreach ($languages as $lang) {
+                            $lId = (int)$lang['id'];
+                            $lCode = strtolower($lang['code']);
+                            $optVal = ($lCode === 'en') ? ($optTextEn ?: $optTextAr) : ($optTextAr ?: $optTextEn);
+                            if ($optVal) {
+                                $optTStmt = mysqli_prepare($con, "INSERT INTO mcq_options_translations (mcq_option_id, language_id, option_text) VALUES (?, ?, ?)");
+                                if ($optTStmt) {
+                                    mysqli_stmt_bind_param($optTStmt, "iis", $optId, $lId, $optVal);
+                                    mysqli_stmt_execute($optTStmt);
+                                    mysqli_stmt_close($optTStmt);
+                                }
                             }
                         }
                     }
                 }
             }
-        } elseif ($qType === 'true_false' && isset($input['correct_answer'])) {
-            $corrAns = !empty($input['correct_answer']) ? 1 : 0;
-            $tfStmt = mysqli_prepare($con, "INSERT INTO true_false_answers (question_id, correct_answer, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE correct_answer = VALUES(correct_answer)");
-            if ($tfStmt) {
-                mysqli_stmt_bind_param($tfStmt, "ii", $id, $corrAns);
-                mysqli_stmt_execute($tfStmt);
-                mysqli_stmt_close($tfStmt);
+        } elseif ($qType === 'true_false') {
+            mysqli_query($con, "DELETE FROM mcq_options WHERE question_id = {$id}");
+            mysqli_query($con, "DELETE FROM written_model_answers WHERE question_id = {$id}");
+
+            if (isset($input['correct_answer'])) {
+                $corrAns = !empty($input['correct_answer']) ? 1 : 0;
+                $tfStmt = mysqli_prepare($con, "INSERT INTO true_false_answers (question_id, correct_answer, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE correct_answer = VALUES(correct_answer)");
+                if ($tfStmt) {
+                    mysqli_stmt_bind_param($tfStmt, "ii", $id, $corrAns);
+                    mysqli_stmt_execute($tfStmt);
+                    mysqli_stmt_close($tfStmt);
+                }
+            }
+        } elseif ($qType === 'written') {
+            mysqli_query($con, "DELETE FROM mcq_options WHERE question_id = {$id}");
+            mysqli_query($con, "DELETE FROM true_false_answers WHERE question_id = {$id}");
+
+            if (isset($input['model_answer_ar']) || isset($input['model_answer_en']) || isset($input['model_answer'])) {
+                $modelAnswerAr = trim($input['model_answer_ar'] ?? $input['model_answer'] ?? '');
+                $modelAnswerEn = trim($input['model_answer_en'] ?? $input['model_answer'] ?? '');
+                save_written_model_answer($con, $id, $modelAnswerAr, $modelAnswerEn, $languages);
             }
         }
 
@@ -396,6 +505,33 @@ if (!function_exists('adminDeleteQuestion')) {
         return [
             'status' => 'success',
             'message' => 'Question deleted successfully'
+        ];
+    }
+}
+
+if (!function_exists('adminReorderQuestions')) {
+    // Persists a manually drag-reordered list of questions within one exam.
+    // Body: { exam_id, ordered_ids: [question_id, question_id, ...] } — the
+    // new order, top to bottom.
+    function adminReorderQuestions($con, $creatorData = null) {
+        $input = get_json_input();
+        $examId = isset($input['exam_id']) ? (int)$input['exam_id'] : 0;
+        $orderedIds = $input['ordered_ids'] ?? $input['order'] ?? [];
+
+        if ($examId <= 0) return json_error('exam_id is required', 400);
+        if (!is_array($orderedIds) || empty($orderedIds)) return json_error('ordered_ids is required', 400);
+
+        $position = 1;
+        foreach ($orderedIds as $qId) {
+            $qId = (int)$qId;
+            if ($qId <= 0) continue;
+            mysqli_query($con, "UPDATE questions SET order_num = {$position} WHERE id = {$qId} AND exam_id = {$examId}");
+            $position++;
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Questions reordered successfully'
         ];
     }
 }

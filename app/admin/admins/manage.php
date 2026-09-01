@@ -2,6 +2,38 @@
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 
+if (!function_exists('get_admin_permissions')) {
+    function get_admin_permissions($con, int $adminId): array {
+        $stmt = mysqli_prepare($con, "SELECT p.id, p.code, p.name, p.module FROM permissions p JOIN admin_permissions ap ON p.id = ap.permission_id WHERE ap.admin_id = ? ORDER BY p.id ASC");
+        mysqli_stmt_bind_param($stmt, "i", $adminId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        $permissions = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $row['id'] = (int)$row['id'];
+            $permissions[] = $row;
+        }
+        return $permissions;
+    }
+}
+
+if (!function_exists('set_admin_permissions')) {
+    function set_admin_permissions($con, int $adminId, array $permissionIds): void {
+        $delStmt = mysqli_prepare($con, "DELETE FROM admin_permissions WHERE admin_id = ?");
+        mysqli_stmt_bind_param($delStmt, "i", $adminId);
+        mysqli_stmt_execute($delStmt);
+
+        $permissionIds = array_values(array_unique(array_filter(array_map('intval', $permissionIds), fn($id) => $id > 0)));
+        if (empty($permissionIds)) return;
+
+        $insertStmt = mysqli_prepare($con, "INSERT IGNORE INTO admin_permissions (admin_id, permission_id) VALUES (?, ?)");
+        foreach ($permissionIds as $permissionId) {
+            mysqli_stmt_bind_param($insertStmt, "ii", $adminId, $permissionId);
+            mysqli_stmt_execute($insertStmt);
+        }
+    }
+}
+
 if (!function_exists('adminListAdmins')) {
     function adminListAdmins($con) {
         $page = max(1, (int)($_GET['page'] ?? 1));
@@ -45,6 +77,8 @@ if (!function_exists('adminListAdmins')) {
             $row['id'] = (int)$row['id'];
             $row['role_id'] = $row['role_id'] ? (int)$row['role_id'] : null;
             $row['is_active'] = (int)$row['is_active'];
+            $row['permissions'] = get_admin_permissions($con, $row['id']);
+            $row['permission_ids'] = array_map(fn($p) => $p['id'], $row['permissions']);
             $admins[] = $row;
         }
 
@@ -68,6 +102,8 @@ if (!function_exists('adminGetAdmin')) {
         $row['id'] = (int)$row['id'];
         $row['role_id'] = $row['role_id'] ? (int)$row['role_id'] : null;
         $row['is_active'] = (int)$row['is_active'];
+        $row['permissions'] = get_admin_permissions($con, $row['id']);
+        $row['permission_ids'] = array_map(fn($p) => $p['id'], $row['permissions']);
 
         return ['status' => 'success', 'data' => format_response_images($row)];
     }
@@ -108,6 +144,11 @@ if (!function_exists('adminCreateAdminUser')) {
         }
 
         $adminId = mysqli_insert_id($con);
+
+        if (isset($body['permission_ids']) && is_array($body['permission_ids'])) {
+            set_admin_permissions($con, $adminId, $body['permission_ids']);
+        }
+
         $_GET['id'] = $adminId;
         return [
             'status' => 'success',
@@ -175,6 +216,9 @@ if (!function_exists('adminUpdateAdminUser')) {
             mysqli_stmt_bind_param($stmt, "ii", $isActive, $id);
             mysqli_stmt_execute($stmt);
         }
+        if (isset($body['permission_ids']) && is_array($body['permission_ids'])) {
+            set_admin_permissions($con, $id, $body['permission_ids']);
+        }
 
         $_GET['id'] = $id;
         return [
@@ -194,6 +238,10 @@ if (!function_exists('adminDeleteAdminUser')) {
         if ($id === (int)($currentAdmin['id'] ?? 0)) {
             return ['status' => 'error', 'message' => trans('cannot_delete_self')];
         }
+
+        $delPermStmt = mysqli_prepare($con, "DELETE FROM admin_permissions WHERE admin_id = ?");
+        mysqli_stmt_bind_param($delPermStmt, "i", $id);
+        mysqli_stmt_execute($delPermStmt);
 
         $stmt = mysqli_prepare($con, "DELETE FROM admins WHERE id = ?");
         mysqli_stmt_bind_param($stmt, "i", $id);

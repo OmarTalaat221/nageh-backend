@@ -6,17 +6,28 @@ require_once __DIR__ . '/../../../helpers/upload.php';
 require_once __DIR__ . '/../../admin/courses/manage.php';
 
 if (!function_exists('is_subject_assigned_to_teacher')) {
-    function is_subject_assigned_to_teacher($con, int $teacherId, int $subjectId): bool {
+    function is_subject_assigned_to_teacher($con, int $teacherId, int $subjectId, ?int $academicYearId = null): bool {
         if ($teacherId <= 0 || $subjectId <= 0) {
             return false;
         }
 
-        $stmt1 = mysqli_prepare($con, "SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ? LIMIT 1");
-        if ($stmt1) {
-            mysqli_stmt_bind_param($stmt1, "ii", $teacherId, $subjectId);
-            mysqli_stmt_execute($stmt1);
-            if (mysqli_fetch_assoc(mysqli_stmt_get_result($stmt1))) {
-                return true;
+        if ($academicYearId) {
+            $stmt1 = mysqli_prepare($con, "SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ? AND (academic_year_id IS NULL OR academic_year_id = ?) LIMIT 1");
+            if ($stmt1) {
+                mysqli_stmt_bind_param($stmt1, "iii", $teacherId, $subjectId, $academicYearId);
+                mysqli_stmt_execute($stmt1);
+                if (mysqli_fetch_assoc(mysqli_stmt_get_result($stmt1))) {
+                    return true;
+                }
+            }
+        } else {
+            $stmt1 = mysqli_prepare($con, "SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ? LIMIT 1");
+            if ($stmt1) {
+                mysqli_stmt_bind_param($stmt1, "ii", $teacherId, $subjectId);
+                mysqli_stmt_execute($stmt1);
+                if (mysqli_fetch_assoc(mysqli_stmt_get_result($stmt1))) {
+                    return true;
+                }
             }
         }
 

@@ -27,6 +27,29 @@ if (!function_exists('ensure_content_tables_schema')) {
     }
 }
 
+if (!function_exists('get_previous_video_id')) {
+    // Video sequence within a unit is defined by id order (creation order).
+    function get_previous_video_id($con, int $unitId, int $currentVideoId): int {
+        if ($unitId <= 0 || $currentVideoId <= 0) return 0;
+        $res = mysqli_query($con, "SELECT id FROM videos WHERE unit_id = {$unitId} AND is_active = 1 AND id < {$currentVideoId} ORDER BY id DESC LIMIT 1");
+        if ($res && $row = mysqli_fetch_assoc($res)) {
+            return (int)$row['id'];
+        }
+        return 0;
+    }
+}
+
+if (!function_exists('is_video_completed_by_student')) {
+    function is_video_completed_by_student($con, int $stId, int $videoId): bool {
+        if ($stId <= 0 || $videoId <= 0) return false;
+        $res = mysqli_query($con, "SELECT is_completed FROM student_video_progress WHERE student_id = {$stId} AND video_id = {$videoId} LIMIT 1");
+        if ($res && $row = mysqli_fetch_assoc($res)) {
+            return (int)($row['is_completed'] ?? 0) === 1;
+        }
+        return false;
+    }
+}
+
 if (!function_exists('sync_content_teachers')) {
     function sync_content_teachers($con, string $itemType, int $itemId, $teacherIds): void {
         ensure_content_tables_schema($con);

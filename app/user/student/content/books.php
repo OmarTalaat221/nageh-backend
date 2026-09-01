@@ -98,6 +98,23 @@ if (!function_exists('enrich_student_book_details')) {
     }
 }
 
+if (!function_exists('apply_student_book_file_access')) {
+    // Owned book: either expose the raw downloadable URL, or (when
+    // allow_download = 0) hide it and expose only an authenticated
+    // view-only streaming endpoint instead.
+    function apply_student_book_file_access(array &$row, int $bookId): void {
+        if ((int)($row['allow_download'] ?? 1) === 1) {
+            $row['file_path'] = format_image_url($row['file_path'] ?: $row['link']);
+            $row['view_url'] = $row['file_path'];
+            return;
+        }
+
+        $row['file_path'] = null;
+        $row['link'] = null;
+        $row['view_url'] = 'https://camp-coding.online/najeh/student/books/stream?book_id=' . $bookId;
+    }
+}
+
 if (!function_exists('studentGetAllBooksWithOwn')) {
     function studentGetAllBooksWithOwn($con, $studentData = null) {
         $stId = 0;
@@ -158,7 +175,7 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
         $totalRecords = $countRes ? (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0) : 0;
 
         $finalSql = "
-            SELECT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.price,
+            SELECT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.price, b.allow_download,
                    b.created_by_type, b.created_by_id, b.is_active, b.created_at,
                    COALESCE(bt.title, b.file_path) AS title, bt.description, 'course_books' AS src_table
             FROM course_books b
@@ -214,23 +231,29 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
                 }
             }
 
+            // Teacher-based auto-unlock only applies to books actually tied to a
+            // course/subject (bundled books) — a standalone external book must
+            // always be purchased separately, even if the student is otherwise
+            // accessible to that same teacher.
             $isOwn = (
                 $isDirectSub ||
                 ($cId > 0 && in_array($cId, $accessibleCourseIds)) ||
                 ($sId > 0 && in_array($sId, $accessibleSubjectIds)) ||
-                ($row['created_by_type'] === 'teacher' && in_array($createdById, $accessibleTeacherIds))
+                (($cId > 0 || $sId > 0) && $row['created_by_type'] === 'teacher' && in_array($createdById, $accessibleTeacherIds))
             );
 
             $row['own'] = $isOwn;
             $row['is_subscribed'] = $isOwn;
             $row['is_locked'] = !$isOwn;
             $row['is_open'] = $isOwn;
+            $row['allow_download'] = (int)($row['allow_download'] ?? 1);
 
             if ($isOwn) {
-                $row['file_path'] = format_image_url($row['file_path'] ?: $row['link']);
+                apply_student_book_file_access($row, $bId);
             } else {
                 $row['file_path'] = null;
                 $row['link'] = null;
+                $row['view_url'] = null;
             }
 
             $books[] = enrich_student_book_details($con, $row);
@@ -286,8 +309,10 @@ if (!function_exists('studentGetMySubscribedBooks')) {
         }
         if (!empty($teacherIds)) {
             $tList = implode(',', array_map('intval', $teacherIds));
-            $orConditions[] = "(b.created_by_type = 'teacher' AND b.created_by_id IN ({$tList}))";
-            $orConditions[] = "b.id IN (SELECT book_id FROM book_teachers WHERE teacher_id IN ({$tList}) AND is_active = 1)";
+            // Standalone external books (no course/unit/subject) are never
+            // auto-unlocked just because the student can access the teacher.
+            $orConditions[] = "(b.created_by_type = 'teacher' AND b.created_by_id IN ({$tList}) AND (b.course_id IS NOT NULL OR b.unit_id IS NOT NULL OR b.subject_id IS NOT NULL))";
+            $orConditions[] = "(b.id IN (SELECT book_id FROM book_teachers WHERE teacher_id IN ({$tList}) AND is_active = 1) AND (b.course_id IS NOT NULL OR b.unit_id IS NOT NULL OR b.subject_id IS NOT NULL))";
         }
 
         $orConditions[] = "b.id IN (SELECT book_id FROM student_book_subscriptions WHERE student_id = {$stId} AND is_active = 1)";
@@ -325,7 +350,7 @@ if (!function_exists('studentGetMySubscribedBooks')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT DISTINCT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.created_by_type, b.created_by_id, b.is_active, b.created_at,
+            SELECT DISTINCT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.allow_download, b.created_by_type, b.created_by_id, b.is_active, b.created_at,
                    COALESCE(bt.title, b.file_path) AS title, bt.description
             FROM course_books b
             LEFT JOIN course_books_translations bt ON b.id = bt.book_id AND bt.language_id = {$langId}
@@ -345,7 +370,8 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
             $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
             $row['is_active'] = (int)$row['is_active'];
-            $row['file_path'] = format_image_url($row['file_path'] ?: $row['link']);
+            $row['allow_download'] = (int)($row['allow_download'] ?? 1);
+            apply_student_book_file_access($row, $row['id']);
             $row['own'] = true;
             $row['is_subscribed'] = true;
             $books[] = enrich_student_book_details($con, $row);
@@ -430,7 +456,7 @@ if (!function_exists('studentSubscribeBook')) {
             return ['status' => 'error', 'message' => 'book_id is required'];
         }
 
-        $bRes = mysqli_query($con, "SELECT id FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $bRes = mysqli_query($con, "SELECT id, course_id, unit_id FROM course_books WHERE id = {$bookId} LIMIT 1");
         $bRow = $bRes ? mysqli_fetch_assoc($bRes) : null;
         if (!$bRow) {
             $bRes = mysqli_query($con, "SELECT id FROM books WHERE id = {$bookId} LIMIT 1");
@@ -438,6 +464,13 @@ if (!function_exists('studentSubscribeBook')) {
         }
         if (!$bRow) {
             return ['status' => 'error', 'message' => 'Book not found'];
+        }
+
+        // Course/unit-bundled books are never purchased on their own — access
+        // comes automatically from owning the course. Only standalone
+        // external books go through the purchase-request flow.
+        if (!empty($bRow['course_id']) || !empty($bRow['unit_id'])) {
+            return ['status' => 'error', 'message' => 'This book is bundled with its course and cannot be purchased separately. You already have access to it if you own the related course.'];
         }
 
         $activeChk = mysqli_query($con, "SELECT id FROM student_book_subscriptions WHERE student_id = {$stId} AND book_id = {$bookId} AND is_active = 1 LIMIT 1");
@@ -465,6 +498,119 @@ if (!function_exists('studentSubscribeBook')) {
                 'request_status' => 'pending'
             ]
         ];
+    }
+}
+
+if (!function_exists('student_owns_book')) {
+    function student_owns_book($con, int $stId, int $bookId): bool {
+        if ($stId <= 0 || $bookId <= 0) return false;
+
+        $subChk = @mysqli_query($con, "SELECT id FROM student_book_subscriptions WHERE student_id = {$stId} AND book_id = {$bookId} AND is_active = 1 LIMIT 1");
+        if ($subChk && mysqli_num_rows($subChk) > 0) return true;
+
+        $subChk2 = @mysqli_query($con, "SELECT ssb.id FROM student_subscription_books ssb JOIN student_subscriptions ss ON ssb.student_subscription_id = ss.id WHERE ss.student_id = {$stId} AND ssb.book_id = {$bookId} AND ss.is_active = 1 LIMIT 1");
+        if ($subChk2 && mysqli_num_rows($subChk2) > 0) return true;
+
+        $bRes = mysqli_query($con, "SELECT unit_id, subject_id, course_id, created_by_type, created_by_id FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $bRow = $bRes ? mysqli_fetch_assoc($bRes) : null;
+        if (!$bRow) return false;
+
+        $cId = (int)($bRow['course_id'] ?? 0);
+        $sId = (int)($bRow['subject_id'] ?? 0);
+        $uId = (int)($bRow['unit_id'] ?? 0);
+        if ($cId <= 0 && $uId > 0) {
+            $uRes = mysqli_query($con, "SELECT course_id, subject_id FROM units WHERE id = {$uId} LIMIT 1");
+            if ($uRes && $uRow = mysqli_fetch_assoc($uRes)) {
+                if ($uRow['course_id']) $cId = (int)$uRow['course_id'];
+                if ($uRow['subject_id']) $sId = (int)$uRow['subject_id'];
+            }
+        }
+        if ($sId <= 0 && $cId > 0) {
+            $cRes = mysqli_query($con, "SELECT subject_id FROM courses WHERE id = {$cId} LIMIT 1");
+            if ($cRes && $cRow = mysqli_fetch_assoc($cRes)) {
+                if ($cRow['subject_id']) $sId = (int)$cRow['subject_id'];
+            }
+        }
+
+        $accessible = get_student_accessible_entities($con, $stId);
+        $createdById = (int)($bRow['created_by_id'] ?? 0);
+
+        return (
+            ($cId > 0 && in_array($cId, $accessible['course_ids'])) ||
+            ($sId > 0 && in_array($sId, $accessible['subject_ids'])) ||
+            (($cId > 0 || $sId > 0) && ($bRow['created_by_type'] ?? '') === 'teacher' && in_array($createdById, $accessible['teacher_ids']))
+        );
+    }
+}
+
+if (!function_exists('studentStreamBookFile')) {
+    // Authenticated, ownership-checked file stream — used for books with
+    // allow_download = 0 instead of exposing a raw permanent public URL.
+    function studentStreamBookFile($con, $studentData = null) {
+        $stId = 0;
+        if (is_array($studentData)) {
+            $stId = (int)($studentData['id'] ?? $studentData['student_id'] ?? 0);
+        } elseif (is_object($studentData)) {
+            $stId = (int)($studentData->id ?? $studentData->student_id ?? 0);
+        }
+        if ($stId <= 0) {
+            return ['status' => 'error', 'message' => 'Student authentication is required'];
+        }
+
+        $bookId = (int)($_GET['book_id'] ?? $_GET['id'] ?? 0);
+        if ($bookId <= 0) {
+            return ['status' => 'error', 'message' => 'book_id is required'];
+        }
+
+        if (!student_owns_book($con, $stId, $bookId)) {
+            return ['status' => 'error', 'message' => 'You must be subscribed to access this book'];
+        }
+
+        $bRes = mysqli_query($con, "SELECT file_path, link, file_type FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $bRow = $bRes ? mysqli_fetch_assoc($bRes) : null;
+        if (!$bRow) {
+            return ['status' => 'error', 'message' => 'Book not found'];
+        }
+
+        $source = trim($bRow['file_path'] ?: $bRow['link'] ?: '');
+        if ($source === '') {
+            return ['status' => 'error', 'message' => 'Book file is not available'];
+        }
+
+        $mime = ((trim($bRow['file_type'] ?? 'pdf')) === 'pdf') ? 'application/pdf' : 'application/octet-stream';
+
+        if (preg_match('/^https?:\/\//i', $source)) {
+            $ch = curl_init($source);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $content = curl_exec($ch);
+            $ok = ($content !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400);
+            curl_close($ch);
+
+            if (!$ok) {
+                return ['status' => 'error', 'message' => 'Failed to load book file'];
+            }
+
+            header('Content-Type: ' . $mime);
+            header('Content-Disposition: inline; filename="book-' . $bookId . '"');
+            header('X-Content-Type-Options: nosniff');
+            echo $content;
+            exit();
+        }
+
+        $localPath = realpath(__DIR__ . '/../../../../' . ltrim($source, '/'));
+        $uploadsRoot = realpath(__DIR__ . '/../../../../');
+        if (!$localPath || !$uploadsRoot || !str_starts_with($localPath, $uploadsRoot) || !is_file($localPath)) {
+            return ['status' => 'error', 'message' => 'Book file is not available'];
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
+        header('Content-Length: ' . filesize($localPath));
+        header('X-Content-Type-Options: nosniff');
+        readfile($localPath);
+        exit();
     }
 }
 

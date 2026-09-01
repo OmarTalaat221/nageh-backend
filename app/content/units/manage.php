@@ -8,7 +8,7 @@ if (!function_exists('get_unit_details')) {
         $langInfo = get_language_info($con);
         $isAdmin = is_admin_request();
 
-        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id, code, is_active, created_by_type, created_by_id, created_at, updated_at FROM units WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id, code, order_num, videos_drip_enabled, is_active, created_by_type, created_by_id, created_at, updated_at FROM units WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $unitId);
         mysqli_stmt_execute($stmt);
@@ -19,6 +19,8 @@ if (!function_exists('get_unit_details')) {
         $row['id'] = (int)$row['id'];
         $row['course_id'] = (int)$row['course_id'];
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
+        $row['order_num'] = (int)($row['order_num'] ?? 0);
+        $row['videos_drip_enabled'] = (int)($row['videos_drip_enabled'] ?? 0);
         $row['is_active'] = (int)$row['is_active'];
         $row['created_by_type'] = $row['created_by_type'] ?? 'admin';
         $row['created_by_id'] = isset($row['created_by_id']) && $row['created_by_id'] ? (int)$row['created_by_id'] : null;
@@ -87,16 +89,17 @@ if (!function_exists('adminListUnits')) {
         $code = trim($_GET['code'] ?? '');
         $search = trim($_GET['search'] ?? $_GET['q'] ?? '');
 
-        $sortBy = strtolower(trim($_GET['sort_by'] ?? $_GET['sort'] ?? 'id'));
+        $sortBy = strtolower(trim($_GET['sort_by'] ?? $_GET['sort'] ?? 'order_num'));
         $sortDir = strtoupper(trim($_GET['dir'] ?? $_GET['direction'] ?? $_GET['order'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
 
         $allowedSort = [
             'id' => 'u.id',
             'code' => 'u.code',
             'created_at' => 'u.created_at',
-            'name' => 'ut.name'
+            'name' => 'ut.name',
+            'order_num' => 'u.order_num'
         ];
-        $orderCol = $allowedSort[$sortBy] ?? 'u.id';
+        $orderCol = $allowedSort[$sortBy] ?? 'u.order_num';
 
         $whereConditions = [];
         $params = [];
@@ -201,7 +204,7 @@ if (!function_exists('adminListUnits')) {
             {$joinUt}
             LEFT JOIN units_translations ut ON u.id = ut.unit_id
             {$whereClause}
-            ORDER BY {$orderCol} {$sortDir}
+            ORDER BY {$orderCol} {$sortDir}, u.id ASC
             LIMIT ? OFFSET ?
         ";
         $params[] = $limit;
@@ -278,11 +281,15 @@ if (!function_exists('adminCreateUnit')) {
             $code = preg_replace('/[^a-z0-9]+/i', '-', strtolower($nameEn)) ?: ('unit-' . uniqid());
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO units (course_id, subject_id, code, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $nextOrderRes = mysqli_query($con, "SELECT COALESCE(MAX(order_num), 0) + 1 AS next_order FROM units WHERE course_id = {$courseId}");
+        $orderNum = $nextOrderRes ? (int)(mysqli_fetch_assoc($nextOrderRes)['next_order'] ?? 1) : 1;
+        $dripEnabled = isset($body['videos_drip_enabled']) ? (int)(bool)$body['videos_drip_enabled'] : 0;
+
+        $stmt = mysqli_prepare($con, "INSERT INTO units (course_id, subject_id, code, order_num, videos_drip_enabled, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Failed to prepare unit insert: ' . mysqli_error($con)];
         }
-        mysqli_stmt_bind_param($stmt, "iisisi", $courseId, $subjectId, $code, $isActive, $createdByType, $createdById);
+        mysqli_stmt_bind_param($stmt, "iisiiisi", $courseId, $subjectId, $code, $orderNum, $dripEnabled, $isActive, $createdByType, $createdById);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create unit: ' . mysqli_error($con)];
         }
@@ -345,6 +352,11 @@ if (!function_exists('adminUpdateUnit')) {
         if ($isActive !== null) {
             $updateFields[] = "is_active = ?";
             $params[] = $isActive;
+            $types .= "i";
+        }
+        if (isset($body['videos_drip_enabled'])) {
+            $updateFields[] = "videos_drip_enabled = ?";
+            $params[] = (int)(bool)$body['videos_drip_enabled'];
             $types .= "i";
         }
         if (isset($body['created_by_type']) && in_array(strtolower($body['created_by_type']), ['admin', 'teacher'])) {
@@ -410,5 +422,33 @@ if (!function_exists('adminDeleteUnit')) {
             return ['status' => 'success', 'message' => 'Unit deleted successfully'];
         }
         return ['status' => 'error', 'message' => 'Failed to delete unit'];
+    }
+}
+
+if (!function_exists('adminReorderUnits')) {
+    // Persists a manually drag-reordered list of units within one course.
+    // Body: { course_id, ordered_ids: [unit_id, unit_id, ...] } — the new order,
+    // top to bottom.
+    function adminReorderUnits($con, $creatorData = null) {
+        $body = read_json_body();
+        $courseId = (int)($body['course_id'] ?? 0);
+        $orderedIds = $body['ordered_ids'] ?? $body['order'] ?? [];
+
+        if ($courseId <= 0) {
+            return ['status' => 'error', 'message' => 'course_id is required'];
+        }
+        if (!is_array($orderedIds) || empty($orderedIds)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $position = 1;
+        foreach ($orderedIds as $unitId) {
+            $unitId = (int)$unitId;
+            if ($unitId <= 0) continue;
+            mysqli_query($con, "UPDATE units SET order_num = {$position} WHERE id = {$unitId} AND course_id = {$courseId}");
+            $position++;
+        }
+
+        return ['status' => 'success', 'message' => 'Units reordered successfully'];
     }
 }

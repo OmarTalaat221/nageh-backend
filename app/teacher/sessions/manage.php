@@ -123,7 +123,7 @@ if (!function_exists('is_session_ended_today')) {
 
 if (!function_exists('get_class_session_details')) {
     function get_class_session_details($con, int $sessionId, ?string $overrideDate = null) {
-        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, is_active, created_at FROM class_sessions WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active, created_at FROM class_sessions WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $sessionId);
         mysqli_stmt_execute($stmt);
         $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
@@ -133,9 +133,11 @@ if (!function_exists('get_class_session_details')) {
         $row['teacher_id'] = (int)$row['teacher_id'];
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
         $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
+        $row['academic_year_id'] = $row['academic_year_id'] ? (int)$row['academic_year_id'] : null;
         $row['is_active'] = (int)$row['is_active'];
         $row['is_online'] = (int)$row['is_online'];
         $row['scope'] = $row['course_id'] ? 'course' : 'subject';
+        $row['academic_year'] = $row['academic_year_id'] ? get_academic_year_details($con, $row['academic_year_id']) : null;
 
         $targetDate = $overrideDate;
         if (empty($targetDate)) {
@@ -156,9 +158,15 @@ if (!function_exists('get_class_session_details')) {
         $nowTime = $now->format('H:i:s');
 
         $isToday = ($sessionDate === $todayDate);
-        $isAvailableNow = ($isToday && class_session_is_available_now($row));
         $isStartedToday = is_session_started_today($con, $row['id'], $todayDate);
         $isEndedToday = is_session_ended_today($con, $row['id'], $todayDate);
+        // A session the teacher explicitly started is joinable even if the clock has drifted
+        // outside the scheduled start/end window (e.g. started a few minutes early) — the manual
+        // start/end action is the source of truth once it's been used, not the fixed schedule.
+        $isAvailableNow = $isToday && (
+            class_session_is_available_now($row) ||
+            ($isStartedToday && !$isEndedToday)
+        );
 
         $status = 'not_started';
         $isStarted = 0;
@@ -292,6 +300,7 @@ if (!function_exists('teacherCreateSession')) {
 
         $subjectId = isset($body['subject_id']) && $body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
         $courseId = isset($body['course_id']) && $body['course_id'] > 0 ? (int)$body['course_id'] : null;
+        $academicYearId = isset($body['academic_year_id']) && $body['academic_year_id'] > 0 ? (int)$body['academic_year_id'] : null;
 
         $err = validate_session_linkage($subjectId, $courseId);
         if ($err) return $err;
@@ -299,8 +308,8 @@ if (!function_exists('teacherCreateSession')) {
         if ($courseId && !teacher_can_use_course_for_session($con, $teacherId, $courseId)) {
             return ['status' => 'error', 'message' => 'You are not assigned to this course and it already has another assigned teacher'];
         }
-        if (!$courseId && $subjectId && !is_subject_assigned_to_teacher($con, $teacherId, $subjectId)) {
-            return ['status' => 'error', 'message' => 'You can only schedule sessions for subjects assigned to you'];
+        if (!$courseId && $subjectId && !is_subject_assigned_to_teacher($con, $teacherId, $subjectId, $academicYearId)) {
+            return ['status' => 'error', 'message' => 'You can only schedule sessions for subjects and grades assigned to you'];
         }
 
         $code = trim($body['code'] ?? '');
@@ -324,8 +333,8 @@ if (!function_exists('teacherCreateSession')) {
             return ['status' => 'error', 'message' => 'meeting_link is required when is_online is true'];
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "iiisssssissi", $teacherId, $subjectId, $courseId, $code, $day, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $isActive);
+        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "iiisssssissii", $teacherId, $subjectId, $courseId, $code, $day, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId, $isActive);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create session: ' . mysqli_error($con)];
         }
@@ -436,34 +445,45 @@ if (!function_exists('teacherUpdateSession')) {
         $id = (int)($body['id'] ?? 0);
         if ($id <= 0) return ['status' => 'error', 'message' => trans('session_id_required')];
 
-        $checkStmt = mysqli_prepare($con, "SELECT id FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
+        $checkStmt = mysqli_prepare($con, "SELECT id, day_of_week, start_time, end_time FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
         mysqli_stmt_bind_param($checkStmt, "ii", $id, $teacherId);
         mysqli_stmt_execute($checkStmt);
-        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+        $currentSession = mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt));
+        if (!$currentSession) {
             return ['status' => 'error', 'message' => trans('session_not_found_or_not_owned')];
+        }
+
+        $requestedDay = trim($body['day_of_week'] ?? $body['day'] ?? '');
+        $requestedStart = !empty($body['start_time']) ? date('H:i:s', strtotime($body['start_time'])) : null;
+        $requestedEnd = !empty($body['end_time']) ? date('H:i:s', strtotime($body['end_time'])) : null;
+        $dayChanged = (isset($body['day_of_week']) || isset($body['day'])) && $requestedDay !== $currentSession['day_of_week'];
+        $startChanged = isset($body['start_time']) && $requestedStart !== $currentSession['start_time'];
+        $endChanged = isset($body['end_time']) && $requestedEnd !== $currentSession['end_time'];
+        if ($dayChanged || $startChanged || $endChanged) {
+            return ['status' => 'error', 'message' => 'Changing the session day/time directly is not allowed. Use the reschedule-request flow (POST /teacher/sessions/reschedule-request) instead, which requires admin approval.'];
         }
 
         $updateFields = [];
         $params = [];
         $types = "";
 
+        $bodyAcademicYearId = isset($body['academic_year_id']) && $body['academic_year_id'] > 0 ? (int)$body['academic_year_id'] : null;
+
         if (isset($body['course_id']) && $body['course_id'] && !teacher_can_use_course_for_session($con, $teacherId, (int)$body['course_id'])) {
             return ['status' => 'error', 'message' => 'You are not assigned to this course and it already has another assigned teacher'];
         }
-        if (isset($body['subject_id']) && $body['subject_id'] && empty($body['course_id']) && !is_subject_assigned_to_teacher($con, $teacherId, (int)$body['subject_id'])) {
-            return ['status' => 'error', 'message' => 'You can only schedule sessions for subjects assigned to you'];
+        if (isset($body['subject_id']) && $body['subject_id'] && empty($body['course_id']) && !is_subject_assigned_to_teacher($con, $teacherId, (int)$body['subject_id'], $bodyAcademicYearId)) {
+            return ['status' => 'error', 'message' => 'You can only schedule sessions for subjects and grades assigned to you'];
         }
 
         if (isset($body['subject_id'])) { $updateFields[] = "subject_id = ?"; $params[] = $body['subject_id'] ? (int)$body['subject_id'] : null; $types .= "i"; }
         if (isset($body['course_id'])) { $updateFields[] = "course_id = ?"; $params[] = $body['course_id'] ? (int)$body['course_id'] : null; $types .= "i"; }
         if (isset($body['code'])) { $updateFields[] = "code = ?"; $params[] = trim($body['code']); $types .= "s"; }
-        if (isset($body['day_of_week']) || isset($body['day'])) { $updateFields[] = "day_of_week = ?"; $params[] = trim($body['day_of_week'] ?? $body['day']); $types .= "s"; }
-        if (isset($body['start_time'])) { $updateFields[] = "start_time = ?"; $params[] = date('H:i:s', strtotime($body['start_time'])); $types .= "s"; }
-        if (isset($body['end_time'])) { $updateFields[] = "end_time = ?"; $params[] = date('H:i:s', strtotime($body['end_time'])); $types .= "s"; }
         if (isset($body['room'])) { $updateFields[] = "room = ?"; $params[] = trim($body['room']); $types .= "s"; }
         if (isset($body['is_online'])) { $updateFields[] = "is_online = ?"; $params[] = (int)$body['is_online']; $types .= "i"; }
         if (isset($body['meeting_link'])) { $updateFields[] = "meeting_link = ?"; $params[] = trim($body['meeting_link']); $types .= "s"; }
         if (isset($body['grade'])) { $updateFields[] = "grade = ?"; $params[] = trim($body['grade']); $types .= "s"; }
+        if (isset($body['academic_year_id'])) { $updateFields[] = "academic_year_id = ?"; $params[] = $bodyAcademicYearId; $types .= "i"; }
         if (isset($body['is_active'])) { $updateFields[] = "is_active = ?"; $params[] = (int)$body['is_active']; $types .= "i"; }
 
         if (!empty($updateFields)) {
@@ -759,15 +779,56 @@ if (!function_exists('adminReviewRescheduleRequest')) {
             return ['status' => 'error', 'message' => 'Request not found, already reviewed, or not a teacher-initiated request'];
         }
 
+        if ($decision === 'approved') {
+            $sessionId = (int)$reqRow['session_id'];
+            $keepOriginalSchedule = !empty($body['keep_original_schedule']);
+            $newTeacherId = isset($body['new_teacher_id']) ? (int)$body['new_teacher_id'] : 0;
+
+            if ($keepOriginalSchedule && $newTeacherId <= 0) {
+                return ['status' => 'error', 'message' => 'new_teacher_id is required when keeping the original schedule'];
+            }
+
+            if ($newTeacherId > 0) {
+                $sessStmt = mysqli_prepare($con, "SELECT subject_id, course_id, academic_year_id FROM class_sessions WHERE id = ? LIMIT 1");
+                mysqli_stmt_bind_param($sessStmt, "i", $sessionId);
+                mysqli_stmt_execute($sessStmt);
+                $sessRow = mysqli_fetch_assoc(mysqli_stmt_get_result($sessStmt));
+                if (!$sessRow) {
+                    return ['status' => 'error', 'message' => trans('session_not_found')];
+                }
+
+                $courseId = $sessRow['course_id'] ? (int)$sessRow['course_id'] : null;
+                $subjectId = $sessRow['subject_id'] ? (int)$sessRow['subject_id'] : null;
+                $sessionAcademicYearId = $sessRow['academic_year_id'] ? (int)$sessRow['academic_year_id'] : null;
+
+                if ($courseId && !teacher_can_use_course_for_session($con, $newTeacherId, $courseId)) {
+                    return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected course and it already has another assigned teacher'];
+                }
+                if (!$courseId && $subjectId && !is_subject_assigned_to_teacher($con, $newTeacherId, $subjectId, $sessionAcademicYearId)) {
+                    return ['status' => 'error', 'message' => 'This teacher is not assigned to the selected subject and grade'];
+                }
+            }
+
+            if ($keepOriginalSchedule) {
+                $sStmt = mysqli_prepare($con, "UPDATE class_sessions SET teacher_id = ? WHERE id = ?");
+                mysqli_stmt_bind_param($sStmt, "ii", $newTeacherId, $sessionId);
+                mysqli_stmt_execute($sStmt);
+            } else {
+                $allowedDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                $overrideDay = trim($body['new_day'] ?? '');
+                $finalDay = in_array($overrideDay, $allowedDays, true) ? $overrideDay : $reqRow['new_day'];
+                $finalStart = !empty($body['new_start_time']) ? date('H:i:s', strtotime($body['new_start_time'])) : $reqRow['new_start_time'];
+                $finalEnd = !empty($body['new_end_time']) ? date('H:i:s', strtotime($body['new_end_time'])) : $reqRow['new_end_time'];
+
+                $sStmt = mysqli_prepare($con, "UPDATE class_sessions SET teacher_id = COALESCE(NULLIF(?, 0), teacher_id), day_of_week = ?, start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time) WHERE id = ?");
+                mysqli_stmt_bind_param($sStmt, "isssi", $newTeacherId, $finalDay, $finalStart, $finalEnd, $sessionId);
+                mysqli_stmt_execute($sStmt);
+            }
+        }
+
         $uStmt = mysqli_prepare($con, "UPDATE session_reschedule_requests SET status = ?, admin_note = ?, reviewed_by_type = 'admin', reviewed_at = NOW() WHERE id = ?");
         mysqli_stmt_bind_param($uStmt, "ssi", $decision, $adminNote, $id);
         mysqli_stmt_execute($uStmt);
-
-        if ($decision === 'approved') {
-            $sStmt = mysqli_prepare($con, "UPDATE class_sessions SET day_of_week = ?, start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time) WHERE id = ?");
-            mysqli_stmt_bind_param($sStmt, "sssi", $reqRow['new_day'], $reqRow['new_start_time'], $reqRow['new_end_time'], $reqRow['session_id']);
-            mysqli_stmt_execute($sStmt);
-        }
 
         return ['status' => 'success', 'message' => 'Reschedule request ' . $decision, 'data' => get_reschedule_request_details($con, $id)];
     }

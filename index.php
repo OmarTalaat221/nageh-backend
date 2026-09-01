@@ -581,6 +581,56 @@ $routes = [
                 return studentDeleteNotification($con, $studentData);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/user/student/notifications/unread-count",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/notifications/manage.php";
+                $studentData = studentAuthMiddlewareOptional();
+                return studentGetNotificationUnreadCount($con, $studentData);
+            },
+        ],
+        [
+            "method" => ["POST", "PUT"],
+            "path" => "/najeh/user/student/notifications/read",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/notifications/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentMarkNotificationRead($con, $studentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/user/student/notifications/mark-read",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/notifications/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentMarkNotificationRead($con, $studentData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/user/student/notifications",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/notifications/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentDeleteNotification($con, $studentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/user/student/notifications/delete",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/notifications/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentDeleteNotification($con, $studentData);
+            },
+        ],
     [
         "method" => "POST",
         "path" => "/najeh/auth/reset-password",
@@ -931,6 +981,16 @@ $routes = [
         },
     ],
     [
+        "method" => "POST",
+        "path" => "/najeh/teacher/units/reorder",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/content/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return adminReorderUnits($con, $teacherData);
+        },
+    ],
+    [
         "method" => "GET",
         "path" => "/najeh/teacher/videos",
         "handler" => function ($con) {
@@ -1155,6 +1215,16 @@ $routes = [
             include_once "./app/teacher/content/manage.php";
             $teacherData = teacherAuthMiddleware();
             return adminDeleteQuestion($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/questions/reorder",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/content/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return adminReorderQuestions($con, $teacherData);
         },
     ],
     [
@@ -1438,7 +1508,7 @@ $routes = [
             include_once "./middlewares/studentauthmiddleware.php";
             include_once "./app/teacher/consultations/manage.php";
             $studentData = studentAuthMiddlewareOptional();
-            return studentListTeachersWithAvailableConsultations($con, $studentData);
+            return studentListAvailableConsultationTeachers($con, $studentData);
         },
     ],
     [
@@ -1561,6 +1631,16 @@ $routes = [
             include_once "./app/teacher/sessions/manage.php";
             $teacherData = teacherAuthMiddleware();
             return teacherStartSession($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/sessions/end",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/sessions/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherEndSession($con, $teacherData);
         },
     ],
     [
@@ -1977,6 +2057,38 @@ $routes = [
         ],
         [
             "method" => "POST",
+            "path" => "/najeh/student/onboard/start",
+            "handler" => function ($con) {
+                include_once "./app/user/student/onboard/manage.php";
+                return studentOnboardStartWithCode($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/student/onboard/complete",
+            "handler" => function ($con) {
+                include_once "./app/user/student/onboard/manage.php";
+                return studentOnboardComplete($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/parent/onboard/start",
+            "handler" => function ($con) {
+                include_once "./app/user/parent/onboard/manage.php";
+                return parentOnboardStartWithCode($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/parent/onboard/complete",
+            "handler" => function ($con) {
+                include_once "./app/user/parent/onboard/manage.php";
+                return parentOnboardComplete($con);
+            },
+        ],
+        [
+            "method" => "POST",
             "path" => "/najeh/admin/notifications/send",
             "handler" => function ($con) {
                 include_once "./middlewares/adminauthmiddleware.php";
@@ -2240,6 +2352,17 @@ $routes = [
                 return adminDeleteStudent($con);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/students/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                adminExportStudents($con);
+            },
+        ],
 
         // 4. Teachers Management (manage_teachers)
         [
@@ -2297,6 +2420,17 @@ $routes = [
                 return adminDeleteTeacher($con);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/teachers/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                adminExportTeachers($con);
+            },
+        ],
 
         // 5. Parents & Linkage Management (manage_parents)
         [
@@ -2352,6 +2486,17 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_parents');
                 return adminDeleteParent($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/parents/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_parents');
+                adminExportParents($con);
             },
         ],
         [
@@ -2559,6 +2704,17 @@ $routes = [
                 return adminDeleteCity($con);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/cities/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_cities');
+                adminExportCities($con);
+            },
+        ],
 
         // School Types CRUD
         [
@@ -2731,6 +2887,17 @@ $routes = [
             },
         ],
         [
+            "method" => "GET",
+            "path" => "/najeh/admin/subjects/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_subjects');
+                adminExportSubjects($con);
+            },
+        ],
+        [
             "method" => "POST",
             "path" => "/najeh/admin/subjects/link-academic-year",
             "handler" => function ($con) {
@@ -2897,6 +3064,17 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
                 return adminDeleteUnit($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/units/reorder",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/courses/content.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminReorderUnits($con);
             },
         ],
 
@@ -3157,6 +3335,17 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
                 return adminDeleteQuestion($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/questions/reorder",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/courses/content.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminReorderQuestions($con);
             },
         ],
 
@@ -3629,6 +3818,17 @@ $routes = [
                 return adminDeleteAcademicYear($con);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/academic-years/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_academic_years');
+                adminExportAcademicYears($con);
+            },
+        ],
 
         // Course Categories CRUD
         [
@@ -3792,7 +3992,9 @@ $routes = [
         "method"  => "POST",
         "path"    => "/najeh/parent/exams/exam_results",
         "handler" => function ($con) {
+            include_once "./middlewares/studentauthmiddleware.php";
             include_once "./app/parent/exams/exam_results.php";
+            $studentData = studentAuthMiddleware();
 
             $body      = read_json_body();
             $studentId = (int)($body['student_id'] ?? 0);
@@ -3801,6 +4003,12 @@ $routes = [
                 return [
                     'status'  => 'error',
                     'message' => trans('student_id_required')
+                ];
+            }
+            if ($studentId !== (int)($studentData['id'] ?? 0)) {
+                return [
+                    'status'  => 'error',
+                    'message' => trans('unauthorized')
                 ];
             }
 
@@ -3815,7 +4023,9 @@ $routes = [
     "method"  => "POST",
     "path"    => "/najeh/parent/courses/courses_progress",
     "handler" => function ($con) {
+        include_once "./middlewares/studentauthmiddleware.php";
         include_once "./app/parent/courses/courses_progress.php";
+        $studentData = studentAuthMiddleware();
 
         $body      = read_json_body();
         $studentId = (int)($body['student_id'] ?? 0);
@@ -3824,6 +4034,12 @@ $routes = [
             return [
                 'status'  => 'error',
                 'message' => trans('student_id_required')
+            ];
+        }
+        if ($studentId !== (int)($studentData['id'] ?? 0)) {
+            return [
+                'status'  => 'error',
+                'message' => trans('unauthorized')
             ];
         }
 
@@ -3838,7 +4054,9 @@ $routes = [
     "method"  => "POST",
     "path"    => "/najeh/parent/attendance/student_activity",
     "handler" => function ($con) {
+        include_once "./middlewares/studentauthmiddleware.php";
         include_once "./app/parent/attendance/student_activity.php";
+        $studentData = studentAuthMiddleware();
 
         $body      = read_json_body();
         $studentId = (int)($body['student_id'] ?? 0);
@@ -3847,6 +4065,12 @@ $routes = [
             return [
                 'status'  => 'error',
                 'message' => trans('student_id_required')
+            ];
+        }
+        if ($studentId !== (int)($studentData['id'] ?? 0)) {
+            return [
+                'status'  => 'error',
+                'message' => trans('unauthorized')
             ];
         }
 
@@ -3861,7 +4085,9 @@ $routes = [
     "method"  => "POST",
     "path"    => "/najeh/parent/subscription/student_subscriptions",
     "handler" => function ($con) {
+        include_once "./middlewares/studentauthmiddleware.php";
         include_once "./app/parent/subscription/student_subscriptions.php";
+        $studentData = studentAuthMiddleware();
 
         $body      = read_json_body();
         $studentId = (int)($body['student_id'] ?? 0);
@@ -3870,6 +4096,12 @@ $routes = [
             return [
                 'status'  => 'error',
                 'message' => trans('student_id_required')
+            ];
+        }
+        if ($studentId !== (int)($studentData['id'] ?? 0)) {
+            return [
+                'status'  => 'error',
+                'message' => trans('unauthorized')
             ];
         }
 
@@ -3884,7 +4116,9 @@ $routes = [
     "method"  => "POST",
     "path"    => "/najeh/parent/certifications/student_certificates",
     "handler" => function ($con) {
+        include_once "./middlewares/studentauthmiddleware.php";
         include_once "./app/parent/certifications/student_certificates.php";
+        $studentData = studentAuthMiddleware();
 
         $body      = read_json_body();
         $studentId = (int)($body['student_id'] ?? 0);
@@ -3893,6 +4127,12 @@ $routes = [
             return [
                 'status'  => 'error',
                 'message' => trans('student_id_required')
+            ];
+        }
+        if ($studentId !== (int)($studentData['id'] ?? 0)) {
+            return [
+                'status'  => 'error',
+                'message' => trans('unauthorized')
             ];
         }
 
@@ -4303,6 +4543,16 @@ $routes = [
                 return studentGetAllBooksWithOwn($con, $studentData);
             },
         ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/books/stream",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/content/books.php";
+                $studentData = studentAuthMiddleware();
+                studentStreamBookFile($con, $studentData);
+            },
+        ],
 
         // Parent Auth
         [
@@ -4391,6 +4641,76 @@ $routes = [
                 include_once "./app/user/parent/auth/profile.php";
                 $parentData = parentAuthMiddleware();
                 return parentUpdateFcmToken($con, $parentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/user/parent/notifications",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentListNotifications($con, $parentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/parent/notifications",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentListNotifications($con, $parentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/parent/notifications/unread-count",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentGetNotificationUnreadCount($con, $parentData);
+            },
+        ],
+        [
+            "method" => ["POST", "PUT"],
+            "path" => "/najeh/parent/notifications/read",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentMarkNotificationRead($con, $parentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/parent/notifications/mark-read",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentMarkNotificationRead($con, $parentData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/parent/notifications",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentDeleteNotification($con, $parentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/parent/notifications/delete",
+            "handler" => function ($con) {
+                include_once "./middlewares/parentauthmiddleware.php";
+                include_once "./app/user/parent/notifications/manage.php";
+                $parentData = parentAuthMiddleware();
+                return parentDeleteNotification($con, $parentData);
             },
         ],
         [
@@ -4574,6 +4894,8 @@ $routes = [
             "method" => "POST",
             "path" => "/najeh/common/upload/audio",
             "handler" => function ($con) {
+                include_once "./middlewares/anyauthmiddleware.php";
+                anyAuthMiddleware();
                 include_once "./app/common/upload/manage.php";
                 return handleAudioFileUpload($con);
             },
@@ -4582,6 +4904,8 @@ $routes = [
             "method" => "POST",
             "path" => "/najeh/upload/audio",
             "handler" => function ($con) {
+                include_once "./middlewares/anyauthmiddleware.php";
+                anyAuthMiddleware();
                 include_once "./app/common/upload/manage.php";
                 return handleAudioFileUpload($con);
             },

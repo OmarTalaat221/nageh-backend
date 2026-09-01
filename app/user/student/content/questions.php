@@ -53,6 +53,20 @@ if (!function_exists('get_student_question_statistics')) {
             ORDER BY id DESC LIMIT 1
         ");
         if ($lRes && $lRow = mysqli_fetch_assoc($lRes)) {
+            $correctOptionId = null;
+            $correctAnswer = null;
+
+            $qTypeRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT question_type FROM questions WHERE id = {$questionId} LIMIT 1"));
+            $qType = $qTypeRow['question_type'] ?? null;
+
+            if ($qType === 'mcq') {
+                $correctOptRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT id FROM mcq_options WHERE question_id = {$questionId} AND is_correct = 1 LIMIT 1"));
+                $correctOptionId = $correctOptRow ? (int)$correctOptRow['id'] : null;
+            } elseif ($qType === 'true_false') {
+                $tfRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT correct_answer FROM true_false_answers WHERE question_id = {$questionId} LIMIT 1"));
+                $correctAnswer = $tfRow ? (int)$tfRow['correct_answer'] : null;
+            }
+
             $lastAttempt = [
                 'id' => (int)$lRow['id'],
                 'mcq_option_id' => $lRow['mcq_option_id'] ? (int)$lRow['mcq_option_id'] : null,
@@ -60,7 +74,9 @@ if (!function_exists('get_student_question_statistics')) {
                 'written_answer_text' => $lRow['written_answer_text'],
                 'is_correct' => (int)$lRow['is_correct'],
                 'score_awarded' => (float)$lRow['score_awarded'],
-                'created_at' => $lRow['created_at']
+                'created_at' => $lRow['created_at'],
+                'correct_option_id' => $correctOptionId,
+                'correct_answer' => $correctAnswer
             ];
         }
 
@@ -169,22 +185,28 @@ if (!function_exists('studentSubmitQuestionAnswer')) {
 
         $isCorrect = 0;
         $scoreAwarded = 0.00;
+        $correctOptionId = null;
+        $correctAnswer = null;
 
         if ($qType === 'mcq') {
+            $correctOptRes = mysqli_query($con, "SELECT id FROM mcq_options WHERE question_id = {$questionId} AND is_correct = 1 LIMIT 1");
+            if ($correctOptRes && $correctOptRow = mysqli_fetch_assoc($correctOptRes)) {
+                $correctOptionId = (int)$correctOptRow['id'];
+            }
+
             if ($mcqOptionId && $mcqOptionId > 0) {
-                $optRes = mysqli_query($con, "SELECT is_correct FROM mcq_options WHERE id = {$mcqOptionId} AND question_id = {$questionId} LIMIT 1");
-                if ($optRes && $optRow = mysqli_fetch_assoc($optRes)) {
-                    $isCorrect = (int)$optRow['is_correct'] === 1 ? 1 : 0;
-                    $scoreAwarded = $isCorrect === 1 ? $maxScore : 0.00;
-                }
+                $isCorrect = ($correctOptionId !== null && $correctOptionId === $mcqOptionId) ? 1 : 0;
+                $scoreAwarded = $isCorrect === 1 ? $maxScore : 0.00;
             }
         } elseif ($qType === 'true_false') {
-            if ($trueFalseAnswer !== null) {
-                $tfRes = mysqli_query($con, "SELECT correct_answer FROM true_false_answers WHERE question_id = {$questionId} LIMIT 1");
-                if ($tfRes && $tfRow = mysqli_fetch_assoc($tfRes)) {
-                    $isCorrect = ((int)$tfRow['correct_answer'] === (int)$trueFalseAnswer) ? 1 : 0;
-                    $scoreAwarded = $isCorrect === 1 ? $maxScore : 0.00;
-                }
+            $tfRes = mysqli_query($con, "SELECT correct_answer FROM true_false_answers WHERE question_id = {$questionId} LIMIT 1");
+            if ($tfRes && $tfRow = mysqli_fetch_assoc($tfRes)) {
+                $correctAnswer = (int)$tfRow['correct_answer'];
+            }
+
+            if ($trueFalseAnswer !== null && $correctAnswer !== null) {
+                $isCorrect = ($correctAnswer === (int)$trueFalseAnswer) ? 1 : 0;
+                $scoreAwarded = $isCorrect === 1 ? $maxScore : 0.00;
             }
         } else {
             $isCorrect = 0;
@@ -221,7 +243,9 @@ if (!function_exists('studentSubmitQuestionAnswer')) {
                     'question_id' => $questionId,
                     'is_correct' => $isCorrect,
                     'score_awarded' => $scoreAwarded,
-                    'max_score' => $maxScore
+                    'max_score' => $maxScore,
+                    'correct_option_id' => $correctOptionId,
+                    'correct_answer' => $correctAnswer
                 ],
                 'question_statistics' => $qStats,
                 'overall_statistics' => $overallStats

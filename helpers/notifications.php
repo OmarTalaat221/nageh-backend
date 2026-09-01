@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/firebase.php';
+require_once __DIR__ . '/mailer.php';
 
 if (!defined('FIREBASE_SERVICE_ACCOUNT_PATH')) {
     define('FIREBASE_SERVICE_ACCOUNT_PATH', __DIR__ . '/../config/najeh-e3ef7-firebase-adminsdk-fbsvc-fd9759abc6.json');
@@ -61,19 +62,32 @@ if (!function_exists('get_user_fcm_token')) {
     }
 }
 
+if (!function_exists('get_user_contact')) {
+    function get_user_contact($con, string $userType, int $userId): ?array {
+        $table = notification_user_table($userType);
+        if (!$table) return null;
+
+        $stmt = mysqli_prepare($con, "SELECT name, email FROM {$table} WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($stmt, "i", $userId);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        return $row ?: null;
+    }
+}
+
 /**
  * Sends a push notification to a list of user ids of the same type, and logs the notification
  * plus a per-recipient row (used for admin history and could back an in-app inbox later).
  */
 if (!function_exists('send_notification_to_users')) {
-    function send_notification_to_users($con, string $userType, array $userIds, string $title, string $body, array $data = [], string $senderType = 'admin', ?int $senderId = null): array {
+    function send_notification_to_users($con, string $userType, array $userIds, string $title, string $body, array $data = [], string $senderType = 'admin', ?int $senderId = null, array $channels = ['push']): array {
         $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), fn($id) => $id > 0)));
         if (empty($userIds)) {
             return ['status' => 'error', 'message' => 'No recipients found'];
         }
 
         $dataJson = !empty($data) ? json_encode($data, JSON_UNESCAPED_UNICODE) : null;
-        return _send_notification_to_users_impl($con, $userType, $userIds, $title, $body, $data, $senderType, $senderId, $dataJson);
+        return _send_notification_to_users_impl($con, $userType, $userIds, $title, $body, $data, $senderType, $senderId, $dataJson, $channels);
     }
 }
 
@@ -96,6 +110,7 @@ if (!function_exists('ensure_notifications_tables')) {
 
         @mysqli_query($con, "ALTER TABLE `notifications` MODIFY COLUMN `target_type` VARCHAR(50) NOT NULL");
         @mysqli_query($con, "ALTER TABLE `notifications` MODIFY COLUMN `sender_type` VARCHAR(50) NOT NULL DEFAULT 'admin'");
+        @mysqli_query($con, "ALTER TABLE `notifications` ADD COLUMN `channels` VARCHAR(50) NOT NULL DEFAULT 'push' AFTER `target_type`");
 
         @mysqli_query($con, "CREATE TABLE IF NOT EXISTS `notification_recipients` (
             `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -112,49 +127,91 @@ if (!function_exists('ensure_notifications_tables')) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         @mysqli_query($con, "ALTER TABLE `notification_recipients` MODIFY COLUMN `user_type` VARCHAR(50) NOT NULL");
+        @mysqli_query($con, "ALTER TABLE `notification_recipients` ADD COLUMN `is_email_sent` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_sent`");
+        @mysqli_query($con, "ALTER TABLE `notification_recipients` ADD COLUMN `email_error` VARCHAR(500) NULL AFTER `error`");
     }
 }
 
 if (!function_exists('_send_notification_to_users_impl')) {
-    function _send_notification_to_users_impl($con, string $userType, array $userIds, string $title, string $body, array $data, string $senderType, ?int $senderId, ?string $dataJson): array {
+    function _send_notification_to_users_impl($con, string $userType, array $userIds, string $title, string $body, array $data, string $senderType, ?int $senderId, ?string $dataJson, array $channels = ['push']): array {
         ensure_notifications_tables($con);
-        $stmt = mysqli_prepare($con, "INSERT INTO notifications (sender_type, sender_id, target_type, title, body, data) VALUES (?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "sissss", $senderType, $senderId, $userType, $title, $body, $dataJson);
+
+        $wantsPush = in_array('push', $channels, true);
+        $wantsEmail = in_array('email', $channels, true);
+        $channelsLabel = implode(',', array_values(array_unique($channels))) ?: 'push';
+
+        $data['channels'] = $channelsLabel;
+        $data['target_type'] = $userType;
+
+        $stmt = mysqli_prepare($con, "INSERT INTO notifications (sender_type, sender_id, target_type, channels, title, body, data) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "sisssss", $senderType, $senderId, $userType, $channelsLabel, $title, $body, $dataJson);
         mysqli_stmt_execute($stmt);
         $notificationId = mysqli_insert_id($con);
 
-        $access = get_cached_firebase_access();
-        $canPush = ($access['status'] ?? 'error') === 'success';
+        $access = $wantsPush ? get_cached_firebase_access() : null;
+        $canPush = $wantsPush && ($access['status'] ?? 'error') === 'success';
 
         $sentCount = 0;
         $failedCount = 0;
         $noTokenCount = 0;
+        $emailSentCount = 0;
+        $emailFailedCount = 0;
+        $emailSkippedCount = 0;
 
-        $recStmt = mysqli_prepare($con, "INSERT INTO notification_recipients (notification_id, user_type, user_id, is_sent, error) VALUES (?, ?, ?, ?, ?)");
+        $recStmt = mysqli_prepare($con, "INSERT INTO notification_recipients (notification_id, user_type, user_id, is_sent, error, is_email_sent, email_error) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
         foreach ($userIds as $userId) {
-            $token = get_user_fcm_token($con, $userType, $userId);
             $isSent = 0;
             $error = null;
 
-            if (empty($token)) {
-                $noTokenCount++;
-                $error = 'No FCM token registered';
-            } elseif (!$canPush) {
-                $failedCount++;
-                $error = $access['message'] ?? 'Failed to obtain Firebase access token';
-            } else {
-                $result = sendFirebaseNotification($access['access_token'], $access['project_id'], $token, $title, $body, $data);
-                if (($result['status'] ?? 'error') === 'success') {
-                    $isSent = 1;
-                    $sentCount++;
-                } else {
+            if ($wantsPush) {
+                $token = get_user_fcm_token($con, $userType, $userId);
+
+                if (empty($token)) {
+                    $noTokenCount++;
+                    $error = 'No FCM token registered';
+                } elseif (!$canPush) {
                     $failedCount++;
-                    $error = $result['message'] ?? 'Failed to send';
+                    $error = $access['message'] ?? 'Failed to obtain Firebase access token';
+                } else {
+                    $result = sendFirebaseNotification($access['access_token'], $access['project_id'], $token, $title, $body, $data);
+                    if (($result['status'] ?? 'error') === 'success') {
+                        $isSent = 1;
+                        $sentCount++;
+                    } else {
+                        $failedCount++;
+                        $error = $result['message'] ?? 'Failed to send';
+                    }
                 }
             }
 
-            mysqli_stmt_bind_param($recStmt, "isiis", $notificationId, $userType, $userId, $isSent, $error);
+            $isEmailSent = 0;
+            $emailError = null;
+
+            if ($wantsEmail) {
+                $contact = get_user_contact($con, $userType, $userId);
+                $email = $contact['email'] ?? null;
+
+                if (empty($email)) {
+                    $emailSkippedCount++;
+                    $emailError = 'No email on file';
+                } else {
+                    $htmlBody = '<div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">'
+                        . '<h2 style="margin:0 0 12px">' . htmlspecialchars($title) . '</h2>'
+                        . '<p style="margin:0;white-space:pre-wrap">' . nl2br(htmlspecialchars($body)) . '</p>'
+                        . '</div>';
+
+                    if (send_smtp_email($email, $title, $htmlBody)) {
+                        $isEmailSent = 1;
+                        $emailSentCount++;
+                    } else {
+                        $emailFailedCount++;
+                        $emailError = 'Failed to send email';
+                    }
+                }
+            }
+
+            mysqli_stmt_bind_param($recStmt, "isiisis", $notificationId, $userType, $userId, $isSent, $error, $isEmailSent, $emailError);
             mysqli_stmt_execute($recStmt);
         }
 
@@ -166,15 +223,18 @@ if (!function_exists('_send_notification_to_users_impl')) {
                 'total_recipients' => count($userIds),
                 'sent_count' => $sentCount,
                 'failed_count' => $failedCount,
-                'no_token_count' => $noTokenCount
+                'no_token_count' => $noTokenCount,
+                'email_sent_count' => $emailSentCount,
+                'email_failed_count' => $emailFailedCount,
+                'email_skipped_count' => $emailSkippedCount
             ]
         ];
     }
 }
 
 if (!function_exists('send_notification_to_user')) {
-    function send_notification_to_user($con, string $userType, int $userId, string $title, string $body, array $data = [], string $senderType = 'system', ?int $senderId = null): array {
-        return send_notification_to_users($con, $userType, [$userId], $title, $body, $data, $senderType, $senderId);
+    function send_notification_to_user($con, string $userType, int $userId, string $title, string $body, array $data = [], string $senderType = 'system', ?int $senderId = null, array $channels = ['push']): array {
+        return send_notification_to_users($con, $userType, [$userId], $title, $body, $data, $senderType, $senderId, $channels);
     }
 }
 

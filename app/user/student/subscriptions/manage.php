@@ -146,9 +146,9 @@ if (!function_exists('get_student_subscription_details')) {
 }
 
 if (!function_exists('studentRedeemSubscriptionCode')) {
-    function studentRedeemSubscriptionCode($con, $studentData = null) {
+    function studentRedeemSubscriptionCode($con, $studentData = null, ?string $codeOverride = null) {
         $body = read_json_body();
-        $codeStr = strtoupper(trim($body['code'] ?? ''));
+        $codeStr = strtoupper(trim($codeOverride ?? ($body['code'] ?? '')));
         if (empty($codeStr)) {
             return ['status' => 'error', 'message' => trans('Subscription activation code is required')];
         }
@@ -268,7 +268,7 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
             mysqli_stmt_execute($icStmt);
         }
 
-        mysqli_query($con, "UPDATE subscription_codes SET used_count = used_count + 1 WHERE id = {$codeId}");
+        mysqli_query($con, "UPDATE subscription_codes SET used_count = used_count + 1, claimed_by_student_id = COALESCE(claimed_by_student_id, {$stId}) WHERE id = {$codeId}");
 
         $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
         $logStmt = mysqli_prepare($con, "INSERT INTO code_redemptions_log (subscription_code_id, student_id, student_subscription_id, ip_address) VALUES (?, ?, ?, ?)");
@@ -483,6 +483,18 @@ if (!function_exists('get_student_accessible_entities')) {
         $derivedCourseIds = $directCourseIds;
         $derivedTeacherIds = $directTeacherIds;
 
+        $studentGradeId = 0;
+        $stGradeRes = mysqli_query($con, "SELECT academic_year_id FROM students WHERE id = {$studentId} LIMIT 1");
+        if ($stGradeRes && ($stGradeRow = mysqli_fetch_assoc($stGradeRes))) {
+            $studentGradeId = (int)($stGradeRow['academic_year_id'] ?? 0);
+        }
+        $gradeFilterSql = $studentGradeId > 0
+            ? " AND (c.academic_year_id IS NULL OR c.academic_year_id = {$studentGradeId})"
+            : "";
+        $gradeFilterSqlNoAlias = $studentGradeId > 0
+            ? " AND (academic_year_id IS NULL OR academic_year_id = {$studentGradeId})"
+            : "";
+
         if (!empty($directCourseIds)) {
             $dcListStr = implode(',', array_unique($directCourseIds));
             $csRes = mysqli_query($con, "SELECT DISTINCT subject_id FROM courses WHERE id IN ({$dcListStr}) AND subject_id IS NOT NULL");
@@ -512,7 +524,8 @@ if (!function_exists('get_student_accessible_entities')) {
 
         if (!empty($directSubjectIds)) {
             $dsListStr = implode(',', array_unique($directSubjectIds));
-            $scRes = mysqli_query($con, "SELECT id FROM courses WHERE subject_id IN ({$dsListStr}) AND is_active = 1");
+
+            $scRes = mysqli_query($con, "SELECT id FROM courses WHERE subject_id IN ({$dsListStr}) AND is_active = 1{$gradeFilterSqlNoAlias}");
             if ($scRes) {
                 while ($row = mysqli_fetch_assoc($scRes)) {
                     $derivedCourseIds[] = (int)$row['id'];
@@ -528,7 +541,7 @@ if (!function_exists('get_student_accessible_entities')) {
 
         if (!empty($directTeacherIds)) {
             $dtListStr = implode(',', $directTeacherIds);
-            $tcrRes = mysqli_query($con, "SELECT DISTINCT c.id FROM courses c LEFT JOIN course_teachers ct ON c.id = ct.course_id WHERE (c.teacher_id IN ({$dtListStr}) OR (c.created_by_type = 'teacher' AND c.created_by_id IN ({$dtListStr})) OR (ct.teacher_id IN ({$dtListStr}) AND ct.is_active = 1)) AND c.is_active = 1");
+            $tcrRes = mysqli_query($con, "SELECT DISTINCT c.id FROM courses c LEFT JOIN course_teachers ct ON c.id = ct.course_id WHERE (c.teacher_id IN ({$dtListStr}) OR (c.created_by_type = 'teacher' AND c.created_by_id IN ({$dtListStr})) OR (ct.teacher_id IN ({$dtListStr}) AND ct.is_active = 1)) AND c.is_active = 1{$gradeFilterSql}");
             if ($tcrRes) {
                 while ($row = mysqli_fetch_assoc($tcrRes)) {
                     $derivedCourseIds[] = (int)$row['id'];

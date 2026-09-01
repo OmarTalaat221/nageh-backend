@@ -457,6 +457,64 @@ if (!function_exists('get_teacher_academic_years_details')) {
     }
 }
 
+if (!function_exists('get_teacher_academic_years_for_subject')) {
+    // Grades this teacher may actually create a SUBJECT-scoped session for, given the specific
+    // (subject, grade) assignments made on their profile - unlike get_teacher_academic_years_details()
+    // above, which returns every grade the teacher touches across ALL subjects/courses.
+    function get_teacher_academic_years_for_subject($con, int $teacherId, int $subjectId): array {
+        if (!$teacherId || !$subjectId) return [];
+
+        $stmt = mysqli_prepare($con, "SELECT academic_year_id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ? AND is_active = 1");
+        if (!$stmt) return [];
+        mysqli_stmt_bind_param($stmt, "ii", $teacherId, $subjectId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $specificIds = [];
+        $hasBlanketAssignment = false;
+        $hasAnyAssignment = false;
+        while ($row = mysqli_fetch_assoc($res)) {
+            $hasAnyAssignment = true;
+            if ($row['academic_year_id']) {
+                $specificIds[] = (int)$row['academic_year_id'];
+            } else {
+                $hasBlanketAssignment = true;
+            }
+        }
+
+        // Legacy single-subject teachers (teachers.subject_id, no teacher_subjects row) are a
+        // blanket assignment too - same as before this feature existed.
+        if (!$hasAnyAssignment) {
+            $legacyStmt = mysqli_prepare($con, "SELECT id FROM teachers WHERE id = ? AND subject_id = ? LIMIT 1");
+            mysqli_stmt_bind_param($legacyStmt, "ii", $teacherId, $subjectId);
+            mysqli_stmt_execute($legacyStmt);
+            if (mysqli_fetch_assoc(mysqli_stmt_get_result($legacyStmt))) {
+                $hasBlanketAssignment = true;
+            }
+        }
+
+        $academicYearIds = $specificIds;
+        if ($hasBlanketAssignment) {
+            $sayStmt = mysqli_prepare($con, "SELECT academic_year_id FROM subject_academic_years WHERE subject_id = ? AND is_active = 1");
+            mysqli_stmt_bind_param($sayStmt, "i", $subjectId);
+            mysqli_stmt_execute($sayStmt);
+            $sayRes = mysqli_stmt_get_result($sayStmt);
+            while ($sayRow = mysqli_fetch_assoc($sayRes)) {
+                $academicYearIds[] = (int)$sayRow['academic_year_id'];
+            }
+        }
+
+        $academicYearIds = array_values(array_unique($academicYearIds));
+
+        $academicYears = [];
+        foreach ($academicYearIds as $ayId) {
+            $detail = get_academic_year_details($con, $ayId);
+            if ($detail) $academicYears[] = $detail;
+        }
+        return $academicYears;
+    }
+}
+
 if (!function_exists('get_student_parents_details')) {
     function get_student_parents_details($con, $studentId) {
         if (!$studentId) return [];
@@ -789,6 +847,44 @@ if (!function_exists('get_student_details')) {
         $row['age'] = $row['age'] ? (int)$row['age'] : null;
         $row['is_active'] = (int)$row['is_active'];
         return format_response_images($row);
+    }
+}
+
+if (!function_exists('get_student_academic_year_id')) {
+    function get_student_academic_year_id($con, int $studentId): ?int {
+        if ($studentId <= 0) return null;
+        $stmt = mysqli_prepare($con, "SELECT academic_year_id FROM students WHERE id = ? LIMIT 1");
+        if (!$stmt) return null;
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        return ($row && $row['academic_year_id']) ? (int)$row['academic_year_id'] : null;
+    }
+}
+
+if (!function_exists('get_teacher_subject_assignments')) {
+    // Raw teacher_subjects pivot rows (one per subject+grade pairing), unlike
+    // get_teacher_subjects_details() which merges everything down to distinct subject ids.
+    function get_teacher_subject_assignments($con, $teacherId) {
+        if (!$teacherId) return [];
+        $stmt = mysqli_prepare($con, "SELECT id, subject_id, academic_year_id FROM teacher_subjects WHERE teacher_id = ? AND is_active = 1 ORDER BY subject_id ASC");
+        if (!$stmt) return [];
+        mysqli_stmt_bind_param($stmt, "i", $teacherId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $assignments = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $subjectId = (int)$row['subject_id'];
+            $academicYearId = $row['academic_year_id'] ? (int)$row['academic_year_id'] : null;
+            $assignments[] = [
+                'subject_id' => $subjectId,
+                'subject' => get_subject_details($con, $subjectId),
+                'academic_year_id' => $academicYearId,
+                'academic_year' => $academicYearId ? get_academic_year_details($con, $academicYearId) : null,
+            ];
+        }
+        return $assignments;
     }
 }
 

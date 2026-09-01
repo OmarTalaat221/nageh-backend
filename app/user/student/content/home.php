@@ -67,10 +67,15 @@ if (!function_exists('studentHome')) {
         $todayName = get_request_now()->format('l');
         $sessionWhere = ["is_active = 1", "day_of_week = '{$todayName}'"];
 
+        $studentAcademicYearId = get_student_academic_year_id($con, $stId);
+
         $subWhere = [];
         if (!empty($subjectIds)) {
             $sList = implode(',', array_map('intval', $subjectIds));
-            $subWhere[] = "subject_id IN ({$sList})";
+            $gradeCondition = $studentAcademicYearId
+                ? "(academic_year_id IS NULL OR academic_year_id = " . (int)$studentAcademicYearId . ")"
+                : "academic_year_id IS NULL";
+            $subWhere[] = "(subject_id IN ({$sList}) AND {$gradeCondition})";
         }
         if (!empty($courseIds)) {
             $cList = implode(',', array_map('intval', $courseIds));

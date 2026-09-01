@@ -2,16 +2,28 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../student/exams/manage.php'; // get_exam_summary / get_exam_attempt_details
+require_once __DIR__ . '/../../../helpers/auto_reports.php';
 
 if (!function_exists('teacher_owns_exam')) {
+    // Must stay in sync with adminListExams()'s teacher-scoping WHERE clause
+    // (app/content/exams/manage.php) - that's what decides which exams a teacher can even SEE,
+    // so it can't be narrower than what this function then blocks them from opening/grading.
     function teacher_owns_exam($con, int $examId, int $teacherId): bool {
         $stmt = mysqli_prepare($con, "
             SELECT ce.id FROM course_exams ce
-            LEFT JOIN exam_teachers et ON ce.id = et.exam_id
-            WHERE ce.id = ? AND ((ce.created_by_type = 'teacher' AND ce.created_by_id = ?) OR (et.teacher_id = ? AND et.is_active = 1))
+            WHERE ce.id = ? AND (
+                (ce.created_by_type = 'teacher' AND ce.created_by_id = ?)
+                OR ce.id IN (SELECT exam_id FROM exam_teachers WHERE teacher_id = ? AND is_active = 1)
+                OR ce.course_id IN (SELECT id FROM courses WHERE teacher_id = ? OR (created_by_type = 'teacher' AND created_by_id = ?))
+                OR ce.course_id IN (SELECT course_id FROM course_teachers WHERE teacher_id = ? AND is_active = 1)
+                OR ce.unit_id IN (SELECT id FROM units WHERE (created_by_type = 'teacher' AND created_by_id = ?))
+                OR ce.unit_id IN (SELECT unit_id FROM unit_teachers WHERE teacher_id = ? AND is_active = 1)
+                OR ce.subject_id IN (SELECT subject_id FROM teacher_subjects WHERE teacher_id = ?)
+                OR (ce.created_by_type = 'admin' AND NOT EXISTS (SELECT 1 FROM exam_teachers et_chk WHERE et_chk.exam_id = ce.id AND et_chk.is_active = 1))
+            )
             LIMIT 1
         ");
-        mysqli_stmt_bind_param($stmt, "iii", $examId, $teacherId, $teacherId);
+        mysqli_stmt_bind_param($stmt, "iiiiiiiii", $examId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId, $teacherId);
         mysqli_stmt_execute($stmt);
         return (bool)mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
     }
@@ -119,6 +131,8 @@ if (!function_exists('grade_exam_attempt')) {
         $uStmt = mysqli_prepare($con, "UPDATE exam_attempts SET status = 'graded', total_score = ?, graded_at = NOW(), graded_by_type = ?, graded_by_id = ? WHERE id = ?");
         mysqli_stmt_bind_param($uStmt, "dsii", $total, $graderType, $graderId, $attemptId);
         mysqli_stmt_execute($uStmt);
+
+        auto_generate_exam_result_report($con, $attemptId);
     }
 }
 

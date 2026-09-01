@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../content/helpers.php';
+require_once __DIR__ . '/../../../../helpers/auto_reports.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 require_once __DIR__ . '/questions.php';
 
@@ -92,8 +93,25 @@ if (!function_exists('studentGetVideoDetails')) {
                 $firstVideoId = (int)$fvRow['id'];
             }
         }
+
+        $dripEnabled = false;
+        if ($uId > 0) {
+            $dRes = mysqli_query($con, "SELECT videos_drip_enabled FROM units WHERE id = {$uId} LIMIT 1");
+            if ($dRes && $dRow = mysqli_fetch_assoc($dRes)) {
+                $dripEnabled = (int)($dRow['videos_drip_enabled'] ?? 0) === 1;
+            }
+        }
+        $isDripLocked = false;
+        if ($dripEnabled && $isSubscribed) {
+            $prevVideoId = get_previous_video_id($con, $uId, $videoId);
+            if ($prevVideoId > 0) {
+                $isDripLocked = !is_video_completed_by_student($con, $stId, $prevVideoId);
+            }
+        }
+
         $isFreePreview = false;
-        $isLocked = !$isSubscribed;
+        $isLocked = !$isSubscribed || $isDripLocked;
+        $lockReason = !$isSubscribed ? 'not_subscribed' : ($isDripLocked ? 'sequential_drip' : null);
 
         $progress = [
             'is_completed' => 0,
@@ -128,6 +146,7 @@ if (!function_exists('studentGetVideoDetails')) {
             'is_locked' => $isLocked,
             'is_open' => !$isLocked,
             'is_subscribed' => $isSubscribed,
+            'lock_reason' => $lockReason,
             'unit' => [
                 'id' => (int)$vRow['unit_id'],
                 'code' => $vRow['unit_code'],
@@ -230,6 +249,10 @@ if (!function_exists('studentUpdateVideoProgress')) {
         mysqli_stmt_bind_param($stmt, "iiiiiis", $stId, $videoId, $isCompleted, $watchedSeconds, $totalSeconds, $lastPosSeconds, $completedAt);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to update video progress: ' . mysqli_error($con)];
+        }
+
+        if ($isCompleted === 1 && $courseId > 0) {
+            auto_generate_course_completion_report($con, $stId, $courseId);
         }
 
         return [

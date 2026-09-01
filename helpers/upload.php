@@ -228,7 +228,7 @@ if (!function_exists('upload_audio_file')) {
         }
 
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        $allowedExts = ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'opus', 'amr', 'wma', 'flac', 'caf', '3gp'];
+        $allowedExts = ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'opus', 'amr', 'wma', 'flac', 'caf', '3gp', 'webm'];
         if (empty($ext) || !in_array($ext, $allowedExts)) {
             $mimeToExt = [
                 'audio/mpeg' => 'mp3',

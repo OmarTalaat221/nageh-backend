@@ -63,7 +63,7 @@ if (!function_exists('studentGetCourseUnitsOnly')) {
             FROM units u
             LEFT JOIN units_translations ut ON u.id = ut.unit_id AND ut.language_id = {$langId}
             WHERE u.course_id = {$courseId} AND u.is_active = 1
-            ORDER BY u.id ASC
+            ORDER BY u.order_num ASC, u.id ASC
         ";
         $uRes = mysqli_query($con, $uSql);
 
@@ -71,6 +71,7 @@ if (!function_exists('studentGetCourseUnitsOnly')) {
         $overallTotalUnits = 0;
         $overallTotalVideos = 0;
         $overallTotalCompletedVideos = 0;
+        $overallTotalBooks = 0;
         $overallTotalQuestions = 0;
         $overallTotalAnsweredQuestions = 0;
         $overallTotalAnswersCount = 0;
@@ -124,6 +125,10 @@ if (!function_exists('studentGetCourseUnitsOnly')) {
                 }
                 $overallTotalCompletedVideos += $unitCompletedVideosCount;
 
+                $bCountRes = mysqli_query($con, "SELECT COUNT(id) AS total FROM course_books WHERE unit_id = {$uId} AND is_active = 1");
+                $unitBooksCount = (int)(mysqli_fetch_assoc($bCountRes)['total'] ?? 0);
+                $overallTotalBooks += $unitBooksCount;
+
                 $qCountRes = mysqli_query($con, "SELECT COUNT(id) AS total FROM questions WHERE unit_id = {$uId} AND is_active = 1");
                 $unitQuestionsCount = (int)(mysqli_fetch_assoc($qCountRes)['total'] ?? 0);
                 $overallTotalQuestions += $unitQuestionsCount;
@@ -175,6 +180,7 @@ if (!function_exists('studentGetCourseUnitsOnly')) {
                     'statistics' => [
                         'videos_count' => $unitVideosCount,
                         'completed_videos_count' => $unitCompletedVideosCount,
+                        'books_count' => $unitBooksCount,
                         'questions_count' => $unitQuestionsCount,
                         'answered_questions_count' => $unitAnsweredQuestionsCount,
                         'unit_total_answers' => $unitTotalAnswers,
@@ -197,6 +203,7 @@ if (!function_exists('studentGetCourseUnitsOnly')) {
                     'total_units_count' => $overallTotalUnits,
                     'total_videos_count' => $overallTotalVideos,
                     'total_completed_videos_count' => $overallTotalCompletedVideos,
+                    'total_books_count' => $overallTotalBooks,
                     'total_questions_count' => $overallTotalQuestions,
                     'total_answered_questions_count' => $overallTotalAnsweredQuestions,
                     'total_answers_count' => $overallTotalAnswersCount,
@@ -231,7 +238,7 @@ if (!function_exists('studentGetUnitVideosOnly')) {
         $langId = (int)($langInfo['id'] ?? 2);
 
         $uResTmp = mysqli_query($con, "
-            SELECT u.id, u.course_id, u.subject_id, u.code, COALESCE(ut.name, u.code) AS name
+            SELECT u.id, u.course_id, u.subject_id, u.code, u.videos_drip_enabled, COALESCE(ut.name, u.code) AS name
             FROM units u
             LEFT JOIN units_translations ut ON u.id = ut.unit_id AND ut.language_id = {$langId}
             WHERE u.id = {$unitId} AND u.is_active = 1 LIMIT 1
@@ -252,6 +259,8 @@ if (!function_exists('studentGetUnitVideosOnly')) {
         }
 
         $hasVideoProgress = studentTableExists($con, 'student_video_progress');
+        $dripEnabled = (int)($uRow['videos_drip_enabled'] ?? 0) === 1;
+        $previousVideoCompleted = true;
 
         $vSql = "
             SELECT v.id, v.unit_id, v.code, v.duration_seconds, v.publish_status, v.is_active,
@@ -292,7 +301,9 @@ if (!function_exists('studentGetUnitVideosOnly')) {
                 $totalVideos++;
 
                 $isFreePreview = false;
-                $isLocked = !$isSubscribed;
+                $isDripLocked = $dripEnabled && $isSubscribed && !$previousVideoCompleted;
+                $isLocked = !$isSubscribed || $isDripLocked;
+                $lockReason = !$isSubscribed ? 'not_subscribed' : ($isDripLocked ? 'sequential_drip' : null);
 
                 $durSec = (int)($vRow['duration_seconds'] ?? 0);
                 $totalDurationSec += $durSec;
@@ -314,6 +325,8 @@ if (!function_exists('studentGetUnitVideosOnly')) {
                 if ($isCompleted === 1) {
                     $completedVideos++;
                 }
+                // Next video's drip lock depends on THIS video's completion.
+                $previousVideoCompleted = ($isCompleted === 1);
 
                 $videos[] = [
                     'id' => $vId,
@@ -327,6 +340,7 @@ if (!function_exists('studentGetUnitVideosOnly')) {
                     'is_free_preview' => false,
                     'is_locked' => $isLocked,
                     'is_open' => !$isLocked,
+                    'lock_reason' => $lockReason,
                     'progress' => [
                         'is_completed' => $isCompleted,
                         'watched_seconds' => $watchedSec,
@@ -348,7 +362,8 @@ if (!function_exists('studentGetUnitVideosOnly')) {
                     'id' => (int)$uRow['id'],
                     'course_id' => (int)$uRow['course_id'],
                     'code' => $uRow['code'],
-                    'name' => $uRow['name']
+                    'name' => $uRow['name'],
+                    'videos_drip_enabled' => $dripEnabled ? 1 : 0
                 ],
                 'videos' => $videos,
                 'statistics' => [
@@ -423,7 +438,7 @@ if (!function_exists('studentGetUnitQuestionsOnly')) {
             FROM questions q
             LEFT JOIN questions_translations qt ON q.id = qt.question_id AND qt.language_id = {$langId}
             WHERE {$qWhereStr}
-            ORDER BY q.id ASC
+            ORDER BY q.order_num ASC, q.id ASC
         ";
         $qRes = mysqli_query($con, $qSql);
 
