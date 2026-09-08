@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 require_once __DIR__ . '/../../content/helpers.php';
+require_once __DIR__ . '/../../../helpers/admin_notifications.php';
 
 if (!function_exists('generate_unique_subscription_code_string')) {
     function generate_unique_subscription_code_string($con, string $prefix = ''): string {
@@ -780,6 +781,11 @@ if (!function_exists('adminCreateStudentSubscription')) {
             $icStmt = mysqli_prepare($con, "INSERT INTO student_subscription_courses (student_subscription_id, course_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE course_id=course_id");
             mysqli_stmt_bind_param($icStmt, "ii", $subId, $cId);
             mysqli_stmt_execute($icStmt);
+        }
+
+        if (!empty($courseIds)) {
+            // Admin granted this themselves, so only the course's teacher(s) need telling — not the admin.
+            notify_of_course_subscription($con, $studentId, $courseIds, 'منح إداري', false);
         }
 
         return [

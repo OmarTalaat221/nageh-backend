@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/email_verification.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 
 if (!function_exists('studentRegister')) {
     function studentRegister($con) {
@@ -90,6 +91,8 @@ if (!function_exists('studentRegister')) {
             }
         }
         
+        notify_of_new_student_registration($con, (int)$studentId, $name, $email, $referredByStudentId);
+
         $otpInfo = generateAndSendOtp($con, 'student', $studentId, $email);
 
         $payload = [

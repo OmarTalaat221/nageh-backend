@@ -251,10 +251,12 @@ if (!function_exists('send_notification_to_user')) {
 
 /**
  * Active student ids enrolled (via active, non-expired subscriptions) in the given course
- * and/or subject - used to notify everyone attached to a class session.
+ * and/or subject and/or teacher - used to notify everyone attached to a class session or
+ * a teacher's consultation slot. $teacherId also covers students who only hold a
+ * teacher-wide subscription (student_subscription_teachers) with no course/subject rows.
  */
 if (!function_exists('get_active_student_ids_for_session')) {
-    function get_active_student_ids_for_session($con, ?int $courseId, ?int $subjectId): array {
+    function get_active_student_ids_for_session($con, ?int $courseId, ?int $subjectId, ?int $teacherId = null): array {
         $ids = [];
         if (!empty($courseId)) {
             $res = mysqli_query($con, "
@@ -280,7 +282,32 @@ if (!function_exists('get_active_student_ids_for_session')) {
                 }
             }
         }
+        if (!empty($teacherId)) {
+            $res = mysqli_query($con, "
+                SELECT DISTINCT ss.student_id FROM student_subscription_teachers sst
+                JOIN student_subscriptions ss ON sst.student_subscription_id = ss.id
+                WHERE sst.teacher_id = {$teacherId} AND ss.is_active = 1 AND (ss.end_date IS NULL OR ss.end_date >= NOW())
+            ");
+            if ($res) {
+                while ($row = mysqli_fetch_assoc($res)) {
+                    $ids[] = (int)$row['student_id'];
+                }
+            }
+        }
         return array_values(array_unique($ids));
+    }
+}
+
+if (!function_exists('get_admin_ids')) {
+    function get_admin_ids($con): array {
+        $ids = [];
+        $res = mysqli_query($con, "SELECT id FROM admins WHERE is_active = 1");
+        if ($res) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                $ids[] = (int)$row['id'];
+            }
+        }
+        return $ids;
     }
 }
 

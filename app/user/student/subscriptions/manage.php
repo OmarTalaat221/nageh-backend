@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../content/helpers.php';
+require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 
 if (!function_exists('student_video_progress_table_exists')) {
     function student_video_progress_table_exists($con): bool {
@@ -318,6 +319,10 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
             }
 
             createPendingAffiliateCommission($con, $stId, 'subscription_code', (int)$codeId, $codePrice);
+        }
+
+        if (!empty($courses)) {
+            notify_of_course_subscription($con, $stId, $courses, 'كود اشتراك');
         }
 
         return [

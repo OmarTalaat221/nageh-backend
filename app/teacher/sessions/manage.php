@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../courses/manage.php';
 require_once __DIR__ . '/../../user/student/subscriptions/manage.php';
 require_once __DIR__ . '/../../../helpers/notifications.php';
+require_once __DIR__ . '/../../../helpers/admin_notifications.php';
 require_once __DIR__ . '/files.php';
 
 if (!function_exists('is_teacher_request')) {
@@ -344,7 +345,7 @@ if (!function_exists('teacherCreateSession')) {
         if ($day === get_request_now()->format('l')) {
             $today = get_request_now()->format('Y-m-d');
             if (mark_session_notification_once($con, $newSessionId, 'created', $today)) {
-                $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId);
+                $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId, $teacherId);
                 if (!empty($studentIds)) {
                     send_notification_to_users(
                         $con,
@@ -387,7 +388,7 @@ if (!function_exists('teacherStartSession')) {
         if (!$alreadyNotified) {
             $courseId = $session['course_id'] ? (int)$session['course_id'] : null;
             $subjectId = $session['subject_id'] ? (int)$session['subject_id'] : null;
-            $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId);
+            $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId, $teacherId);
             if (!empty($studentIds)) {
                 send_notification_to_users(
                     $con,
@@ -400,6 +401,8 @@ if (!function_exists('teacherStartSession')) {
                     $teacherId
                 );
             }
+
+            notify_admins_of_session_started($con, $teacherId, $courseId, $subjectId);
         }
 
         return [

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 26, 2026 at 09:39 AM
+-- Generation Time: Sep 08, 2026 at 07:46 AM
 -- Server version: 10.11.18-MariaDB-cll-lve-log
 -- PHP Version: 8.4.24
 
@@ -128,7 +128,35 @@ CREATE TABLE `admins` (
 INSERT INTO `admins` (`id`, `name`, `email`, `password`, `image`, `fcm_token`, `role`, `role_id`, `is_email_verified`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, 'Najeh Super Admin', 'info@najeh.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=12', NULL, 'super_admin', 1, 1, 1, '2026-08-10 16:00:00', '2026-08-10 13:03:41'),
 (2, 'Maha Content Manager', 'content@najeh-demo.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=32', NULL, 'admin', 2, 1, 1, '2026-08-10 16:00:00', '2026-08-10 16:00:00'),
-(3, 'Omar Support Agent', 'support@najeh-demo.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=15', NULL, 'moderator', 3, 1, 1, '2026-08-10 16:00:00', '2026-08-10 16:00:00');
+(3, 'Omar Support Agent', 'support@najeh-demo.com', '$2y$10$tjktq9aDLE1zKdQtH29ZR.ZqzZkeQE2IGcnEzKLvH/CnbV7W95Bdi', 'https://i.pravatar.cc/300?img=15', NULL, 'moderator', 3, 1, 1, '2026-08-10 16:00:00', '2026-08-30 13:09:38');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_permissions`
+--
+
+CREATE TABLE `admin_permissions` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `admin_id` bigint(20) UNSIGNED NOT NULL,
+  `permission_id` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `admin_permissions`
+--
+
+INSERT INTO `admin_permissions` (`id`, `admin_id`, `permission_id`, `created_at`) VALUES
+(1, 2, 1, '2026-08-30 12:45:09'),
+(2, 2, 3, '2026-08-30 12:45:09'),
+(3, 2, 4, '2026-08-30 12:45:09'),
+(4, 2, 5, '2026-08-30 12:45:09'),
+(5, 2, 8, '2026-08-30 12:45:09'),
+(6, 2, 9, '2026-08-30 12:45:09'),
+(19, 3, 14, '2026-08-30 13:09:38'),
+(20, 3, 21, '2026-08-30 13:09:38'),
+(21, 3, 27, '2026-08-30 13:09:38');
 
 -- --------------------------------------------------------
 
@@ -224,7 +252,8 @@ INSERT INTO `affiliates` (`id`, `student_id`, `teacher_id`, `affiliate_code`, `c
 (2, 1001, NULL, 'NAJEH-STU-1001', 'fixed', 0.00, 1, '2026-08-19 16:04:51', '2026-08-19 16:04:51'),
 (3, 1025, NULL, 'NAJEH-STU-1025', 'fixed', 0.00, 1, '2026-08-20 08:11:54', '2026-08-20 08:11:54'),
 (4, 1063, NULL, 'NAJEH-STU-1063', 'fixed', 0.00, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27'),
-(6, 1065, NULL, 'NAJEH-STU-1065', 'fixed', 0.00, 1, '2026-08-26 08:51:31', '2026-08-26 08:51:31');
+(6, 1065, NULL, 'NAJEH-STU-1065', 'fixed', 0.00, 1, '2026-08-26 08:51:31', '2026-08-26 08:51:31'),
+(7, 1066, NULL, 'NAJEH-STU-1066', 'fixed', 0.00, 1, '2026-09-01 09:47:51', '2026-09-01 09:47:51');
 
 -- --------------------------------------------------------
 
@@ -687,6 +716,7 @@ CREATE TABLE `class_sessions` (
   `is_online` tinyint(1) NOT NULL DEFAULT 0,
   `meeting_link` varchar(500) DEFAULT NULL,
   `grade` varchar(100) DEFAULT NULL,
+  `academic_year_id` bigint(20) UNSIGNED DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -695,43 +725,25 @@ CREATE TABLE `class_sessions` (
 -- Dumping data for table `class_sessions`
 --
 
-INSERT INTO `class_sessions` (`id`, `teacher_id`, `subject_id`, `course_id`, `code`, `day_of_week`, `start_time`, `end_time`, `room`, `is_online`, `meeting_link`, `grade`, `is_active`, `created_at`) VALUES
-(1, 1, 1, 1, 'SESS-CHEM-001', 'Sunday', '09:00:00', '10:30:00', 'قاعة 101', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(2, 1, 1, 1, 'SESS-CHEM-002', 'Tuesday', '09:00:00', '10:30:00', 'قاعة 101', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(3, 1, 1, 1, 'SESS-CHEM-003', 'Thursday', '09:00:00', '10:30:00', 'قاعة 101', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(4, 2, 2, 2, 'SESS-PHYS-001', 'Sunday', '11:00:00', '12:30:00', 'قاعة 202', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(5, 2, 2, 2, 'SESS-PHYS-002', 'Wednesday', '11:00:00', '12:30:00', 'قاعة 202', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(6, 3, 3, 3, 'SESS-MATH-001', 'Monday', '10:00:00', '11:30:00', NULL, 1, 'https://meet.google.com/abc-defg-hij', 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(7, 3, 3, 3, 'SESS-MATH-002', 'Thursday', '10:00:00', '11:30:00', NULL, 1, 'https://meet.google.com/abc-defg-hij', 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(8, 4, 4, 4, 'SESS-BIO-001', 'Tuesday', '13:00:00', '14:30:00', 'معمل الأحياء', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(9, 5, 5, 5, 'SESS-ARAB-001', 'Monday', '08:00:00', '09:30:00', 'قاعة 305', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(10, 6, 6, 6, 'SESS-ENG-001', 'Wednesday', '14:00:00', '15:30:00', NULL, 1, 'https://zoom.us/j/123456789', 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(11, 1, 1, NULL, 'SESS-CHEM-FREE', 'Saturday', '16:00:00', '17:00:00', 'قاعة 101', 0, NULL, 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(12, 2, 2, NULL, 'SESS-PHYS-FREE', 'Friday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/xyz-abcd-efg', 'الثانوية العامة', 1, '2026-08-12 11:58:09'),
-(101, 201, 1, 201, 'CLS-201', 'Wednesday', '12:00:00', '15:00:00', '', 1, 'https://meet.google.com/naj-eh000', 'Secondary', 1, '2026-08-01 14:00:00'),
-(102, 201, 1, 202, 'CLS-202', 'Monday', '15:00:00', '16:00:00', 'Room 2', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(103, 202, 2, 203, 'CLS-203', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh002', 'Secondary', 1, '2026-08-01 14:00:00'),
-(104, 202, 2, 204, 'CLS-204', 'Wednesday', '17:00:00', '18:00:00', 'Room 4', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(105, 203, 3, 205, 'CLS-205', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh004', 'Secondary', 1, '2026-08-01 14:00:00'),
-(106, 203, 3, 206, 'CLS-206', 'Saturday', '19:00:00', '20:00:00', 'Room 1', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(107, 204, 4, 207, 'CLS-207', 'Sunday', '14:00:00', '15:00:00', NULL, 1, 'https://meet.google.com/naj-eh006', 'Secondary', 1, '2026-08-01 14:00:00'),
-(108, 204, 4, 208, 'CLS-208', 'Monday', '15:00:00', '16:00:00', 'Room 3', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(109, 205, 5, 209, 'CLS-209', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh008', 'Secondary', 1, '2026-08-01 14:00:00'),
-(110, 205, 5, 210, 'CLS-210', 'Wednesday', '17:00:00', '18:00:00', 'Room 5', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(111, 206, 6, 211, 'CLS-211', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh010', 'Secondary', 1, '2026-08-01 14:00:00'),
-(112, 206, 6, 212, 'CLS-212', 'Saturday', '19:00:00', '20:00:00', 'Room 2', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(113, 207, 7, 213, 'CLS-213', 'Sunday', '14:00:00', '15:00:00', NULL, 1, 'https://meet.google.com/naj-eh012', 'Secondary', 1, '2026-08-01 14:00:00'),
-(114, 207, 7, 214, 'CLS-214', 'Monday', '15:00:00', '16:00:00', 'Room 4', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(115, 208, 8, 215, 'CLS-215', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh014', 'Secondary', 1, '2026-08-01 14:00:00'),
-(116, 208, 8, 216, 'CLS-216', 'Wednesday', '17:00:00', '18:00:00', 'Room 1', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(117, 209, 9, 217, 'CLS-217', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh016', 'Secondary', 1, '2026-08-01 14:00:00'),
-(118, 209, 9, 218, 'CLS-218', 'Saturday', '19:00:00', '20:00:00', 'Room 3', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(119, 210, 10, 219, 'CLS-219', 'Sunday', '14:00:00', '15:00:00', NULL, 1, 'https://meet.google.com/naj-eh018', 'Secondary', 1, '2026-08-01 14:00:00'),
-(120, 210, 10, 220, 'CLS-220', 'Monday', '15:00:00', '16:00:00', 'Room 5', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(121, 211, 11, 221, 'CLS-221', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh020', 'Secondary', 1, '2026-08-01 14:00:00'),
-(122, 211, 11, 222, 'CLS-222', 'Wednesday', '17:00:00', '18:00:00', 'Room 2', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00'),
-(123, 212, 15, 223, 'CLS-223', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh022', 'Secondary', 1, '2026-08-01 14:00:00'),
-(124, 212, 15, 224, 'CLS-224', 'Saturday', '19:00:00', '20:00:00', 'Room 4', 0, NULL, 'Secondary', 1, '2026-08-01 14:00:00');
+INSERT INTO `class_sessions` (`id`, `teacher_id`, `subject_id`, `course_id`, `code`, `day_of_week`, `start_time`, `end_time`, `room`, `is_online`, `meeting_link`, `grade`, `academic_year_id`, `is_active`, `created_at`) VALUES
+(101, 201, 1, 201, 'CLS-201', 'Wednesday', '12:00:00', '15:00:00', '', 1, 'https://meet.google.com/naj-eh000', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(102, 201, 1, 202, 'CLS-202', 'Monday', '15:00:00', '16:00:00', '', 1, 'https://meet.google.com/erh-qhtv-aij', 'الصف الثالث الثانوي', NULL, 1, '2026-08-01 14:00:00'),
+(103, 202, 2, 203, 'CLS-203', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh002', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(104, 202, 2, 204, 'CLS-204', 'Wednesday', '17:00:00', '18:00:00', 'Room 4', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(105, 203, 3, 205, 'CLS-205', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh004', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(106, 203, 3, 206, 'CLS-206', 'Saturday', '19:00:00', '20:00:00', 'Room 1', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(107, 204, 4, 207, 'CLS-207', 'Sunday', '14:00:00', '15:00:00', NULL, 1, 'https://meet.google.com/naj-eh006', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(108, 204, 4, 208, 'CLS-208', 'Monday', '15:00:00', '16:00:00', 'Room 3', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(109, 205, 5, 209, 'CLS-209', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh008', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(110, 205, 5, 210, 'CLS-210', 'Wednesday', '17:00:00', '18:00:00', 'Room 5', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(111, 206, 6, 211, 'CLS-211', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh010', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(112, 206, 6, 212, 'CLS-212', 'Saturday', '19:00:00', '20:00:00', 'Room 2', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(113, 207, 7, 213, 'CLS-213', 'Sunday', '14:00:00', '15:00:00', NULL, 1, 'https://meet.google.com/naj-eh012', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(114, 207, 7, 214, 'CLS-214', 'Monday', '15:00:00', '16:00:00', 'Room 4', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(115, 208, 8, 215, 'CLS-215', 'Tuesday', '16:00:00', '17:00:00', NULL, 1, 'https://meet.google.com/naj-eh014', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(117, 209, 9, 217, 'CLS-217', 'Thursday', '18:00:00', '19:00:00', NULL, 1, 'https://meet.google.com/naj-eh016', 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(118, 209, 9, 218, 'CLS-218', 'Saturday', '19:00:00', '20:00:00', 'Room 3', 0, NULL, 'Secondary', NULL, 1, '2026-08-01 14:00:00'),
+(126, 201, 1, NULL, 'CLS-203', 'Wednesday', '17:18:00', '07:18:00', '', 1, 'https://meet.google.com/erh-qhtv-aij', 'الصف الثالث الثانوي', NULL, 1, '2026-08-31 08:18:39');
 
 -- --------------------------------------------------------
 
@@ -752,7 +764,11 @@ CREATE TABLE `class_session_notification_log` (
 --
 
 INSERT INTO `class_session_notification_log` (`id`, `session_id`, `notify_type`, `session_date`, `created_at`) VALUES
-(1, 102, 'started', '2026-08-13', '2026-08-13 12:27:46');
+(1, 102, 'started', '2026-08-13', '2026-08-13 12:27:46'),
+(2, 102, 'started', '2026-08-30', '2026-08-30 12:10:19'),
+(3, 101, 'started', '2026-08-30', '2026-08-30 12:16:17'),
+(4, 102, 'ended', '2026-08-30', '2026-08-30 12:21:08'),
+(5, 101, 'ended', '2026-08-30', '2026-08-30 12:23:57');
 
 -- --------------------------------------------------------
 
@@ -844,7 +860,9 @@ INSERT INTO `code_redemptions_log` (`id`, `subscription_code_id`, `student_id`, 
 (1068, 115, 1062, 1073, '2026-08-19 16:08:16', '156.203.199.95'),
 (1069, 116, 1062, 1074, '2026-08-19 16:15:45', '156.203.199.95'),
 (1070, 117, 1065, 1075, '2026-08-26 09:03:04', '156.203.248.206'),
-(1071, 118, 1065, 1076, '2026-08-26 09:05:37', '156.203.248.206');
+(1071, 118, 1065, 1076, '2026-08-26 09:05:37', '156.203.248.206'),
+(1072, 119, 1066, 1077, '2026-09-01 09:47:52', '156.203.248.206'),
+(1073, 120, 1066, 1078, '2026-09-01 09:52:25', '156.203.248.206');
 
 -- --------------------------------------------------------
 
@@ -903,7 +921,9 @@ INSERT INTO `consultation_slots` (`id`, `teacher_id`, `subject_id`, `type`, `mee
 (130, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 1, 1001, '2026-08-20 09:32:29', 'pending', 1, '2026-08-15 07:37:07'),
 (131, 201, 1, 'educational', 'offline', '2026-08-15', '18:00:00', 'حجز استشاره', 0, NULL, NULL, 'available', 1, '2026-08-15 10:25:52'),
 (132, 201, 1, 'educational', 'video_call', '2026-08-20', '14:00:00', 'Available for math questions', 0, NULL, NULL, 'available', 1, '2026-08-15 10:26:26'),
-(133, 201, 1, 'educational', 'video_call', '2025-06-20', '16:00:00', 'متاح لمراجعة وحل الاستفسارات قبل الامتحان', 0, NULL, NULL, 'available', 1, '2026-08-25 14:32:51');
+(133, 201, 1, 'educational', 'video_call', '2025-06-20', '16:00:00', 'متاح لمراجعة وحل الاستفسارات قبل الامتحان', 0, NULL, NULL, 'available', 1, '2026-08-25 14:32:51'),
+(135, 201, 1, 'educational', 'video_call', '2026-09-01', '14:05:00', 'test', 1, 1049, '2026-08-31 08:07:14', 'approved', 1, '2026-08-31 08:03:31'),
+(136, 213, 3, 'educational', 'video_call', '2026-09-01', '14:55:00', 'تيست', 1, 1001, '2026-09-01 10:33:48', 'pending', 1, '2026-08-31 09:55:23');
 
 -- --------------------------------------------------------
 
@@ -960,7 +980,10 @@ INSERT INTO `courses` (`id`, `category_id`, `subject_id`, `academic_year_id`, `t
 (221, 3, 11, 11, 211, 'french-language-grade-11', 'french', 650.00, 'https://loremflickr.com/1200/800/french,language,books?lock=221', 21, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-20 09:11:03', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]', 'https://www.youtube.com/watch?v=O-6q-siuMik'),
 (222, 3, 11, 12, 211, 'french-language-grade-12', 'french', 800.00, 'https://loremflickr.com/1200/800/french,language,education?lock=222', 21, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-20 09:11:03', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]', 'https://www.youtube.com/watch?v=O-6q-siuMik'),
 (223, 1, 15, 11, 212, 'integrated-science-grade-11', 'french', 850.00, 'https://loremflickr.com/1200/800/science,laboratory,education?lock=223', 18, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-20 09:11:03', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]', 'https://www.youtube.com/watch?v=_wmwmMeF3pE'),
-(224, 1, 15, 12, 212, 'integrated-science-grade-12', 'french', 1000.00, 'uploads/avatars/img_6a79d3f05f3de6.44037406.png', 18, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-20 09:07:05', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]', 'https://www.youtube.com/watch?v=_wmwmMeF3pE');
+(224, 1, 15, 12, 212, 'integrated-science-grade-12', 'french', 1000.00, 'uploads/avatars/img_6a79d3f05f3de6.44037406.png', 18, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-20 09:07:05', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]', 'https://www.youtube.com/watch?v=_wmwmMeF3pE'),
+(226, 7, 15, 9, 210, 'test', 'english', 500.00, NULL, 0, 1, 1, 'admin', NULL, '2026-08-29 13:44:23', '2026-08-29 13:44:23', NULL, NULL),
+(227, 2, 3, 9, 213, 'test-course', 'francais', 12.00, NULL, 0, 1, 1, 'teacher', 213, '2026-08-31 09:53:03', '2026-08-31 09:53:03', NULL, NULL),
+(228, NULL, 15, 1, NULL, 'kimiaa', 'english', 5.00, NULL, 0, 1, 1, 'admin', NULL, '2026-09-05 22:09:32', '2026-09-05 22:09:51', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1032,7 +1055,13 @@ INSERT INTO `courses_translations` (`id`, `course_id`, `language_id`, `name`, `d
 (1045, 223, 1, 'العلوم المتكاملة - الصف الثاني الثانوي', 'كورس شامل في العلوم المتكاملة للـالصف الثاني الثانوي، يتضمن شرحًا منظمًا وتدريبات وواجبات واختبارات.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]'),
 (1046, 223, 2, 'Integrated Science - Secondary Grade 2', 'A complete Integrated Science course for Secondary Grade 2 with structured lessons, practice, homework and assessments.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', '[\"Understand the core concepts in a connected way\", \"Apply concepts through graded practice\", \"Practice exam-style questions and periodic reviews\"]'),
 (1047, 224, 1, 'العلوم المتكاملة - الصف الثالث الثانوي', 'كورس شامل في العلوم المتكاملة للـالصف الثالث الثانوي، يتضمن شرحًا منظمًا وتدريبات وواجبات واختبارات.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', '[\"فهم المفاهيم الأساسية بصورة مترابطة\", \"تطبيق الأفكار على أسئلة متدرجة\", \"التدرب على نماذج امتحانات ومراجعات دورية\"]'),
-(1048, 224, 2, 'Integrated Science - Secondary Grade 3', 'A complete Integrated Science course for Secondary Grade 3 with structured lessons, practice, homework and assessments.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', '[\"Understand the core concepts in a connected way\", \"Apply concepts through graded practice\", \"Practice exam-style questions and periodic reviews\"]');
+(1048, 224, 2, 'Integrated Science - Secondary Grade 3', 'A complete Integrated Science course for Secondary Grade 3 with structured lessons, practice, homework and assessments.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', '[\"Understand the core concepts in a connected way\", \"Apply concepts through graded practice\", \"Practice exam-style questions and periodic reviews\"]'),
+(1065, 226, 1, 'تيست', 'test', 1, '2026-08-29 13:44:23', '2026-08-29 13:44:23', NULL),
+(1066, 226, 2, 'test', '', 1, '2026-08-29 13:44:23', '2026-08-29 13:44:23', NULL),
+(1067, 227, 1, 'تيست كورس', 'تيست كورس ديسكربشن', 1, '2026-08-31 09:53:03', '2026-08-31 09:53:03', NULL),
+(1068, 227, 2, 'test course', 'test course description', 1, '2026-08-31 09:53:03', '2026-08-31 09:53:03', NULL),
+(1069, 228, 1, 'كيميا', '', 1, '2026-09-05 22:09:32', '2026-09-05 22:09:32', NULL),
+(1070, 228, 2, 'kimiaa', '', 1, '2026-09-05 22:09:32', '2026-09-05 22:09:32', NULL);
 
 -- --------------------------------------------------------
 
@@ -1057,6 +1086,7 @@ CREATE TABLE `course_books` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `price` double DEFAULT 0,
+  `allow_download` tinyint(1) NOT NULL DEFAULT 1,
   `cover_image` longtext NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1064,38 +1094,31 @@ CREATE TABLE `course_books` (
 -- Dumping data for table `course_books`
 --
 
-INSERT INTO `course_books` (`id`, `subject_id`, `course_id`, `unit_id`, `file_type`, `extension`, `link`, `file_path`, `order_num`, `is_active`, `show_on_website`, `created_by_type`, `created_by_id`, `created_at`, `updated_at`, `price`, `cover_image`) VALUES
-(401, 1, 201, 1001, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(402, 1, 202, 1004, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(403, 2, 203, 1007, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(404, 2, 204, 1010, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(405, 3, 205, 1013, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(406, 3, 206, 1016, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(407, 4, 207, 1019, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(408, 4, 208, 1022, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(409, 5, 209, 1025, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(410, 5, 210, 1028, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(411, 6, 211, 1031, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(412, 6, 212, 1034, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(413, 7, 213, 1037, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(414, 7, 214, 1040, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(415, 8, 215, 1043, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(416, 8, 216, 1046, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(417, 9, 217, 1049, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(418, 9, 218, 1052, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(419, 10, 219, 1055, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(420, 10, 220, 1058, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(421, 11, 221, 1061, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(422, 11, 222, 1064, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(423, 15, 223, 1067, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(424, 15, 224, 1070, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, ''),
-(425, NULL, NULL, NULL, 'pdf', 'pdf', 'https://example.com/book.pdf', '', 1, 1, 1, 'admin', 1, '2026-08-11 11:51:00', '2026-08-11 11:51:00', 0, ''),
-(426, NULL, NULL, NULL, 'pdf', 'pdf', 'https://example.com/book.png', '', 1, 1, 1, 'admin', 1, '2026-08-11 11:51:37', '2026-08-11 11:51:37', 0, ''),
-(427, NULL, NULL, NULL, 'pdf', 'pdf', 'https://example.com/book.png', '', 1, 1, 1, 'admin', 1, '2026-08-11 11:57:19', '2026-08-11 11:57:19', 0, ''),
-(428, NULL, NULL, NULL, 'pdf', 'pdf', '', '', 1, 1, 1, 'admin', 1, '2026-08-11 12:19:49', '2026-08-11 12:19:49', 0, 'https://example.com/book.png'),
-(429, NULL, NULL, NULL, 'pdf', 'pdf', 'https://example.com/book.pdf', '', 1, 1, 1, 'admin', 1, '2026-08-11 12:24:43', '2026-08-11 12:24:43', 0, 'https://example.com/book.png'),
-(430, NULL, NULL, NULL, 'pdf', 'pdf', 'uploads/avatars/img_6a7b14e18f76e7.12507093.html', '', 1, 1, 1, 'admin', 1, '2026-08-11 12:26:09', '2026-08-11 12:26:09', 0, 'uploads/avatars/img_6a7b14e18f4624.34926028.png'),
-(431, NULL, NULL, 1, 'pdf', 'pdf', 'https://example.com/book.pdf', '', 1, 1, 1, 'admin', 201, '2026-08-12 12:20:34', '2026-08-12 12:20:34', 0, '');
+INSERT INTO `course_books` (`id`, `subject_id`, `course_id`, `unit_id`, `file_type`, `extension`, `link`, `file_path`, `order_num`, `is_active`, `show_on_website`, `created_by_type`, `created_by_id`, `created_at`, `updated_at`, `price`, `allow_download`, `cover_image`) VALUES
+(401, 1, 201, 1001, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(402, 1, 202, 1004, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(403, 2, 203, 1007, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(404, 2, 204, 1010, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(405, 3, 205, 1013, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(406, 3, 206, 1016, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(407, 4, 207, 1019, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(408, 4, 208, 1022, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(409, 5, 209, 1025, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(410, 5, 210, 1028, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/ElementaryAlgebra2e-WEB_EjIP4sI.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(411, 6, 211, 1031, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(412, 6, 212, 1034, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(413, 7, 213, 1037, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(414, 7, 214, 1040, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/CollegeAlgebra-OP.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(415, 8, 215, 1043, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(416, 8, 216, 1046, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(417, 9, 217, 1049, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(418, 9, 218, 1052, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Transition-Guide_iOtnrL1.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(419, 10, 219, 1055, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(420, 10, 220, 1058, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/University_Physics_Volume_3_Errata_Release_Notes_2021.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(421, 11, 221, 1061, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/OpenStax_Algebra__Trigonometry_Recorded_Lectures_and_Notes_for_Precalculus.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(422, 11, 222, 1064, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(423, 15, 223, 1067, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Chemistry2e_ReleaseNotes.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, ''),
+(424, 15, 224, 1070, 'pdf', 'pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 'https://assets.openstax.org/oscms-prodcms/media/documents/Pharmacology-WEB.pdf', 1, 1, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00', 0, 1, '');
 
 -- --------------------------------------------------------
 
@@ -1163,21 +1186,7 @@ INSERT INTO `course_books_translations` (`id`, `book_id`, `language_id`, `title`
 (9045, 423, 1, 'مرجع إثرائي مفتوح: Chemistry 2e Release Notes', 'ملف PDF عام ومفتوح للاستخدام كمرجع إضافي بجانب محتوى العلوم المتكاملة.'),
 (9046, 423, 2, 'Open supplementary reference: Chemistry 2e Release Notes', 'A public PDF used as an additional reference alongside the Integrated Science course.'),
 (9047, 424, 1, 'مرجع إثرائي مفتوح: Pharmacology for Nurses', 'ملف PDF عام ومفتوح للاستخدام كمرجع إضافي بجانب محتوى العلوم المتكاملة.'),
-(9048, 424, 2, 'Open supplementary reference: Pharmacology for Nurses', 'A public PDF used as an additional reference alongside the Integrated Science course.'),
-(9049, 425, 1, 'كتاب الوحدة الأولى', ''),
-(9050, 425, 2, 'كتاب الوحدة الأولى', ''),
-(9051, 426, 1, 'كتاب الوحدة الأولى', ''),
-(9052, 426, 2, 'كتاب الوحدة الأولى', ''),
-(9053, 427, 1, 'كتاب الوحدة الأولى', ''),
-(9054, 427, 2, 'كتاب الوحدة الأولى', ''),
-(9055, 428, 1, 'كتاب الوحدة الأولى', ''),
-(9056, 428, 2, 'كتاب الوحدة الأولى', ''),
-(9057, 429, 1, 'كتاب الوحدة الأولى', ''),
-(9058, 429, 2, 'كتاب الوحدة الأولى', ''),
-(9059, 430, 1, 'weiruoiewr', ''),
-(9060, 430, 2, 'weiruoiewr', ''),
-(9061, 431, 1, 'ملزمة الوحدة', ''),
-(9062, 431, 2, 'ملزمة الوحدة', '');
+(9048, 424, 2, 'Open supplementary reference: Pharmacology for Nurses', 'A public PDF used as an additional reference alongside the Integrated Science course.');
 
 -- --------------------------------------------------------
 
@@ -1292,7 +1301,11 @@ INSERT INTO `course_exams` (`id`, `subject_id`, `course_id`, `unit_id`, `duratio
 (621, 11, 221, 1063, 45, 10, 5, 1, 'admin', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (622, 11, 222, 1066, 45, 10, 5, 1, 'admin', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (623, 15, 223, 1069, 45, 10, 5, 1, 'admin', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
-(624, 15, 224, 1072, 45, 10, 5, 1, 'admin', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00');
+(624, 15, 224, 1072, 45, 10, 5, 1, 'admin', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
+(630, NULL, 224, NULL, 30, 100, 50, 1, 'admin', 1, '2026-08-29 13:19:13', '2026-08-29 13:19:13'),
+(631, NULL, NULL, 1074, 30, 100, 50, 1, 'admin', 1, '2026-08-29 14:07:51', '2026-08-29 14:07:51'),
+(632, NULL, 226, NULL, 30, 100, 50, 1, 'admin', 1, '2026-08-29 14:41:16', '2026-08-29 14:41:16'),
+(633, NULL, NULL, 1075, 60, 100, 50, 1, 'admin', 1, '2026-09-05 22:13:10', '2026-09-05 22:13:10');
 
 -- --------------------------------------------------------
 
@@ -1360,7 +1373,15 @@ INSERT INTO `course_exams_translations` (`id`, `exam_id`, `language_id`, `title`
 (11045, 623, 1, 'اختبار العلوم المتكاملة - الوحدة النهائية', 'اختبار شامل من 5 أسئلة متنوعة.'),
 (11046, 623, 2, 'Integrated Science Final Unit Quiz', 'A five-question mixed-format assessment.'),
 (11047, 624, 1, 'اختبار العلوم المتكاملة - الوحدة النهائية', 'اختبار شامل من 5 أسئلة متنوعة.'),
-(11048, 624, 2, 'Integrated Science Final Unit Quiz', 'A five-question mixed-format assessment.');
+(11048, 624, 2, 'Integrated Science Final Unit Quiz', 'A five-question mixed-format assessment.'),
+(11055, 630, 1, 'تيست', 'تيست ديسكربشن'),
+(11056, 630, 2, 'test', 'test description'),
+(11057, 631, 1, 'تيست', 'تيست'),
+(11058, 631, 2, 'test', 'test des'),
+(11059, 632, 1, 'امتحان كامل تيست', 'امتحان كامل تيست ديسكربشن'),
+(11060, 632, 2, 'complete exam test', 'complete exam test description'),
+(11061, 633, 1, 'امتحان', 'emtehan'),
+(11062, 633, 2, 'امتحان', '');
 
 -- --------------------------------------------------------
 
@@ -1490,7 +1511,10 @@ INSERT INTO `course_teachers` (`id`, `course_id`, `teacher_id`, `is_active`, `cr
 (521, 221, 211, 1, '2026-07-01 14:00:00'),
 (522, 222, 211, 1, '2026-07-01 14:00:00'),
 (523, 223, 212, 1, '2026-07-01 14:00:00'),
-(524, 224, 212, 1, '2026-07-01 14:00:00');
+(524, 224, 212, 1, '2026-07-01 14:00:00'),
+(526, 226, 210, 1, '2026-08-29 13:44:23'),
+(527, 226, 209, 1, '2026-08-29 13:44:23'),
+(528, 227, 213, 1, '2026-08-31 09:53:03');
 
 -- --------------------------------------------------------
 
@@ -2003,7 +2027,8 @@ INSERT INTO `email_verification_codes` (`id`, `user_type`, `user_id`, `email`, `
 (8, 'student', 1063, 'maldb0907@gmail.com', '678342', '2026-08-20 13:52:27', 0, '2026-08-20 13:37:27'),
 (9, 'student', 1064, 'omartalaat1276@gmail.com', '976089', '2026-08-26 07:39:57', 1, '2026-08-26 07:24:57'),
 (10, 'student', 1064, 'omartalaat1276@gmail.com', '639682', '2026-08-26 07:40:22', 1, '2026-08-26 07:25:22'),
-(11, 'student', 1065, 'omartalaat1276@gmail.com', '656417', '2026-08-26 09:06:31', 1, '2026-08-26 08:51:31');
+(11, 'student', 1065, 'omartalaat1276@gmail.com', '656417', '2026-08-26 09:06:31', 1, '2026-08-26 08:51:31'),
+(12, 'student', 1066, 'talaato312@gmail.com', '935390', '2026-09-01 10:02:51', 1, '2026-09-01 09:47:51');
 
 -- --------------------------------------------------------
 
@@ -2092,9 +2117,12 @@ INSERT INTO `exam_attempts` (`id`, `exam_id`, `student_id`, `status`, `total_sco
 (7060, 612, 1060, 'graded', 8.00, 10.00, '2026-08-06 17:00:00', '2026-08-06 13:32:00', '2026-08-06 16:00:00', 'teacher', 206),
 (7061, 602, 1025, 'graded', 10.00, 10.00, '2026-08-10 13:45:05', '2026-08-10 13:45:36', '2026-08-12 13:03:05', 'teacher', 201),
 (7062, 623, 1025, 'submitted', 2.00, 10.00, '2026-08-12 15:30:30', '2026-08-12 15:30:40', NULL, NULL, NULL),
-(7063, 624, 1025, 'in_progress', NULL, 10.00, '2026-08-19 08:53:24', NULL, NULL, NULL, NULL),
+(7063, 624, 1025, 'submitted', 2.00, 10.00, '2026-08-19 08:53:24', '2026-09-01 10:46:17', NULL, NULL, NULL),
 (7064, 602, 1001, 'submitted', 4.00, 10.00, '2026-08-20 08:17:39', '2026-08-20 09:33:13', NULL, NULL, NULL),
-(7065, 623, 1001, 'submitted', 2.00, 10.00, '2026-08-20 14:49:53', '2026-08-20 14:50:00', NULL, NULL, NULL);
+(7065, 623, 1001, 'submitted', 2.00, 10.00, '2026-08-20 14:49:53', '2026-08-20 14:50:00', NULL, NULL, NULL),
+(7066, 632, 1001, 'graded', 0.00, 2.00, '2026-08-31 10:08:57', '2026-08-31 10:09:02', '2026-08-31 10:09:02', NULL, NULL),
+(7067, 602, 1049, 'graded', 6.00, 10.00, '2026-08-30 09:58:02', '2026-08-30 09:58:11', '2026-08-30 10:00:14', 'teacher', 201),
+(7068, 630, 1001, 'in_progress', NULL, 1.00, '2026-08-31 10:08:24', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2439,7 +2467,19 @@ INSERT INTO `exam_attempt_answers` (`id`, `attempt_id`, `question_id`, `mcq_opti
 (15317, 7065, 5112, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-20 14:50:00'),
 (15318, 7065, 5113, 10274, NULL, NULL, 0, 0.00, NULL, '2026-08-20 14:50:00'),
 (15319, 7065, 5114, NULL, 1, NULL, 1, 2.00, NULL, '2026-08-20 14:50:00'),
-(15320, 7065, 5115, NULL, NULL, '', NULL, NULL, NULL, '2026-08-20 14:50:00');
+(15320, 7065, 5115, NULL, NULL, '', NULL, NULL, NULL, '2026-08-20 14:50:00'),
+(15323, 7067, 5006, 10013, NULL, NULL, 1, 2.00, NULL, '2026-08-30 09:58:11'),
+(15324, 7067, 5007, 10018, NULL, NULL, 0, 0.00, NULL, '2026-08-30 09:58:11'),
+(15325, 7067, 5008, 10021, NULL, NULL, 1, 2.00, NULL, '2026-08-30 09:58:11'),
+(15326, 7067, 5009, NULL, 0, NULL, 0, 0.00, NULL, '2026-08-30 09:58:11'),
+(15327, 7067, 5010, NULL, NULL, 'test', 1, 2.00, '', '2026-08-30 09:58:11'),
+(15328, 7066, 5128, 10297, NULL, NULL, 0, 0.00, NULL, '2026-08-31 10:09:02'),
+(15329, 7066, 5129, NULL, 0, NULL, 0, 0.00, NULL, '2026-08-31 10:09:02'),
+(15330, 7063, 5116, 10279, NULL, NULL, 0, 0.00, NULL, '2026-09-01 10:46:17'),
+(15331, 7063, 5117, 10283, NULL, NULL, 0, 0.00, NULL, '2026-09-01 10:46:17'),
+(15332, 7063, 5118, 10287, NULL, NULL, 0, 0.00, NULL, '2026-09-01 10:46:17'),
+(15333, 7063, 5119, NULL, 1, NULL, 1, 2.00, NULL, '2026-09-01 10:46:17'),
+(15334, 7063, 5120, NULL, NULL, '', NULL, NULL, NULL, '2026-09-01 10:46:17');
 
 -- --------------------------------------------------------
 
@@ -2620,7 +2660,8 @@ INSERT INTO `homework_submissions` (`id`, `homework_id`, `student_id`, `file_pat
 (159, 111, 1059, 'https://assets.openstax.org/oscms-prodcms/media/documents/STUDENT_-_AP_Physics_Lab_Manual_Full_c1bLwwW.pdf', 'reviewed', 'إجابة مرتبة. استمر مع مراجعة السؤال الأخير.', 5, '2026-08-10 14:00:00', '2026-08-10 15:30:00'),
 (160, 112, 1060, 'https://assets.openstax.org/oscms-prodcms/media/documents/Psychology2e_WEB.pdf', 'reviewed', 'إجابة مرتبة. استمر مع مراجعة السؤال الأخير.', 5, '2026-08-10 14:00:00', '2026-08-10 15:30:00'),
 (161, 102, 1025, 'uploads/avatars/img_6a7b101593d0c5.09652130.jpg', 'reviewed', 'حسن خطك شويه', 4, '2026-08-11 12:05:41', '2026-08-12 14:16:20'),
-(170, 123, 1001, 'uploads/avatars/img_6a870297445db7.92240224.jpg', 'submitted', NULL, NULL, '2026-08-20 13:35:19', NULL);
+(170, 123, 1001, 'uploads/avatars/img_6a870297445db7.92240224.jpg', 'submitted', NULL, NULL, '2026-08-20 13:35:19', NULL),
+(173, 125, 1025, 'uploads/avatars/img_6a96accf14a989.99002753.pdf', 'submitted', NULL, NULL, '2026-09-01 10:45:35', NULL);
 
 -- --------------------------------------------------------
 
@@ -2982,7 +3023,21 @@ INSERT INTO `mcq_options` (`id`, `question_id`, `option_key`, `option_image`, `i
 (10285, 5118, 'A', NULL, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (10286, 5118, 'B', NULL, 0, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (10287, 5118, 'C', NULL, 0, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
-(10288, 5118, 'D', NULL, 0, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00');
+(10288, 5118, 'D', NULL, 0, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
+(10289, 5126, 'A', '', 1, 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(10290, 5126, 'B', '', 0, 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(10291, 5126, 'C', '', 0, 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(10292, 5126, 'D', '', 0, 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(10293, 5127, 'A', '', 0, 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(10294, 5127, 'B', '', 0, 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(10295, 5127, 'C', '', 1, 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(10296, 5127, 'D', '', 0, 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(10297, 5128, 'A', '', 0, 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(10298, 5128, 'B', '', 0, 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(10299, 5128, 'C', '', 0, 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(10300, 5128, 'D', '', 1, 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(10301, 5130, 'A', '', 1, 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07'),
+(10302, 5130, 'B', '', 0, 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07');
 
 -- --------------------------------------------------------
 
@@ -3580,7 +3635,35 @@ INSERT INTO `mcq_options_translations` (`id`, `mcq_option_id`, `language_id`, `o
 (20573, 10287, 1, 'الكتلة فقط دون حركة', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (20574, 10287, 2, 'Mass without motion', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (20575, 10288, 1, 'الاسم الكيميائي', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
-(20576, 10288, 2, 'Chemical name', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00');
+(20576, 10288, 2, 'Chemical name', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
+(20577, 10289, 1, '1', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20578, 10289, 2, '1', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20579, 10290, 1, '2', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20580, 10290, 2, '2', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20581, 10291, 1, '3', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20582, 10291, 2, '3', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20583, 10292, 1, '4', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20584, 10292, 2, '4', 1, '2026-08-29 14:28:12', '2026-08-29 14:28:12'),
+(20585, 10293, 1, '1', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20586, 10293, 2, '1', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20587, 10294, 1, '2', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20588, 10294, 2, '2', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20589, 10295, 1, '3', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20590, 10295, 2, '3', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20591, 10296, 1, '4', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20592, 10296, 2, '4', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(20593, 10297, 1, '1', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20594, 10297, 2, '1', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20595, 10298, 1, '2', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20596, 10298, 2, '2', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20597, 10299, 1, '3', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20598, 10299, 2, '3', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20599, 10300, 1, '4', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20600, 10300, 2, '4', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(20601, 10301, 1, '1', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07'),
+(20602, 10301, 2, '1', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07'),
+(20603, 10302, 1, '2', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07'),
+(20604, 10302, 2, '2', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07');
 
 -- --------------------------------------------------------
 
@@ -3593,6 +3676,7 @@ CREATE TABLE `notifications` (
   `sender_type` varchar(50) NOT NULL DEFAULT 'admin',
   `sender_id` bigint(20) UNSIGNED DEFAULT NULL,
   `target_type` varchar(50) NOT NULL,
+  `channels` varchar(50) NOT NULL DEFAULT 'push',
   `title` varchar(255) NOT NULL,
   `body` text NOT NULL,
   `data` text DEFAULT NULL,
@@ -3603,32 +3687,77 @@ CREATE TABLE `notifications` (
 -- Dumping data for table `notifications`
 --
 
-INSERT INTO `notifications` (`id`, `sender_type`, `sender_id`, `target_type`, `title`, `body`, `data`, `created_at`) VALUES
-(1, 'system', 1, 'student', 'تذكير بموعد الحصة التفاعلية المباشرة', 'تذكير: حصة الرياضيات المباشرة مع أ. د. محمود ستبدأ خلال 15 دقيقة، يُرجى الاستعداد والانضمام.', '{\"type\":\"class_session\",\"session_id\":1,\"action\":\"open_session\"}', '2026-08-16 13:47:02'),
-(2, 'teacher', 2, 'student', 'تم إضافة واجب جديد: الجبر والهندسة', 'قام مدرس المادة بإضافة واجب جديد بعنوان \"حل تمارين المعادلة التفاضلية\". الموعد النهائي للتسليم يوم الخميس القادم.', '{\"type\":\"homework\",\"homework_id\":3,\"action\":\"view_homework\"}', '2026-08-16 11:57:02'),
-(3, 'admin', 1, 'student', 'عرض خاص: خصم 30% على الاشتراك السنوي', 'احصل على خصم حصري بنسبة 30% عند تجديد اشتراكك في باقة الترم الثاني قبل نهاية الأسبوع.', '{\"type\":\"promotion\",\"code\":\"NAJEH30\",\"action\":\"open_offers\"}', '2026-08-16 08:57:02'),
-(4, 'teacher', 3, 'student', 'تم رفع تقييم اختبار الفيزياء الدوري', 'تمت رصد وتصحيح إجاباتك في اختبار الفيزياء. يمكنك الاطلاع على النتيجة والتقرير التفصيلي الآن.', '{\"type\":\"exam_result\",\"exam_id\":5,\"score\":96}', '2026-08-15 13:57:02'),
-(5, 'system', 1, 'student', 'تأكيد حجز استشارة تربوية', 'تمت الموافقة على طلب حجز الاستشارة التربوية الخاصة بك ليوم الغد الساعة 4:00 مساءً.', '{\"type\":\"consultation\",\"slot_id\":12,\"consultation_type\":\"educational\"}', '2026-08-15 13:57:02'),
-(6, 'system', 1, 'student', 'تهانينا! تم إصدار شهادة تفوق جديدة', 'ألف مبروك! لقد أتممت بنجاح دورة أساسيات البرمجة بلغة بايثون وتم إصدار شهادتك الرسمية.', '{\"type\":\"certificate\",\"certificate_id\":4,\"action\":\"download_pdf\"}', '2026-08-14 13:57:02'),
-(7, 'system', 1, 'student', 'تم تفعيل كود الاشتراك بنجاح', 'تم تفعيل اشتراكك في باقة الثانوية العامة الترم الأول بنجاح، وجميع المواد والدورات مجهزة لك الآن.', '{\"type\":\"subscription\",\"subscription_id\":8}', '2026-08-13 13:57:02'),
-(8, 'teacher', 1, 'student', 'إضافة درس فيديو جديد في مادة الكيمياء', 'تم رفع فيديو تعليمي جديد بعنوان \"مقدمة في الكيمياء العضوية والتفاعلات المتسلسلة\".', '{\"type\":\"video\",\"video_id\":15,\"course_id\":2}', '2026-08-12 13:57:02'),
-(9, 'system', 1, 'student', 'تذكير: موعد تسليم واجب الفيزياء اليوم', 'تبقى أقل من 4 ساعات على انتهاء مهلة تسليم واجب مادة الفيزياء للأسبوع الحالي.', '{\"type\":\"homework\",\"homework_id\":2}', '2026-08-12 13:57:02'),
-(10, 'admin', 1, 'student', 'تحديث هام في جدول الحصص الأسبوعي', 'تم تعديل مواعيد حصص مادة اللغة العربية للفرقة الأولى، يُرجى تفقد الجدول الدراسي الجديد.', '{\"type\":\"schedule_update\"}', '2026-08-11 13:57:02'),
-(11, 'system', 1, 'teacher', 'طلب استشارة جديدة من طالب', 'قام الطالب أحمد بحجز موعد استشارة نفسية جديدة لديك ليوم الأربعاء القادم الساعة 5:00 مساءً.', '{\"type\":\"consultation_booking\",\"slot_id\":14,\"student_id\":1}', '2026-08-16 12:57:02'),
-(12, 'system', 1, 'teacher', 'تسليمات جديدة للواجب المنزلي', 'قام 15 طالبًا بتسليم حلول واجب مادة الفيزياء، يمكنك البدء في التقييم وإضافة الملاحظات.', '{\"type\":\"homework_submissions\",\"homework_id\":3}', '2026-08-16 10:57:02'),
-(13, 'admin', 1, 'teacher', 'تذكير بموعد الحصة التفاعلية القادمة', 'تذكير: حصتك المباشرة القادمة في مادة الكيمياء ستبدأ في تمام الساعة 6:00 مساءً.', '{\"type\":\"class_session\",\"session_id\":4}', '2026-08-16 07:57:02'),
-(14, 'admin', 1, 'teacher', 'تمت الموافقة على طلب إعادة جدولة الحصة', 'إشعار من الإدارة: تم اعتماد طلبك بنجاح لنقل حصة الأحياء إلى يوم الجمعة الساعة 4:00 مساءً.', '{\"type\":\"reschedule_approved\",\"request_id\":2}', '2026-08-15 13:57:02'),
-(15, 'system', 1, 'teacher', 'تقرير ملخص الأداء الأسبوعي للمدرس', 'تقريرك الأسبوعي جاهز: إجمالي الطلاب المتفاعلين معك هذا الأسبوع بلغ 320 طالبًا.', '{\"type\":\"weekly_report\"}', '2026-08-14 13:57:02'),
-(16, 'system', 1, 'parent', 'إشعار حضور الطالب الحصة التفاعلية', 'نود إعلامكم بحضور ابنكم (أحمد) لحصة الرياضيات المباشرة اليوم والتفاعل الكامل مع المدرس.', '{\"type\":\"attendance_report\",\"student_id\":1,\"status\":\"present\"}', '2026-08-16 11:57:02'),
-(17, 'teacher', 2, 'parent', 'تقرير تقييم المستوى الأكاديمي للابن', 'قام أ. محمد بإضافة تقرير تقييم جديد لـ (سارة)، أظهرت تقدمًا ممتازًا في مادة العلوم.', '{\"type\":\"student_report\",\"report_id\":5,\"student_id\":2}', '2026-08-16 08:57:02'),
-(18, 'system', 1, 'parent', 'تنبيه غياب الطالب عن الحصة التفاعلية', 'تنبيه: تغيب ابنكم (يوسف) عن حضور حصة اللغة العربية المباشرة المقررة صباح اليوم.', '{\"type\":\"attendance_report\",\"student_id\":3,\"status\":\"absent\"}', '2026-08-15 13:57:02'),
-(19, 'teacher', 4, 'parent', 'دعوة لاستشارة تربوية مع مدرس المادة', 'دعوة من مدرس المادة لمناقشة مستوى الطالب الدراسي عبر استشارة تربوية أونلاين.', '{\"type\":\"consultation_invitation\",\"teacher_id\":4}', '2026-08-14 13:57:02'),
-(20, 'system', 1, 'parent', 'إشعارات الدرجات: تفوق الطالب في الاختبار', 'حقق ابنكم (أحمد) الدرجة النهائية (100/100) في الاختبار الدوري لمادة الفيزياء.', '{\"type\":\"exam_score\",\"student_id\":1,\"score\":100}', '2026-08-13 13:57:02'),
-(21, 'system', 1, 'admin', 'عملية تفعيل اشتراك جديدة برمز كود', 'قام الطالب (عمر) بتفعيل اشتراك باقة الترم الأول باستخدام كود تفعيل رقم #NC-9821.', '{\"type\":\"subscription_activation\",\"student_id\":4}', '2026-08-16 13:27:02'),
-(22, 'teacher', 2, 'admin', 'طلب جديد لإعادة جدولة حصة دراسية', 'قدم أ. محمود طلبًا لإعادة جدولة حصة الهندسة من يوم الثلاثاء إلى يوم الأربعاء.', '{\"type\":\"reschedule_request\",\"request_id\":7}', '2026-08-16 11:57:02'),
-(23, 'system', 1, 'admin', 'طلب شراء كتاب جديد يتطلب المراجعة', 'قام الطالب (أحمد) بتقديم طلب شراء كتاب الفيزياء الخارجي، يُرجى مراجعة وتأكيد الدفع.', '{\"type\":\"book_purchase_request\",\"request_id\":3}', '2026-08-16 09:57:02'),
-(24, 'system', 1, 'admin', 'تقرير انضمام معلمين وجدد للمنصة', 'انضم 3 مدرسين جدد للمنصة اليوم وتم استكمال بيانات الملف الشخصي والاعتماد.', '{\"type\":\"new_teachers\"}', '2026-08-15 13:57:02'),
-(25, 'system', 1, 'admin', 'ملخص الإيرادات اليومية وتفعيلات الأكواد', 'إجمالي تفعيلات الأكواد اليوم بلغ 45 عملية تفعيل بقيمة إجمالية 11,250 جنيه.', '{\"type\":\"daily_revenue_summary\"}', '2026-08-15 13:57:02');
+INSERT INTO `notifications` (`id`, `sender_type`, `sender_id`, `target_type`, `channels`, `title`, `body`, `data`, `created_at`) VALUES
+(1, 'system', 1, 'student', 'push', 'تذكير بموعد الحصة التفاعلية المباشرة', 'تذكير: حصة الرياضيات المباشرة مع أ. د. محمود ستبدأ خلال 15 دقيقة، يُرجى الاستعداد والانضمام.', '{\"type\":\"class_session\",\"session_id\":1,\"action\":\"open_session\"}', '2026-08-16 13:47:02'),
+(2, 'teacher', 2, 'student', 'push', 'تم إضافة واجب جديد: الجبر والهندسة', 'قام مدرس المادة بإضافة واجب جديد بعنوان \"حل تمارين المعادلة التفاضلية\". الموعد النهائي للتسليم يوم الخميس القادم.', '{\"type\":\"homework\",\"homework_id\":3,\"action\":\"view_homework\"}', '2026-08-16 11:57:02'),
+(3, 'admin', 1, 'student', 'push', 'عرض خاص: خصم 30% على الاشتراك السنوي', 'احصل على خصم حصري بنسبة 30% عند تجديد اشتراكك في باقة الترم الثاني قبل نهاية الأسبوع.', '{\"type\":\"promotion\",\"code\":\"NAJEH30\",\"action\":\"open_offers\"}', '2026-08-16 08:57:02'),
+(4, 'teacher', 3, 'student', 'push', 'تم رفع تقييم اختبار الفيزياء الدوري', 'تمت رصد وتصحيح إجاباتك في اختبار الفيزياء. يمكنك الاطلاع على النتيجة والتقرير التفصيلي الآن.', '{\"type\":\"exam_result\",\"exam_id\":5,\"score\":96}', '2026-08-15 13:57:02'),
+(5, 'system', 1, 'student', 'push', 'تأكيد حجز استشارة تربوية', 'تمت الموافقة على طلب حجز الاستشارة التربوية الخاصة بك ليوم الغد الساعة 4:00 مساءً.', '{\"type\":\"consultation\",\"slot_id\":12,\"consultation_type\":\"educational\"}', '2026-08-15 13:57:02'),
+(6, 'system', 1, 'student', 'push', 'تهانينا! تم إصدار شهادة تفوق جديدة', 'ألف مبروك! لقد أتممت بنجاح دورة أساسيات البرمجة بلغة بايثون وتم إصدار شهادتك الرسمية.', '{\"type\":\"certificate\",\"certificate_id\":4,\"action\":\"download_pdf\"}', '2026-08-14 13:57:02'),
+(7, 'system', 1, 'student', 'push', 'تم تفعيل كود الاشتراك بنجاح', 'تم تفعيل اشتراكك في باقة الثانوية العامة الترم الأول بنجاح، وجميع المواد والدورات مجهزة لك الآن.', '{\"type\":\"subscription\",\"subscription_id\":8}', '2026-08-13 13:57:02'),
+(8, 'teacher', 1, 'student', 'push', 'إضافة درس فيديو جديد في مادة الكيمياء', 'تم رفع فيديو تعليمي جديد بعنوان \"مقدمة في الكيمياء العضوية والتفاعلات المتسلسلة\".', '{\"type\":\"video\",\"video_id\":15,\"course_id\":2}', '2026-08-12 13:57:02'),
+(9, 'system', 1, 'student', 'push', 'تذكير: موعد تسليم واجب الفيزياء اليوم', 'تبقى أقل من 4 ساعات على انتهاء مهلة تسليم واجب مادة الفيزياء للأسبوع الحالي.', '{\"type\":\"homework\",\"homework_id\":2}', '2026-08-12 13:57:02'),
+(10, 'admin', 1, 'student', 'push', 'تحديث هام في جدول الحصص الأسبوعي', 'تم تعديل مواعيد حصص مادة اللغة العربية للفرقة الأولى، يُرجى تفقد الجدول الدراسي الجديد.', '{\"type\":\"schedule_update\"}', '2026-08-11 13:57:02'),
+(11, 'system', 1, 'teacher', 'push', 'طلب استشارة جديدة من طالب', 'قام الطالب أحمد بحجز موعد استشارة نفسية جديدة لديك ليوم الأربعاء القادم الساعة 5:00 مساءً.', '{\"type\":\"consultation_booking\",\"slot_id\":14,\"student_id\":1}', '2026-08-16 12:57:02'),
+(12, 'system', 1, 'teacher', 'push', 'تسليمات جديدة للواجب المنزلي', 'قام 15 طالبًا بتسليم حلول واجب مادة الفيزياء، يمكنك البدء في التقييم وإضافة الملاحظات.', '{\"type\":\"homework_submissions\",\"homework_id\":3}', '2026-08-16 10:57:02'),
+(13, 'admin', 1, 'teacher', 'push', 'تذكير بموعد الحصة التفاعلية القادمة', 'تذكير: حصتك المباشرة القادمة في مادة الكيمياء ستبدأ في تمام الساعة 6:00 مساءً.', '{\"type\":\"class_session\",\"session_id\":4}', '2026-08-16 07:57:02'),
+(14, 'admin', 1, 'teacher', 'push', 'تمت الموافقة على طلب إعادة جدولة الحصة', 'إشعار من الإدارة: تم اعتماد طلبك بنجاح لنقل حصة الأحياء إلى يوم الجمعة الساعة 4:00 مساءً.', '{\"type\":\"reschedule_approved\",\"request_id\":2}', '2026-08-15 13:57:02'),
+(15, 'system', 1, 'teacher', 'push', 'تقرير ملخص الأداء الأسبوعي للمدرس', 'تقريرك الأسبوعي جاهز: إجمالي الطلاب المتفاعلين معك هذا الأسبوع بلغ 320 طالبًا.', '{\"type\":\"weekly_report\"}', '2026-08-14 13:57:02'),
+(16, 'system', 1, 'parent', 'push', 'إشعار حضور الطالب الحصة التفاعلية', 'نود إعلامكم بحضور ابنكم (أحمد) لحصة الرياضيات المباشرة اليوم والتفاعل الكامل مع المدرس.', '{\"type\":\"attendance_report\",\"student_id\":1,\"status\":\"present\"}', '2026-08-16 11:57:02'),
+(17, 'teacher', 2, 'parent', 'push', 'تقرير تقييم المستوى الأكاديمي للابن', 'قام أ. محمد بإضافة تقرير تقييم جديد لـ (سارة)، أظهرت تقدمًا ممتازًا في مادة العلوم.', '{\"type\":\"student_report\",\"report_id\":5,\"student_id\":2}', '2026-08-16 08:57:02'),
+(18, 'system', 1, 'parent', 'push', 'تنبيه غياب الطالب عن الحصة التفاعلية', 'تنبيه: تغيب ابنكم (يوسف) عن حضور حصة اللغة العربية المباشرة المقررة صباح اليوم.', '{\"type\":\"attendance_report\",\"student_id\":3,\"status\":\"absent\"}', '2026-08-15 13:57:02'),
+(19, 'teacher', 4, 'parent', 'push', 'دعوة لاستشارة تربوية مع مدرس المادة', 'دعوة من مدرس المادة لمناقشة مستوى الطالب الدراسي عبر استشارة تربوية أونلاين.', '{\"type\":\"consultation_invitation\",\"teacher_id\":4}', '2026-08-14 13:57:02'),
+(20, 'system', 1, 'parent', 'push', 'إشعارات الدرجات: تفوق الطالب في الاختبار', 'حقق ابنكم (أحمد) الدرجة النهائية (100/100) في الاختبار الدوري لمادة الفيزياء.', '{\"type\":\"exam_score\",\"student_id\":1,\"score\":100}', '2026-08-13 13:57:02'),
+(21, 'system', 1, 'admin', 'push', 'عملية تفعيل اشتراك جديدة برمز كود', 'قام الطالب (عمر) بتفعيل اشتراك باقة الترم الأول باستخدام كود تفعيل رقم #NC-9821.', '{\"type\":\"subscription_activation\",\"student_id\":4}', '2026-08-16 13:27:02'),
+(22, 'teacher', 2, 'admin', 'push', 'طلب جديد لإعادة جدولة حصة دراسية', 'قدم أ. محمود طلبًا لإعادة جدولة حصة الهندسة من يوم الثلاثاء إلى يوم الأربعاء.', '{\"type\":\"reschedule_request\",\"request_id\":7}', '2026-08-16 11:57:02'),
+(23, 'system', 1, 'admin', 'push', 'طلب شراء كتاب جديد يتطلب المراجعة', 'قام الطالب (أحمد) بتقديم طلب شراء كتاب الفيزياء الخارجي، يُرجى مراجعة وتأكيد الدفع.', '{\"type\":\"book_purchase_request\",\"request_id\":3}', '2026-08-16 09:57:02'),
+(24, 'system', 1, 'admin', 'push', 'تقرير انضمام معلمين وجدد للمنصة', 'انضم 3 مدرسين جدد للمنصة اليوم وتم استكمال بيانات الملف الشخصي والاعتماد.', '{\"type\":\"new_teachers\"}', '2026-08-15 13:57:02'),
+(25, 'system', 1, 'admin', 'push', 'ملخص الإيرادات اليومية وتفعيلات الأكواد', 'إجمالي تفعيلات الأكواد اليوم بلغ 45 عملية تفعيل بقيمة إجمالية 11,250 جنيه.', '{\"type\":\"daily_revenue_summary\"}', '2026-08-15 13:57:02'),
+(26, 'teacher', 201, 'student', 'push', 'الحصة بدأت الآن', 'ادخل الآن للانضمام إلى الحصة', '{\"type\":\"session_started\",\"session_id\":102}', '2026-08-30 12:10:19'),
+(27, 'teacher', 201, 'student', 'push', 'الحصة بدأت الآن', 'ادخل الآن للانضمام إلى الحصة', '{\"type\":\"session_started\",\"session_id\":101}', '2026-08-30 12:16:17'),
+(28, 'admin', 1, 'student', 'push,email', 'تيست', 'تيستتتتتت', NULL, '2026-08-31 11:56:18'),
+(29, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-08-31 13:17:37'),
+(30, 'admin', 1, 'student', 'push', 'تىن', 'تىن', NULL, '2026-08-31 13:26:03'),
+(31, 'admin', 1, 'student', 'push', 'huh', 'iukhj', NULL, '2026-08-31 13:32:57'),
+(32, 'admin', 1, 'student', 'push,email', 'تشس', 'شستن', NULL, '2026-08-31 13:37:55'),
+(33, 'admin', 1, 'teacher', 'push,email', 'تشس', 'شستن', NULL, '2026-08-31 13:39:01'),
+(34, 'admin', 1, 'parent', 'push,email', 'تشس', 'شستن', NULL, '2026-08-31 13:39:08'),
+(35, 'admin', 1, 'student', 'push', 'تت', 'تت', NULL, '2026-08-31 13:39:10'),
+(36, 'admin', 1, 'teacher', 'push', 'تت', 'تت', NULL, '2026-08-31 13:39:10'),
+(37, 'admin', 1, 'parent', 'push', 'تت', 'تت', NULL, '2026-08-31 13:39:10'),
+(38, 'admin', 1, 'student', 'push', 'تيست', 'تيست', NULL, '2026-08-31 13:40:07'),
+(39, 'admin', 1, 'teacher', 'push', 'تيست', 'تيست', NULL, '2026-08-31 13:40:07'),
+(40, 'admin', 1, 'parent', 'push', 'تيست', 'تيست', NULL, '2026-08-31 13:40:07'),
+(41, 'admin', 1, 'student', 'push', 'ss', 'ssss', NULL, '2026-08-31 13:41:24'),
+(42, 'admin', 1, 'teacher', 'push', 'ss', 'ssss', NULL, '2026-08-31 13:41:25'),
+(43, 'admin', 1, 'parent', 'push', 'ss', 'ssss', NULL, '2026-08-31 13:41:25'),
+(44, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-08-31 13:42:11'),
+(45, 'admin', 1, 'student', 'push,email', 'ss', 'ss', NULL, '2026-08-31 13:47:26'),
+(46, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-08-31 13:50:13'),
+(47, 'admin', 1, 'student', 'push,email', 'عمووور', 'عموووووووووووور', NULL, '2026-08-31 13:50:40'),
+(48, 'admin', 1, 'student', 'push,email', 'jdsj', 'jdsj', NULL, '2026-08-31 13:56:33'),
+(49, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-08-31 13:57:01'),
+(50, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 08:44:19'),
+(51, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 08:44:50'),
+(52, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:07:26'),
+(53, 'admin', 1, 'student', 'push', 'س', 'س', NULL, '2026-09-08 09:08:22'),
+(54, 'admin', 1, 'student', 'push,email', 'س', 'س', NULL, '2026-09-08 09:08:51'),
+(55, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:16:36'),
+(56, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:17:04'),
+(57, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:17:27'),
+(58, 'admin', 1, 'student', 'push,email', 'فثس', 'غثس', NULL, '2026-09-08 09:18:04'),
+(59, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:26:04'),
+(60, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:26:26'),
+(61, 'admin', 1, 'student', 'push', 'testq', 'test', NULL, '2026-09-08 09:27:13'),
+(62, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:27:39'),
+(63, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:28:00'),
+(64, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:29:12'),
+(65, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:30:24'),
+(66, 'admin', 1, 'student', 'push,email', 'test', 'test', NULL, '2026-09-08 09:30:42'),
+(67, 'admin', 1, 'student', 'push,email', 'te', 'tes', NULL, '2026-09-08 09:31:21'),
+(68, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 09:31:44'),
+(69, 'admin', 1, 'student', 'push', 'test', 'test2', NULL, '2026-09-08 11:06:55'),
+(70, 'admin', 1, 'student', 'push', 'test', 'test', NULL, '2026-09-08 11:07:57');
 
 -- --------------------------------------------------------
 
@@ -3642,8 +3771,10 @@ CREATE TABLE `notification_recipients` (
   `user_type` varchar(50) NOT NULL,
   `user_id` bigint(20) UNSIGNED NOT NULL,
   `is_sent` tinyint(1) NOT NULL DEFAULT 0,
+  `is_email_sent` tinyint(1) NOT NULL DEFAULT 0,
   `is_read` tinyint(1) NOT NULL DEFAULT 0,
   `error` varchar(500) DEFAULT NULL,
+  `email_error` varchar(500) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -3651,35 +3782,570 @@ CREATE TABLE `notification_recipients` (
 -- Dumping data for table `notification_recipients`
 --
 
-INSERT INTO `notification_recipients` (`id`, `notification_id`, `user_type`, `user_id`, `is_sent`, `is_read`, `error`, `created_at`) VALUES
-(4, 2, 'student', 1025, 1, 1, NULL, '2026-08-16 11:57:02'),
-(5, 2, 'student', 1025, 1, 1, NULL, '2026-08-16 11:57:02'),
-(6, 3, 'student', 1025, 1, 1, NULL, '2026-08-16 08:57:02'),
-(7, 3, 'student', 1025, 1, 1, NULL, '2026-08-16 08:57:02'),
-(8, 3, 'student', 1025, 1, 1, NULL, '2026-08-16 08:57:02'),
-(9, 3, 'student', 1025, 1, 1, NULL, '2026-08-16 08:57:02'),
-(10, 4, 'student', 1025, 1, 1, NULL, '2026-08-15 13:57:02'),
-(11, 5, 'student', 1025, 1, 1, NULL, '2026-08-15 13:57:02'),
-(13, 7, 'student', 1025, 1, 1, NULL, '2026-08-13 13:57:02'),
-(19, 11, 'teacher', 1025, 1, 0, NULL, '2026-08-16 12:57:02'),
-(20, 11, 'teacher', 1025, 1, 1, NULL, '2026-08-16 12:57:02'),
-(21, 12, 'teacher', 1025, 1, 0, NULL, '2026-08-16 10:57:02'),
-(22, 13, 'teacher', 1025, 1, 1, NULL, '2026-08-16 07:57:02'),
-(23, 14, 'teacher', 1025, 1, 1, NULL, '2026-08-15 13:57:02'),
-(24, 15, 'teacher', 1025, 1, 0, NULL, '2026-08-14 13:57:02'),
-(25, 15, 'teacher', 1025, 1, 1, NULL, '2026-08-14 13:57:02'),
-(26, 16, 'parent', 1025, 1, 0, NULL, '2026-08-16 11:57:02'),
-(27, 16, 'parent', 1025, 1, 1, NULL, '2026-08-16 11:57:02'),
-(28, 17, 'parent', 1025, 1, 0, NULL, '2026-08-16 08:57:02'),
-(29, 18, 'parent', 1025, 1, 1, NULL, '2026-08-15 13:57:02'),
-(30, 19, 'parent', 1025, 1, 0, NULL, '2026-08-14 13:57:02'),
-(31, 20, 'parent', 1025, 1, 1, NULL, '2026-08-13 13:57:02'),
-(32, 21, 'admin', 1025, 1, 0, NULL, '2026-08-16 13:27:02'),
-(33, 21, 'admin', 1025, 1, 1, NULL, '2026-08-16 13:27:02'),
-(34, 22, 'admin', 1025, 1, 0, NULL, '2026-08-16 11:57:02'),
-(35, 23, 'admin', 1025, 1, 1, NULL, '2026-08-16 09:57:02'),
-(36, 24, 'admin', 1025, 1, 1, NULL, '2026-08-15 13:57:02'),
-(37, 25, 'admin', 1025, 1, 0, NULL, '2026-08-15 13:57:02');
+INSERT INTO `notification_recipients` (`id`, `notification_id`, `user_type`, `user_id`, `is_sent`, `is_email_sent`, `is_read`, `error`, `email_error`, `created_at`) VALUES
+(7, 3, 'student', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 08:57:02'),
+(13, 7, 'student', 1025, 1, 0, 1, NULL, NULL, '2026-08-13 13:57:02'),
+(19, 11, 'teacher', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 12:57:02'),
+(20, 11, 'teacher', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 12:57:02'),
+(21, 12, 'teacher', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 10:57:02'),
+(22, 13, 'teacher', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 07:57:02'),
+(23, 14, 'teacher', 1025, 1, 0, 1, NULL, NULL, '2026-08-15 13:57:02'),
+(24, 15, 'teacher', 1025, 1, 0, 0, NULL, NULL, '2026-08-14 13:57:02'),
+(25, 15, 'teacher', 1025, 1, 0, 1, NULL, NULL, '2026-08-14 13:57:02'),
+(26, 16, 'parent', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 11:57:02'),
+(27, 16, 'parent', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 11:57:02'),
+(28, 17, 'parent', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 08:57:02'),
+(29, 18, 'parent', 1025, 1, 0, 1, NULL, NULL, '2026-08-15 13:57:02'),
+(30, 19, 'parent', 1025, 1, 0, 0, NULL, NULL, '2026-08-14 13:57:02'),
+(31, 20, 'parent', 1025, 1, 0, 1, NULL, NULL, '2026-08-13 13:57:02'),
+(32, 21, 'admin', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 13:27:02'),
+(33, 21, 'admin', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 13:27:02'),
+(34, 22, 'admin', 1025, 1, 0, 0, NULL, NULL, '2026-08-16 11:57:02'),
+(35, 23, 'admin', 1025, 1, 0, 1, NULL, NULL, '2026-08-16 09:57:02'),
+(36, 24, 'admin', 1025, 1, 0, 1, NULL, NULL, '2026-08-15 13:57:02'),
+(37, 25, 'admin', 1025, 1, 0, 0, NULL, NULL, '2026-08-15 13:57:02'),
+(38, 26, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-30 12:10:19'),
+(40, 26, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-30 12:10:19'),
+(41, 27, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-30 12:16:17'),
+(43, 27, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-30 12:16:17'),
+(44, 27, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-30 12:16:17'),
+(45, 27, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-30 12:16:17'),
+(46, 28, 'student', 1065, 0, 1, 1, 'No FCM token registered', NULL, '2026-08-31 11:56:24'),
+(47, 28, 'student', 1001, 0, 1, 0, 'Firebase send failed', NULL, '2026-08-31 11:56:30'),
+(48, 29, 'student', 1065, 0, 0, 1, 'No FCM token registered', NULL, '2026-08-31 13:17:37'),
+(49, 29, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:17:37'),
+(50, 30, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:26:03'),
+(51, 30, 'student', 1002, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(52, 30, 'student', 1003, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(53, 30, 'student', 1004, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(54, 30, 'student', 1005, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(55, 30, 'student', 1006, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(56, 30, 'student', 1007, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(57, 30, 'student', 1008, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(58, 30, 'student', 1009, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(59, 30, 'student', 1010, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(60, 30, 'student', 1011, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(61, 30, 'student', 1012, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(62, 30, 'student', 1013, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(63, 30, 'student', 1014, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(64, 30, 'student', 1015, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(65, 30, 'student', 1016, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(66, 30, 'student', 1017, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(67, 30, 'student', 1018, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(68, 30, 'student', 1019, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(69, 30, 'student', 1020, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(70, 30, 'student', 1021, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(71, 30, 'student', 1022, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(72, 30, 'student', 1023, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(73, 30, 'student', 1024, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:03'),
+(75, 30, 'student', 1026, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(76, 30, 'student', 1027, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(77, 30, 'student', 1028, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(78, 30, 'student', 1029, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(79, 30, 'student', 1030, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(80, 30, 'student', 1031, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(81, 30, 'student', 1032, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(82, 30, 'student', 1033, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(83, 30, 'student', 1034, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(84, 30, 'student', 1035, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(85, 30, 'student', 1036, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(86, 30, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(87, 30, 'student', 1038, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(88, 30, 'student', 1039, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(89, 30, 'student', 1040, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(90, 30, 'student', 1041, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(91, 30, 'student', 1042, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(92, 30, 'student', 1043, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(93, 30, 'student', 1044, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(94, 30, 'student', 1045, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(95, 30, 'student', 1046, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(96, 30, 'student', 1047, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(97, 30, 'student', 1048, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(98, 30, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(99, 30, 'student', 1050, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(100, 30, 'student', 1051, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(101, 30, 'student', 1052, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(102, 30, 'student', 1053, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(103, 30, 'student', 1054, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(104, 30, 'student', 1055, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(105, 30, 'student', 1056, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(106, 30, 'student', 1057, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(107, 30, 'student', 1058, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(108, 30, 'student', 1059, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(109, 30, 'student', 1060, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(110, 30, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(111, 30, 'student', 1063, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:26:04'),
+(112, 30, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:26:04'),
+(113, 31, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:32:57'),
+(114, 31, 'student', 1002, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(115, 31, 'student', 1003, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(116, 31, 'student', 1004, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(117, 31, 'student', 1005, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(118, 31, 'student', 1006, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(119, 31, 'student', 1007, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(120, 31, 'student', 1008, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(121, 31, 'student', 1009, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(122, 31, 'student', 1010, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(123, 31, 'student', 1011, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(124, 31, 'student', 1012, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(125, 31, 'student', 1013, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(126, 31, 'student', 1014, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(127, 31, 'student', 1015, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(128, 31, 'student', 1016, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(129, 31, 'student', 1017, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(130, 31, 'student', 1018, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(131, 31, 'student', 1019, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(132, 31, 'student', 1020, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(133, 31, 'student', 1021, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(134, 31, 'student', 1022, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(135, 31, 'student', 1023, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(136, 31, 'student', 1024, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(138, 31, 'student', 1026, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(139, 31, 'student', 1027, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(140, 31, 'student', 1028, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(141, 31, 'student', 1029, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(142, 31, 'student', 1030, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(143, 31, 'student', 1031, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(144, 31, 'student', 1032, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(145, 31, 'student', 1033, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(146, 31, 'student', 1034, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(147, 31, 'student', 1035, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(148, 31, 'student', 1036, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(149, 31, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(150, 31, 'student', 1038, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(151, 31, 'student', 1039, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(152, 31, 'student', 1040, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(153, 31, 'student', 1041, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(154, 31, 'student', 1042, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(155, 31, 'student', 1043, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(156, 31, 'student', 1044, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(157, 31, 'student', 1045, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(158, 31, 'student', 1046, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(159, 31, 'student', 1047, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(160, 31, 'student', 1048, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(161, 31, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(162, 31, 'student', 1050, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(163, 31, 'student', 1051, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(164, 31, 'student', 1052, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(165, 31, 'student', 1053, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(166, 31, 'student', 1054, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(167, 31, 'student', 1055, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(168, 31, 'student', 1056, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(169, 31, 'student', 1057, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(170, 31, 'student', 1058, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(171, 31, 'student', 1059, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(172, 31, 'student', 1060, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(173, 31, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(174, 31, 'student', 1063, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:32:57'),
+(175, 31, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:32:58'),
+(176, 32, 'student', 1001, 0, 1, 0, 'Firebase send failed', NULL, '2026-08-31 13:37:56'),
+(177, 32, 'student', 1002, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:03'),
+(178, 32, 'student', 1003, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:09'),
+(179, 32, 'student', 1004, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:21'),
+(180, 32, 'student', 1005, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:21'),
+(181, 32, 'student', 1006, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:22'),
+(182, 32, 'student', 1007, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:22'),
+(183, 32, 'student', 1008, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:23'),
+(184, 32, 'student', 1009, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:24'),
+(185, 32, 'student', 1010, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:24'),
+(186, 32, 'student', 1011, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:25'),
+(187, 32, 'student', 1012, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:25'),
+(188, 32, 'student', 1013, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:26'),
+(189, 32, 'student', 1014, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:27'),
+(190, 32, 'student', 1015, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:27'),
+(191, 32, 'student', 1016, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:28'),
+(192, 32, 'student', 1017, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:29'),
+(193, 32, 'student', 1018, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:29'),
+(194, 32, 'student', 1019, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:30'),
+(195, 32, 'student', 1020, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:30'),
+(196, 32, 'student', 1021, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:31'),
+(197, 32, 'student', 1022, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:32'),
+(198, 32, 'student', 1023, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:32'),
+(199, 32, 'student', 1024, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:33'),
+(201, 32, 'student', 1026, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:39'),
+(202, 32, 'student', 1027, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:40'),
+(203, 32, 'student', 1028, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:40'),
+(204, 32, 'student', 1029, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:41'),
+(205, 32, 'student', 1030, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:42'),
+(206, 32, 'student', 1031, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:42'),
+(207, 32, 'student', 1032, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:43'),
+(208, 32, 'student', 1033, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:43'),
+(209, 32, 'student', 1034, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:44'),
+(210, 32, 'student', 1035, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:44'),
+(211, 32, 'student', 1036, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:45'),
+(212, 32, 'student', 1037, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:46'),
+(213, 32, 'student', 1038, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:46'),
+(214, 32, 'student', 1039, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:47'),
+(215, 32, 'student', 1040, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:47'),
+(216, 32, 'student', 1041, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:48'),
+(217, 32, 'student', 1042, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:48'),
+(218, 32, 'student', 1043, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:49'),
+(219, 32, 'student', 1044, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:50'),
+(220, 32, 'student', 1045, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:50'),
+(221, 32, 'student', 1046, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:51'),
+(222, 32, 'student', 1047, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:51'),
+(223, 32, 'student', 1048, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:52'),
+(224, 32, 'student', 1049, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:53'),
+(225, 32, 'student', 1050, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:53'),
+(226, 32, 'student', 1051, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:54'),
+(227, 32, 'student', 1052, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:54'),
+(228, 32, 'student', 1053, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:55'),
+(229, 32, 'student', 1054, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:55'),
+(230, 32, 'student', 1055, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:56'),
+(231, 32, 'student', 1056, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:56'),
+(232, 32, 'student', 1057, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:57'),
+(233, 32, 'student', 1058, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:58'),
+(234, 32, 'student', 1059, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:58'),
+(235, 32, 'student', 1060, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:59'),
+(236, 32, 'student', 1062, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:38:59'),
+(237, 32, 'student', 1063, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:00'),
+(238, 32, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:39:01'),
+(239, 33, 'teacher', 201, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:01'),
+(240, 33, 'teacher', 202, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:02'),
+(241, 33, 'teacher', 203, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:02'),
+(242, 33, 'teacher', 204, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:03'),
+(243, 33, 'teacher', 205, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:03'),
+(244, 33, 'teacher', 206, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:04'),
+(245, 33, 'teacher', 207, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:05'),
+(246, 33, 'teacher', 208, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:05'),
+(247, 33, 'teacher', 209, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:06'),
+(248, 33, 'teacher', 210, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:06'),
+(249, 33, 'teacher', 211, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:07'),
+(250, 33, 'teacher', 212, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:07'),
+(251, 33, 'teacher', 213, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:08'),
+(252, 34, 'parent', 301, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:09'),
+(253, 34, 'parent', 302, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:09'),
+(254, 34, 'parent', 303, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(255, 35, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:39:10'),
+(256, 35, 'student', 1002, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(257, 35, 'student', 1003, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(258, 35, 'student', 1004, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(259, 35, 'student', 1005, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(260, 35, 'student', 1006, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(261, 35, 'student', 1007, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(262, 35, 'student', 1008, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(263, 35, 'student', 1009, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(264, 35, 'student', 1010, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(265, 35, 'student', 1011, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(266, 35, 'student', 1012, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(267, 35, 'student', 1013, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(268, 35, 'student', 1014, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(269, 35, 'student', 1015, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(270, 35, 'student', 1016, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(271, 35, 'student', 1017, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(272, 35, 'student', 1018, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(273, 35, 'student', 1019, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(274, 35, 'student', 1020, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(275, 35, 'student', 1021, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(276, 35, 'student', 1022, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(277, 35, 'student', 1023, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(278, 35, 'student', 1024, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(280, 35, 'student', 1026, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(281, 35, 'student', 1027, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(282, 35, 'student', 1028, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(283, 35, 'student', 1029, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(284, 35, 'student', 1030, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(285, 35, 'student', 1031, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(286, 35, 'student', 1032, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(287, 35, 'student', 1033, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(288, 35, 'student', 1034, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(289, 35, 'student', 1035, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(290, 35, 'student', 1036, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(291, 35, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(292, 35, 'student', 1038, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(293, 35, 'student', 1039, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(294, 35, 'student', 1040, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(295, 35, 'student', 1041, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(296, 35, 'student', 1042, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(297, 35, 'student', 1043, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(298, 35, 'student', 1044, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(299, 35, 'student', 1045, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(300, 35, 'student', 1046, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(301, 35, 'student', 1047, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(302, 35, 'student', 1048, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(303, 35, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(304, 35, 'student', 1050, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(305, 35, 'student', 1051, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(306, 35, 'student', 1052, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(307, 35, 'student', 1053, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(308, 35, 'student', 1054, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(309, 35, 'student', 1055, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(310, 35, 'student', 1056, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(311, 35, 'student', 1057, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(312, 35, 'student', 1058, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(313, 35, 'student', 1059, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(314, 35, 'student', 1060, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(315, 35, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(316, 35, 'student', 1063, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(317, 34, 'parent', 304, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(318, 35, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:39:10'),
+(319, 36, 'teacher', 201, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(320, 36, 'teacher', 202, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(321, 36, 'teacher', 203, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(322, 36, 'teacher', 204, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(323, 36, 'teacher', 205, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(324, 36, 'teacher', 206, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(325, 36, 'teacher', 207, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(326, 36, 'teacher', 208, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(327, 36, 'teacher', 209, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(328, 36, 'teacher', 210, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(329, 36, 'teacher', 211, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(330, 36, 'teacher', 212, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(331, 36, 'teacher', 213, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(332, 37, 'parent', 301, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(333, 37, 'parent', 302, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(334, 37, 'parent', 303, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(335, 37, 'parent', 304, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(336, 37, 'parent', 305, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(337, 37, 'parent', 306, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(338, 37, 'parent', 307, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(339, 37, 'parent', 308, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(340, 37, 'parent', 309, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(341, 37, 'parent', 310, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(342, 37, 'parent', 311, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(343, 37, 'parent', 312, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(344, 37, 'parent', 313, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(345, 37, 'parent', 314, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(346, 37, 'parent', 315, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(347, 37, 'parent', 316, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(348, 37, 'parent', 317, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(349, 37, 'parent', 318, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(350, 37, 'parent', 319, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(351, 37, 'parent', 320, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:10'),
+(352, 34, 'parent', 305, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:11'),
+(353, 34, 'parent', 306, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:11'),
+(354, 34, 'parent', 307, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:12'),
+(355, 34, 'parent', 308, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:13'),
+(356, 34, 'parent', 309, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:13'),
+(357, 34, 'parent', 310, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:14'),
+(358, 34, 'parent', 311, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:14'),
+(359, 34, 'parent', 312, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:15'),
+(360, 34, 'parent', 313, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:16'),
+(361, 34, 'parent', 314, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:16'),
+(362, 34, 'parent', 315, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:17'),
+(363, 34, 'parent', 316, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:17'),
+(364, 34, 'parent', 317, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:18'),
+(365, 34, 'parent', 318, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:18'),
+(366, 34, 'parent', 319, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:19'),
+(367, 34, 'parent', 320, 0, 1, 0, 'No FCM token registered', NULL, '2026-08-31 13:39:19'),
+(368, 38, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:40:07'),
+(369, 38, 'student', 1002, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(370, 38, 'student', 1003, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(371, 38, 'student', 1004, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(372, 38, 'student', 1005, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(373, 38, 'student', 1006, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(374, 38, 'student', 1007, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(375, 38, 'student', 1008, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(376, 38, 'student', 1009, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(377, 38, 'student', 1010, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(378, 38, 'student', 1011, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(379, 38, 'student', 1012, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(380, 38, 'student', 1013, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(381, 38, 'student', 1014, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(382, 38, 'student', 1015, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(383, 38, 'student', 1016, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(384, 38, 'student', 1017, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(385, 38, 'student', 1018, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(386, 38, 'student', 1019, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(387, 38, 'student', 1020, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(388, 38, 'student', 1021, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(389, 38, 'student', 1022, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(390, 38, 'student', 1023, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(391, 38, 'student', 1024, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(393, 38, 'student', 1026, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(394, 38, 'student', 1027, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(395, 38, 'student', 1028, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(396, 38, 'student', 1029, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(397, 38, 'student', 1030, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(398, 38, 'student', 1031, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(399, 38, 'student', 1032, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(400, 38, 'student', 1033, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(401, 38, 'student', 1034, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(402, 38, 'student', 1035, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(403, 38, 'student', 1036, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(404, 38, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(405, 38, 'student', 1038, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(406, 38, 'student', 1039, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(407, 38, 'student', 1040, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(408, 38, 'student', 1041, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(409, 38, 'student', 1042, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(410, 38, 'student', 1043, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(411, 38, 'student', 1044, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(412, 38, 'student', 1045, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(413, 38, 'student', 1046, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(414, 38, 'student', 1047, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(415, 38, 'student', 1048, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(416, 38, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(417, 38, 'student', 1050, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(418, 38, 'student', 1051, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(419, 38, 'student', 1052, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(420, 38, 'student', 1053, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(421, 38, 'student', 1054, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(422, 38, 'student', 1055, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(423, 38, 'student', 1056, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(424, 38, 'student', 1057, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(425, 38, 'student', 1058, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(426, 38, 'student', 1059, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(427, 38, 'student', 1060, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(428, 38, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(429, 38, 'student', 1063, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(430, 38, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:40:07'),
+(431, 39, 'teacher', 201, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(432, 39, 'teacher', 202, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(433, 39, 'teacher', 203, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(434, 39, 'teacher', 204, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(435, 39, 'teacher', 205, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(436, 39, 'teacher', 206, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(437, 39, 'teacher', 207, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(438, 39, 'teacher', 208, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(439, 39, 'teacher', 209, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(440, 39, 'teacher', 210, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(441, 39, 'teacher', 211, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(442, 39, 'teacher', 212, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(443, 39, 'teacher', 213, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(444, 40, 'parent', 301, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(445, 40, 'parent', 302, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(446, 40, 'parent', 303, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(447, 40, 'parent', 304, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(448, 40, 'parent', 305, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(449, 40, 'parent', 306, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(450, 40, 'parent', 307, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(451, 40, 'parent', 308, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(452, 40, 'parent', 309, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(453, 40, 'parent', 310, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(454, 40, 'parent', 311, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(455, 40, 'parent', 312, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(456, 40, 'parent', 313, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(457, 40, 'parent', 314, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(458, 40, 'parent', 315, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(459, 40, 'parent', 316, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(460, 40, 'parent', 317, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(461, 40, 'parent', 318, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(462, 40, 'parent', 319, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(463, 40, 'parent', 320, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:40:07'),
+(464, 41, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:41:24'),
+(465, 41, 'student', 1002, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(466, 41, 'student', 1003, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(467, 41, 'student', 1004, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(468, 41, 'student', 1005, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(469, 41, 'student', 1006, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(470, 41, 'student', 1007, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(471, 41, 'student', 1008, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(472, 41, 'student', 1009, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(473, 41, 'student', 1010, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(474, 41, 'student', 1011, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(475, 41, 'student', 1012, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(476, 41, 'student', 1013, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(477, 41, 'student', 1014, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(478, 41, 'student', 1015, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(479, 41, 'student', 1016, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(480, 41, 'student', 1017, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(481, 41, 'student', 1018, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(482, 41, 'student', 1019, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(483, 41, 'student', 1020, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(484, 41, 'student', 1021, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(485, 41, 'student', 1022, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(486, 41, 'student', 1023, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(487, 41, 'student', 1024, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:24'),
+(489, 41, 'student', 1026, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(490, 41, 'student', 1027, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(491, 41, 'student', 1028, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(492, 41, 'student', 1029, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(493, 41, 'student', 1030, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(494, 41, 'student', 1031, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(495, 41, 'student', 1032, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(496, 41, 'student', 1033, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(497, 41, 'student', 1034, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(498, 41, 'student', 1035, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(499, 41, 'student', 1036, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(500, 41, 'student', 1037, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(501, 41, 'student', 1038, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(502, 41, 'student', 1039, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(503, 41, 'student', 1040, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(504, 41, 'student', 1041, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(505, 41, 'student', 1042, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(506, 41, 'student', 1043, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(507, 41, 'student', 1044, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(508, 41, 'student', 1045, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(509, 41, 'student', 1046, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(510, 41, 'student', 1047, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(511, 41, 'student', 1048, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(512, 41, 'student', 1049, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(513, 41, 'student', 1050, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(514, 41, 'student', 1051, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(515, 41, 'student', 1052, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(516, 41, 'student', 1053, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(517, 41, 'student', 1054, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(518, 41, 'student', 1055, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(519, 41, 'student', 1056, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(520, 41, 'student', 1057, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(521, 41, 'student', 1058, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(522, 41, 'student', 1059, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(523, 41, 'student', 1060, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(524, 41, 'student', 1062, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(525, 41, 'student', 1063, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(526, 41, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:41:25'),
+(527, 42, 'teacher', 201, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(528, 42, 'teacher', 202, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(529, 42, 'teacher', 203, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(530, 42, 'teacher', 204, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(531, 42, 'teacher', 205, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(532, 42, 'teacher', 206, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(533, 42, 'teacher', 207, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(534, 42, 'teacher', 208, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(535, 42, 'teacher', 209, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(536, 42, 'teacher', 210, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(537, 42, 'teacher', 211, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(538, 42, 'teacher', 212, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(539, 42, 'teacher', 213, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(540, 43, 'parent', 301, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(541, 43, 'parent', 302, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(542, 43, 'parent', 303, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(543, 43, 'parent', 304, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(544, 43, 'parent', 305, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(545, 43, 'parent', 306, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(546, 43, 'parent', 307, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(547, 43, 'parent', 308, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(548, 43, 'parent', 309, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(549, 43, 'parent', 310, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(550, 43, 'parent', 311, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(551, 43, 'parent', 312, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(552, 43, 'parent', 313, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(553, 43, 'parent', 314, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(554, 43, 'parent', 315, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(555, 43, 'parent', 316, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(556, 43, 'parent', 317, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(557, 43, 'parent', 318, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(558, 43, 'parent', 319, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(559, 43, 'parent', 320, 0, 0, 0, 'No FCM token registered', NULL, '2026-08-31 13:41:25'),
+(560, 44, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-08-31 13:42:11'),
+(561, 44, 'student', 1001, 0, 0, 0, 'Firebase send failed', NULL, '2026-08-31 13:42:11'),
+(562, 45, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:47:27'),
+(563, 46, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:50:14'),
+(564, 47, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:50:41'),
+(565, 48, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:56:34'),
+(566, 49, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-08-31 13:57:02'),
+(567, 50, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-09-08 08:44:20'),
+(568, 51, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-09-08 08:44:51'),
+(569, 52, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-09-08 09:07:27'),
+(570, 53, 'student', 1065, 1, 0, 1, NULL, NULL, '2026-09-08 09:08:22'),
+(571, 54, 'student', 1065, 1, 1, 1, NULL, NULL, '2026-09-08 09:08:52'),
+(572, 55, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:16:36'),
+(573, 56, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:17:05'),
+(574, 57, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:17:29'),
+(575, 58, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:18:05'),
+(576, 59, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:26:04'),
+(577, 60, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:26:27'),
+(578, 61, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:27:13'),
+(579, 62, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:27:40'),
+(580, 63, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:28:01'),
+(581, 64, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:29:13'),
+(582, 65, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:30:24'),
+(583, 66, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:30:43'),
+(584, 67, 'student', 1065, 1, 1, 0, NULL, NULL, '2026-09-08 09:31:22'),
+(585, 68, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 09:31:45'),
+(586, 69, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 11:06:56'),
+(587, 70, 'student', 1065, 1, 0, 0, NULL, NULL, '2026-09-08 11:07:57');
 
 -- --------------------------------------------------------
 
@@ -3725,7 +4391,7 @@ INSERT INTO `parents` (`id`, `city_id`, `name`, `email`, `password`, `image`, `f
 (317, 6, 'إياد أحمد صبري', 'parent317@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=18', NULL, 1, 1, '2026-06-01 13:00:00', '2026-08-10 16:00:00'),
 (318, 7, 'شهد سمير ناصر', 'parent318@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=19', NULL, 1, 1, '2026-06-01 13:00:00', '2026-08-10 16:00:00'),
 (319, 8, 'حمزة خالد علي', 'parent319@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=20', NULL, 1, 1, '2026-06-01 13:00:00', '2026-08-10 16:00:00'),
-(320, 9, 'لارا إبراهيم عبد الله', 'parent320@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=21', NULL, 1, 1, '2026-06-01 13:00:00', '2026-08-10 16:00:00');
+(320, 9, 'لارا إبراهيم عبد الله', 'parent320@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=21', NULL, 1, 1, '2026-06-01 13:00:00', '2026-09-05 22:01:10');
 
 -- --------------------------------------------------------
 
@@ -3888,7 +4554,23 @@ INSERT INTO `permissions` (`id`, `code`, `name`, `module`, `description`, `creat
 (9, 'reports.view', 'View Reports', 'reports', 'Access operational and student reports', '2026-08-10 16:00:00'),
 (10, 'support.manage', 'Manage Support', 'support', 'Handle consultations and reschedule requests', '2026-08-10 16:00:00'),
 (11, 'settings.manage', 'Manage Settings', 'settings', 'Manage site configuration', '2026-08-10 16:00:00'),
-(12, 'roles.manage', 'Manage Roles', 'security', 'Manage roles and permissions', '2026-08-10 16:00:00');
+(12, 'roles.manage', 'Manage Roles', 'security', 'Manage roles and permissions', '2026-08-10 16:00:00'),
+(13, 'view_dashboard', 'View Dashboard & Statistics', 'dashboard', 'Access dashboard and statistics', '2026-08-30 13:04:02'),
+(14, 'manage_admins', 'Manage Admins', 'admins', 'Add, edit, and delete admin users', '2026-08-30 13:04:02'),
+(15, 'manage_roles', 'Manage Roles & Permissions', 'roles', 'Full CRUD access for roles and permissions', '2026-08-30 13:04:02'),
+(16, 'manage_students', 'Manage Students', 'students', 'Add, edit, and delete students', '2026-08-30 13:04:02'),
+(17, 'manage_teachers', 'Manage Teachers', 'teachers', 'Add, edit, approve, and delete teachers, and manage their content (units, videos, books, exams, certificates)', '2026-08-30 13:04:02'),
+(18, 'manage_parents', 'Manage Parents & Student Linkage', 'parents', 'Add, edit parents and link students', '2026-08-30 13:04:02'),
+(19, 'manage_banners', 'Manage Banners', 'banners', 'Full CRUD access for banners and view analytics', '2026-08-30 13:04:02'),
+(20, 'manage_languages', 'Manage Languages', 'languages', 'Full CRUD access for languages', '2026-08-30 13:04:02'),
+(21, 'manage_cities', 'Manage Regions', 'cities', 'Full CRUD access for regions', '2026-08-30 13:04:02'),
+(22, 'manage_school_types', 'Manage School Types', 'school_types', 'Full CRUD access for school types', '2026-08-30 13:04:02'),
+(23, 'manage_schools', 'Manage Schools', 'schools', 'Full CRUD access for schools', '2026-08-30 13:04:02'),
+(24, 'manage_subjects', 'Manage Subjects', 'subjects', 'Full CRUD access for subjects', '2026-08-30 13:04:02'),
+(25, 'manage_courses', 'Manage Courses', 'courses', 'Full CRUD access for courses, units, videos, exams, questions, certificates and books', '2026-08-30 13:04:02'),
+(26, 'manage_books', 'Manage Books', 'books', 'Full CRUD access for books and purchase requests', '2026-08-30 13:04:02'),
+(27, 'manage_academic_years', 'Manage Grades (Academic Years)', 'academic_years', 'Full CRUD access for grades / academic years', '2026-08-30 13:04:02'),
+(28, 'manage_course_categories', 'Manage Course Categories', 'course_categories', 'Full CRUD access for course categories', '2026-08-30 13:04:02');
 
 -- --------------------------------------------------------
 
@@ -3934,7 +4616,39 @@ INSERT INTO `permissions_translations` (`id`, `permission_id`, `language_id`, `n
 (21, 11, 1, 'إدارة الإعدادات', 'Manage site configuration', '2026-08-10 16:00:00', '2026-08-10 16:00:00'),
 (22, 11, 2, 'Manage Settings', 'Manage site configuration', '2026-08-10 16:00:00', '2026-08-10 16:00:00'),
 (23, 12, 1, 'إدارة الأدوار والصلاحيات', 'Manage roles and permissions', '2026-08-10 16:00:00', '2026-08-10 16:00:00'),
-(24, 12, 2, 'Manage Roles', 'Manage roles and permissions', '2026-08-10 16:00:00', '2026-08-10 16:00:00');
+(24, 12, 2, 'Manage Roles', 'Manage roles and permissions', '2026-08-10 16:00:00', '2026-08-10 16:00:00'),
+(25, 27, 1, 'إدارة الصفوف الدراسية', 'إدارة كاملة للصفوف الدراسية', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(26, 14, 1, 'إدارة المشرفين والصلاحيات', 'إضافة وتعديل وحذف حسابات المشرفين وصلاحياتهم', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(27, 19, 1, 'إدارة البانرات', 'إدارة كاملة للبانرات وعرض إحصائيات المشاهدة', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(28, 26, 1, 'إدارة الكتب', 'إدارة كاملة للكتب وطلبات الشراء', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(29, 21, 1, 'إدارة المناطق', 'إدارة كاملة للمناطق الجغرافية', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(30, 28, 1, 'إدارة تصنيفات الكورسات', 'إدارة كاملة لتصنيفات الكورسات', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(31, 25, 1, 'إدارة الكورسات', 'إدارة كاملة للكورسات والوحدات والفيديوهات والامتحانات والأسئلة والشهادات والكتب', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(32, 20, 1, 'إدارة اللغات', 'إدارة كاملة للغات المتاحة في المنصة', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(33, 18, 1, 'إدارة أولياء الأمور', 'إضافة وتعديل أولياء الأمور وربطهم بالطلاب', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(34, 15, 1, 'إدارة الأدوار والصلاحيات (قديم)', 'إدارة كاملة للأدوار والصلاحيات (نظام قديم غير مستخدم حاليًا)', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(35, 22, 1, 'إدارة أنواع المدارس', 'إدارة كاملة لأنواع المدارس', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(36, 23, 1, 'إدارة المدارس', 'إدارة كاملة للمدارس', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(37, 16, 1, 'إدارة الطلاب', 'إضافة وتعديل وحذف الطلاب', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(38, 24, 1, 'إدارة المواد الدراسية', 'إدارة كاملة للمواد الدراسية', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(39, 17, 1, 'إدارة المدرسين والمحتوى التعليمي', 'إضافة وتعديل وحذف المدرسين، وإدارة محتواهم من كورسات ووحدات وفيديوهات وامتحانات وشهادات', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(40, 13, 1, 'عرض لوحة التحكم', 'الوصول للوحة التحكم والإحصائيات', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(56, 13, 2, 'View Dashboard & Statistics', 'Access dashboard and statistics', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(57, 14, 2, 'Manage Admins', 'Add, edit, and delete admin users', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(58, 15, 2, 'Manage Roles & Permissions', 'Full CRUD access for roles and permissions', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(59, 16, 2, 'Manage Students', 'Add, edit, and delete students', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(60, 17, 2, 'Manage Teachers', 'Add, edit, approve, and delete teachers, and manage their content (units, videos, books, exams, certificates)', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(61, 18, 2, 'Manage Parents & Student Linkage', 'Add, edit parents and link students', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(62, 19, 2, 'Manage Banners', 'Full CRUD access for banners and view analytics', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(63, 20, 2, 'Manage Languages', 'Full CRUD access for languages', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(64, 21, 2, 'Manage Regions', 'Full CRUD access for regions', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(65, 22, 2, 'Manage School Types', 'Full CRUD access for school types', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(66, 23, 2, 'Manage Schools', 'Full CRUD access for schools', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(67, 24, 2, 'Manage Subjects', 'Full CRUD access for subjects', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(68, 25, 2, 'Manage Courses', 'Full CRUD access for courses, units, videos, exams, questions, certificates and books', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(69, 26, 2, 'Manage Books', 'Full CRUD access for books and purchase requests', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(70, 27, 2, 'Manage Grades (Academic Years)', 'Full CRUD access for grades / academic years', '2026-08-30 13:04:02', '2026-08-30 13:04:02'),
+(71, 28, 2, 'Manage Course Categories', 'Full CRUD access for course categories', '2026-08-30 13:04:02', '2026-08-30 13:04:02');
 
 -- --------------------------------------------------------
 
@@ -3948,6 +4662,7 @@ CREATE TABLE `questions` (
   `course_id` bigint(20) UNSIGNED NOT NULL,
   `unit_id` bigint(20) UNSIGNED DEFAULT NULL,
   `question_type` enum('mcq','true_false','written') NOT NULL,
+  `order_num` int(11) NOT NULL DEFAULT 0,
   `score` decimal(8,2) NOT NULL DEFAULT 1.00,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -3961,127 +4676,133 @@ CREATE TABLE `questions` (
 -- Dumping data for table `questions`
 --
 
-INSERT INTO `questions` (`id`, `exam_id`, `course_id`, `unit_id`, `question_type`, `score`, `is_active`, `created_at`, `updated_at`, `subject_id`, `created_by_type`, `created_by_id`) VALUES
-(5001, 601, 201, 1003, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-12 14:28:02', 1, 'teacher', 201),
-(5002, 601, 201, 1003, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-12 14:29:43', 1, 'teacher', 1),
-(5003, 601, 201, 1003, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5004, 601, 201, 1003, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5005, 601, 201, 1003, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5006, 602, 202, 1006, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5007, 602, 202, 1006, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5008, 602, 202, 1006, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5009, 602, 202, 1006, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5010, 602, 202, 1006, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 1, 'admin', 1),
-(5011, 603, 203, 1009, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5012, 603, 203, 1009, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5013, 603, 203, 1009, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5014, 603, 203, 1009, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5015, 603, 203, 1009, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5016, 604, 204, 1012, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5017, 604, 204, 1012, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5018, 604, 204, 1012, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5019, 604, 204, 1012, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5020, 604, 204, 1012, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 2, 'admin', 1),
-(5021, 605, 205, 1015, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5022, 605, 205, 1015, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5023, 605, 205, 1015, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5024, 605, 205, 1015, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5025, 605, 205, 1015, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5026, 606, 206, 1018, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5027, 606, 206, 1018, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5028, 606, 206, 1018, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5029, 606, 206, 1018, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5030, 606, 206, 1018, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 3, 'admin', 1),
-(5031, 607, 207, 1021, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5032, 607, 207, 1021, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5033, 607, 207, 1021, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5034, 607, 207, 1021, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5035, 607, 207, 1021, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5036, 608, 208, 1024, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5037, 608, 208, 1024, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5038, 608, 208, 1024, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5039, 608, 208, 1024, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5040, 608, 208, 1024, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 4, 'admin', 1),
-(5041, 609, 209, 1027, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5042, 609, 209, 1027, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5043, 609, 209, 1027, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5044, 609, 209, 1027, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5045, 609, 209, 1027, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5046, 610, 210, 1030, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5047, 610, 210, 1030, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5048, 610, 210, 1030, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5049, 610, 210, 1030, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5050, 610, 210, 1030, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 5, 'admin', 1),
-(5051, 611, 211, 1033, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5052, 611, 211, 1033, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5053, 611, 211, 1033, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5054, 611, 211, 1033, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5055, 611, 211, 1033, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5056, 612, 212, 1036, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5057, 612, 212, 1036, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5058, 612, 212, 1036, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5059, 612, 212, 1036, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5060, 612, 212, 1036, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 6, 'admin', 1),
-(5061, 613, 213, 1039, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5062, 613, 213, 1039, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5063, 613, 213, 1039, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5064, 613, 213, 1039, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5065, 613, 213, 1039, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5066, 614, 214, 1042, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5067, 614, 214, 1042, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5068, 614, 214, 1042, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5069, 614, 214, 1042, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5070, 614, 214, 1042, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 7, 'admin', 1),
-(5071, 615, 215, 1045, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5072, 615, 215, 1045, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5073, 615, 215, 1045, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5074, 615, 215, 1045, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5075, 615, 215, 1045, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5076, 616, 216, 1048, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5077, 616, 216, 1048, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5078, 616, 216, 1048, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5079, 616, 216, 1048, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5080, 616, 216, 1048, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 8, 'admin', 1),
-(5081, 617, 217, 1051, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5082, 617, 217, 1051, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5083, 617, 217, 1051, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5084, 617, 217, 1051, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5085, 617, 217, 1051, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5086, 618, 218, 1054, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5087, 618, 218, 1054, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5088, 618, 218, 1054, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5089, 618, 218, 1054, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5090, 618, 218, 1054, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 9, 'admin', 1),
-(5091, 619, 219, 1057, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5092, 619, 219, 1057, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5093, 619, 219, 1057, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5094, 619, 219, 1057, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5095, 619, 219, 1057, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5096, 620, 220, 1060, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5097, 620, 220, 1060, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5098, 620, 220, 1060, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5099, 620, 220, 1060, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5100, 620, 220, 1060, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 10, 'admin', 1),
-(5101, 621, 221, 1063, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5102, 621, 221, 1063, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5103, 621, 221, 1063, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5104, 621, 221, 1063, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5105, 621, 221, 1063, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5106, 622, 222, 1066, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5107, 622, 222, 1066, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5108, 622, 222, 1066, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5109, 622, 222, 1066, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5110, 622, 222, 1066, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 11, 'admin', 1),
-(5111, 623, 223, 1069, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5112, 623, 223, 1069, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5113, 623, 223, 1069, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5114, 623, 223, 1069, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5115, 623, 223, 1069, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5116, 624, 224, 1072, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5117, 624, 224, 1072, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5118, 624, 224, 1072, 'mcq', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5119, 624, 224, 1072, 'true_false', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1),
-(5120, 624, 224, 1072, 'written', 2.00, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00', 15, 'admin', 1);
+INSERT INTO `questions` (`id`, `exam_id`, `course_id`, `unit_id`, `question_type`, `order_num`, `score`, `is_active`, `created_at`, `updated_at`, `subject_id`, `created_by_type`, `created_by_id`) VALUES
+(5001, 601, 201, 1003, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'teacher', 201),
+(5002, 601, 201, 1003, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'teacher', 1),
+(5003, 601, 201, 1003, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5004, 601, 201, 1003, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5005, 601, 201, 1003, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5006, 602, 202, 1006, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5007, 602, 202, 1006, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5008, 602, 202, 1006, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5009, 602, 202, 1006, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5010, 602, 202, 1006, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 1, 'admin', 1),
+(5011, 603, 203, 1009, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5012, 603, 203, 1009, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5013, 603, 203, 1009, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5014, 603, 203, 1009, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5015, 603, 203, 1009, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5016, 604, 204, 1012, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5017, 604, 204, 1012, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5018, 604, 204, 1012, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5019, 604, 204, 1012, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5020, 604, 204, 1012, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 2, 'admin', 1),
+(5021, 605, 205, 1015, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5022, 605, 205, 1015, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5023, 605, 205, 1015, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5024, 605, 205, 1015, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5025, 605, 205, 1015, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5026, 606, 206, 1018, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5027, 606, 206, 1018, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5028, 606, 206, 1018, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5029, 606, 206, 1018, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5030, 606, 206, 1018, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 3, 'admin', 1),
+(5031, 607, 207, 1021, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5032, 607, 207, 1021, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5033, 607, 207, 1021, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5034, 607, 207, 1021, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5035, 607, 207, 1021, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5036, 608, 208, 1024, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5037, 608, 208, 1024, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5038, 608, 208, 1024, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5039, 608, 208, 1024, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5040, 608, 208, 1024, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 4, 'admin', 1),
+(5041, 609, 209, 1027, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5042, 609, 209, 1027, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5043, 609, 209, 1027, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5044, 609, 209, 1027, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5045, 609, 209, 1027, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5046, 610, 210, 1030, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5047, 610, 210, 1030, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5048, 610, 210, 1030, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5049, 610, 210, 1030, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5050, 610, 210, 1030, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 5, 'admin', 1),
+(5051, 611, 211, 1033, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5052, 611, 211, 1033, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5053, 611, 211, 1033, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5054, 611, 211, 1033, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5055, 611, 211, 1033, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5056, 612, 212, 1036, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5057, 612, 212, 1036, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5058, 612, 212, 1036, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5059, 612, 212, 1036, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5060, 612, 212, 1036, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 6, 'admin', 1),
+(5061, 613, 213, 1039, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5062, 613, 213, 1039, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5063, 613, 213, 1039, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5064, 613, 213, 1039, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5065, 613, 213, 1039, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5066, 614, 214, 1042, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5067, 614, 214, 1042, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5068, 614, 214, 1042, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5069, 614, 214, 1042, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5070, 614, 214, 1042, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 7, 'admin', 1),
+(5071, 615, 215, 1045, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5072, 615, 215, 1045, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5073, 615, 215, 1045, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5074, 615, 215, 1045, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5075, 615, 215, 1045, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5076, 616, 216, 1048, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5077, 616, 216, 1048, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5078, 616, 216, 1048, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5079, 616, 216, 1048, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5080, 616, 216, 1048, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 8, 'admin', 1),
+(5081, 617, 217, 1051, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5082, 617, 217, 1051, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5083, 617, 217, 1051, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5084, 617, 217, 1051, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5085, 617, 217, 1051, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5086, 618, 218, 1054, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5087, 618, 218, 1054, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5088, 618, 218, 1054, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5089, 618, 218, 1054, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5090, 618, 218, 1054, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 9, 'admin', 1),
+(5091, 619, 219, 1057, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5092, 619, 219, 1057, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5093, 619, 219, 1057, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5094, 619, 219, 1057, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5095, 619, 219, 1057, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5096, 620, 220, 1060, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5097, 620, 220, 1060, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5098, 620, 220, 1060, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5099, 620, 220, 1060, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5100, 620, 220, 1060, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 10, 'admin', 1),
+(5101, 621, 221, 1063, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5102, 621, 221, 1063, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5103, 621, 221, 1063, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5104, 621, 221, 1063, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5105, 621, 221, 1063, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5106, 622, 222, 1066, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5107, 622, 222, 1066, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5108, 622, 222, 1066, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5109, 622, 222, 1066, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5110, 622, 222, 1066, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 11, 'admin', 1),
+(5111, 623, 223, 1069, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5112, 623, 223, 1069, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5113, 623, 223, 1069, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5114, 623, 223, 1069, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5115, 623, 223, 1069, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5116, 624, 224, 1072, 'mcq', 1, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5117, 624, 224, 1072, 'mcq', 2, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5118, 624, 224, 1072, 'mcq', 3, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5119, 624, 224, 1072, 'true_false', 4, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5120, 624, 224, 1072, 'written', 5, 2.00, 1, '2026-08-01 14:00:00', '2026-08-29 11:46:54', 15, 'admin', 1),
+(5123, 630, 224, NULL, 'mcq', 1, 1.00, 1, '2026-08-29 13:33:03', '2026-08-29 13:33:03', NULL, 'admin', 1),
+(5126, 631, 226, 1074, 'mcq', 2, 1.00, 1, '2026-08-29 14:10:02', '2026-08-29 14:28:41', NULL, 'admin', 1),
+(5127, 631, 226, 1074, 'mcq', 1, 1.00, 1, '2026-08-29 14:28:36', '2026-08-29 14:28:41', NULL, 'admin', 1),
+(5128, 632, 226, NULL, 'mcq', 1, 1.00, 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18', NULL, 'admin', 1),
+(5129, 632, 226, NULL, 'true_false', 2, 1.00, 1, '2026-08-29 14:45:45', '2026-08-29 14:45:45', NULL, 'admin', 1),
+(5130, 633, 228, 1075, 'mcq', 1, 1.00, 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07', NULL, 'admin', 1);
 
 -- --------------------------------------------------------
 
@@ -4343,7 +5064,19 @@ INSERT INTO `questions_translations` (`id`, `question_id`, `language_id`, `quest
 (12237, 5119, 1, 'المادة يمكن أن تتغير من حالة إلى أخرى.', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (12238, 5119, 2, 'Matter can change from one state to another.', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (12239, 5120, 1, 'اشرح مثالًا يوميًا على تحول الطاقة من صورة لأخرى.', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
-(12240, 5120, 2, 'Explain an everyday example of energy changing from one form to another.', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00');
+(12240, 5120, 2, 'Explain an everyday example of energy changing from one form to another.', 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
+(12241, 5123, 1, 'تيست', 1, '2026-08-29 13:33:03', '2026-08-29 13:33:03'),
+(12242, 5123, 2, 'تيست', 1, '2026-08-29 13:33:03', '2026-08-29 13:33:03'),
+(12247, 5126, 1, 'تيست', 1, '2026-08-29 14:10:02', '2026-08-29 14:10:02'),
+(12248, 5126, 2, 'تيست', 1, '2026-08-29 14:10:02', '2026-08-29 14:28:12'),
+(12251, 5127, 1, 'تيست تو', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(12252, 5127, 2, 'test2', 1, '2026-08-29 14:28:36', '2026-08-29 14:28:36'),
+(12253, 5128, 1, 'تيست', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(12254, 5128, 2, 'تيست', 1, '2026-08-29 14:42:18', '2026-08-29 14:42:18'),
+(12255, 5129, 1, 'تيست123', 1, '2026-08-29 14:45:45', '2026-08-29 14:45:45'),
+(12256, 5129, 2, 'test123', 1, '2026-08-29 14:45:45', '2026-08-29 14:45:45'),
+(12257, 5130, 1, '1', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07'),
+(12258, 5130, 2, '1', 1, '2026-09-05 22:24:07', '2026-09-05 22:24:07');
 
 -- --------------------------------------------------------
 
@@ -4905,14 +5638,6 @@ INSERT INTO `session_attendance` (`id`, `session_id`, `student_id`, `session_dat
 (1118, 115, 1034, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
 (1119, 115, 1035, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
 (1120, 115, 1036, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1121, 116, 1031, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1122, 116, 1032, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1123, 116, 1033, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1124, 116, 1034, '2026-08-10', 'absent', 208, '2026-08-10 19:00:00'),
-(1125, 116, 1035, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1126, 116, 1036, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1127, 116, 1037, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
-(1128, 116, 1038, '2026-08-10', 'present', 208, '2026-08-10 19:00:00'),
 (1129, 117, 1033, '2026-08-10', 'present', 209, '2026-08-10 19:00:00'),
 (1130, 117, 1034, '2026-08-10', 'present', 209, '2026-08-10 19:00:00'),
 (1131, 117, 1035, '2026-08-10', 'absent', 209, '2026-08-10 19:00:00'),
@@ -4929,54 +5654,6 @@ INSERT INTO `session_attendance` (`id`, `session_id`, `student_id`, `session_dat
 (1142, 118, 1040, '2026-08-10', 'present', 209, '2026-08-10 19:00:00'),
 (1143, 118, 1041, '2026-08-10', 'present', 209, '2026-08-10 19:00:00'),
 (1144, 118, 1042, '2026-08-10', 'present', 209, '2026-08-10 19:00:00'),
-(1145, 119, 1037, '2026-08-10', 'absent', 210, '2026-08-10 19:00:00'),
-(1146, 119, 1038, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1147, 119, 1039, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1148, 119, 1040, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1149, 119, 1041, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1150, 119, 1042, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1151, 119, 1043, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1152, 119, 1044, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1153, 120, 1039, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1154, 120, 1040, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1155, 120, 1041, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1156, 120, 1042, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1157, 120, 1043, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1158, 120, 1044, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1159, 120, 1045, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1160, 120, 1046, '2026-08-10', 'present', 210, '2026-08-10 19:00:00'),
-(1161, 121, 1041, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1162, 121, 1042, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1163, 121, 1043, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1164, 121, 1044, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1165, 121, 1045, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1166, 121, 1046, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1167, 121, 1047, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1168, 121, 1048, '2026-08-10', 'absent', 211, '2026-08-10 19:00:00'),
-(1169, 122, 1043, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1170, 122, 1044, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1171, 122, 1045, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1172, 122, 1046, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1173, 122, 1047, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1174, 122, 1048, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1175, 122, 1049, '2026-08-10', 'absent', 211, '2026-08-10 19:00:00'),
-(1176, 122, 1050, '2026-08-10', 'present', 211, '2026-08-10 19:00:00'),
-(1177, 123, 1045, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1178, 123, 1046, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1179, 123, 1047, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1180, 123, 1048, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1181, 123, 1049, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1182, 123, 1050, '2026-08-10', 'absent', 212, '2026-08-10 19:00:00'),
-(1183, 123, 1051, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1184, 123, 1052, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1185, 124, 1047, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1186, 124, 1048, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1187, 124, 1049, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1188, 124, 1050, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1189, 124, 1051, '2026-08-10', 'absent', 212, '2026-08-10 19:00:00'),
-(1190, 124, 1052, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1191, 124, 1053, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
-(1192, 124, 1054, '2026-08-10', 'present', 212, '2026-08-10 19:00:00'),
 (1193, 101, 1001, '2026-08-15', 'present', 201, '2026-08-12 22:46:02'),
 (1194, 101, 1049, '2026-08-15', 'present', 201, '2026-08-12 22:46:02'),
 (1195, 101, 1001, '2026-08-17', 'present', 201, '2026-08-13 10:45:22'),
@@ -4985,7 +5662,8 @@ INSERT INTO `session_attendance` (`id`, `session_id`, `student_id`, `session_dat
 (1201, 101, 1001, '2026-08-13', 'present', 201, '2026-08-13 12:23:24'),
 (1202, 101, 1025, '2026-08-13', 'present', 201, '2026-08-13 12:23:24'),
 (1203, 101, 1049, '2026-08-13', 'present', 201, '2026-08-13 12:23:24'),
-(1204, 102, 1049, '2026-08-17', 'present', 201, '2026-08-13 12:27:04');
+(1204, 102, 1049, '2026-08-17', 'present', 201, '2026-08-13 12:27:04'),
+(1206, 102, 1049, '2026-08-31', 'present', 201, '2026-08-30 09:57:27');
 
 -- --------------------------------------------------------
 
@@ -5012,19 +5690,6 @@ CREATE TABLE `session_files` (
 --
 
 INSERT INTO `session_files` (`id`, `session_id`, `uploaded_by_type`, `uploaded_by_id`, `file_type`, `title`, `description`, `file_path`, `original_name`, `is_active`, `created_at`) VALUES
-(1, 1, 'teacher', 1, 'explanation', 'ملف شرح - الكيمياء العضوية الجزء الأول', 'ملف PDF يحتوي على شرح مفصل للمركبات العضوية', 'uploads/session-files/chem_explanation_01.pdf', 'chem_explanation_01.pdf', 1, '2026-08-12 11:58:38'),
-(2, 1, 'teacher', 1, 'homework', 'واجب الكيمياء - الأسبوع الأول', 'حل التمارين من 1 إلى 15 من الكتاب المدرسي', 'uploads/session-files/chem_homework_01.pdf', 'chem_homework_01.pdf', 1, '2026-08-12 11:58:38'),
-(3, 2, 'teacher', 1, 'explanation', 'ملف شرح - التفاعلات الكيميائية', 'ملخص شامل لأنواع التفاعلات الكيميائية', 'uploads/session-files/chem_reactions.pdf', 'chem_reactions.pdf', 1, '2026-08-12 11:58:38'),
-(4, 1, 'teacher', 1, 'exam', 'امتحان تجريبي - الكيمياء العضوية', 'امتحان شامل على الوحدة الأولى بالكامل', 'uploads/session-files/chem_exam_01.pdf', 'chem_exam_01.pdf', 1, '2026-08-12 11:58:38'),
-(5, 1, 'teacher', 1, 'task', 'مهمة بحثية - المركبات الكربونية', 'اكتب ملخصاً عن استخدامات المركبات الكربونية في الحياة اليومية', 'uploads/session-files/chem_task_01.pdf', 'chem_task_01.pdf', 1, '2026-08-12 11:58:38'),
-(6, 4, 'teacher', 2, 'explanation', 'ملف شرح - قوانين نيوتن', 'شرح مفصل لقوانين الحركة الثلاثة', 'uploads/session-files/phys_newton.pdf', 'phys_newton.pdf', 1, '2026-08-12 11:58:38'),
-(7, 4, 'teacher', 2, 'homework', 'واجب الفيزياء - الأسبوع الأول', 'حل مسائل الحركة المستقيمة المنتظمة', 'uploads/session-files/phys_homework_01.pdf', 'phys_homework_01.pdf', 1, '2026-08-12 11:58:38'),
-(8, 5, 'teacher', 2, 'exam', 'اختبار قصير - قوانين نيوتن', 'اختبار 10 أسئلة على قوانين الحركة', 'uploads/session-files/phys_quiz_01.pdf', 'phys_quiz_01.pdf', 1, '2026-08-12 11:58:38'),
-(9, 6, 'teacher', 3, 'explanation', 'ملف شرح - التفاضل والتكامل', 'مقدمة في التفاضل مع أمثلة محلولة', 'uploads/session-files/math_calculus.pdf', 'math_calculus.pdf', 1, '2026-08-12 11:58:38'),
-(10, 6, 'teacher', 3, 'homework', 'واجب الرياضيات - الأسبوع الأول', 'احسب المشتقات للدوال التالية', 'uploads/session-files/math_homework_01.pdf', 'math_homework_01.pdf', 1, '2026-08-12 11:58:38'),
-(11, 7, 'admin', 1, 'task', 'مهمة جماعية - تطبيقات التفاضل', 'مهمة جماعية لحل مسائل تطبيقية على التفاضل', 'uploads/session-files/math_group_task.pdf', 'math_group_task.pdf', 1, '2026-08-12 11:58:38'),
-(12, 8, 'teacher', 4, 'explanation', 'ملف شرح - الخلية الحيوانية', 'صور ورسوم توضيحية لأجزاء الخلية الحيوانية', 'uploads/session-files/bio_cell.pdf', 'bio_cell.pdf', 1, '2026-08-12 11:58:38'),
-(13, 9, 'teacher', 5, 'homework', 'واجب اللغة العربية - الأسبوع الأول', 'تحليل نص أدبي من اختيارك بالأساليب البلاغية', 'uploads/session-files/arabic_homework_01.pdf', 'arabic_homework_01.pdf', 1, '2026-08-12 11:58:38'),
 (14, 101, 'teacher', 6, 'explanation', 'Grammar Notes - Present Perfect Tense', 'Detailed notes on present perfect with examples', 'uploads/session-files/eng_grammar_01.pdf', 'eng_grammar_01.pdf', 1, '2026-08-12 11:58:38'),
 (15, 101, 'teacher', 6, 'exam', 'Grammar Quiz - Present Perfect', 'Multiple choice quiz on present perfect tense', 'uploads/session-files/eng_quiz_01.pdf', 'eng_quiz_01.pdf', 1, '2026-08-12 11:58:38'),
 (16, 101, 'teacher', 201, 'exam', 'عهخع', 'هخعخهع', 'uploads/session-files/doc_6a7db74e2dcff3.93012594.pdf', 'Portfolio_02.png', 1, '2026-08-13 12:23:42'),
@@ -5057,15 +5722,6 @@ CREATE TABLE `session_file_submissions` (
 --
 
 INSERT INTO `session_file_submissions` (`id`, `session_file_id`, `student_id`, `file_path`, `original_name`, `note`, `status`, `grade`, `teacher_feedback`, `graded_by_id`, `graded_at`, `created_at`, `updated_at`) VALUES
-(1, 2, 1025, 'uploads/session-submissions/student1_chem_hw1.pdf', 'student1_chem_hw1.pdf', 'حليت كل التمارين إلا رقم 12 لأنني لم أفهمه جيداً', 'graded', 85.00, 'أداء جيد جداً، مراجعة التمرين 12 مطلوبة', 1, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 12:05:59'),
-(2, 2, 2, 'uploads/session-submissions/student2_chem_hw1.pdf', 'student2_chem_hw1.pdf', 'حليت جميع التمارين', 'graded', 95.00, 'ممتاز! حل مثالي وخطوات واضحة', 1, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
-(3, 2, 3, 'uploads/session-submissions/student3_chem_hw1.pdf', 'student3_chem_hw1.pdf', NULL, 'pending', NULL, NULL, NULL, NULL, '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
-(4, 4, 1025, 'student1025@example.com', 'student1025@example.com', '', 'pending', 78.00, 'جيد، تحتاج مراجعة الجزء الثالث', 1, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 13:01:18'),
-(5, 4, 2, 'uploads/session-submissions/student2_chem_exam1.pdf', 'student2_chem_exam1.pdf', NULL, 'pending', NULL, NULL, NULL, NULL, '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
-(6, 7, 1025, 'uploads/session-submissions/student1_phys_hw1.pdf', 'student1_phys_hw1.pdf', 'صعبت علي مسألة رقم 5', 'graded', 70.00, 'تحتاج تدريب أكثر على قانون نيوتن الثاني', 2, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 12:06:15'),
-(7, 7, 2, 'uploads/session-submissions/student2_phys_hw1.pdf', 'student2_phys_hw1.pdf', 'حليت كل الأسئلة وأضفت حلاً بديلاً للمسألة الأخيرة', 'graded', 100.00, 'ممتاز! أفضل حل في الفصل', 2, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
-(8, 10, 1025, 'uploads/session-submissions/student1_math_hw1.pdf', 'student1_math_hw1.pdf', NULL, 'pending', NULL, NULL, NULL, NULL, '2026-08-12 11:58:38', '2026-08-12 12:06:17'),
-(9, 13, 3, 'uploads/session-submissions/student3_arabic_hw1.pdf', 'student3_arabic_hw1.pdf', 'اخترت قصيدة المتنبي لتحليلها', 'pending', NULL, NULL, NULL, NULL, '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
 (10, 15, 2, 'uploads/session-submissions/student2_eng_quiz1.pdf', 'student2_eng_quiz1.pdf', 'I studied all the examples from the notes', 'graded', 88.00, 'Very good work! Minor errors in question 7', 6, '2026-08-12 11:58:38', '2026-08-12 11:58:38', '2026-08-12 11:58:38'),
 (11, 15, 1025, 'https://example.com/my-solution.pdf', 'my-solution.pdf', 'هذا حل التمرين كامل', 'graded', 90.00, 'تيست', 201, '2026-08-12 23:10:49', '2026-08-12 12:58:42', '2026-08-12 23:10:49');
 
@@ -5110,7 +5766,8 @@ INSERT INTO `session_reschedule_requests` (`id`, `session_id`, `teacher_id`, `re
 (110, 102, 201, 'student', 1049, 'Monday', '17:00:00', '18:00:00', 'تيستتتت', 'rejected', '', 'teacher', 201, '2026-08-15 13:06:17', '2026-08-15 13:16:00'),
 (111, 102, 201, 'teacher', 201, 'Sunday', '13:00:00', '14:00:00', 'Dff', 'pending', NULL, NULL, NULL, '2026-08-15 13:51:58', NULL),
 (112, 102, 201, 'teacher', 201, 'Monday', '11:00:00', '12:00:00', 'تعارض', 'pending', NULL, NULL, NULL, '2026-08-16 08:24:16', NULL),
-(113, 2, 1, 'student', 1001, 'Tuesday', '09:00:00', '10:30:00', '1234', 'pending', NULL, NULL, NULL, '2026-08-25 11:53:53', NULL);
+(114, 126, 201, 'teacher', 201, 'Wednesday', '14:18:00', '04:18:00', 'تيست', 'pending', NULL, NULL, NULL, '2026-08-31 08:19:47', NULL),
+(115, 126, 201, 'teacher', 201, 'Wednesday', '17:18:00', '07:18:00', 'test', 'approved', '', 'admin', NULL, '2026-08-31 08:20:21', '2026-08-31 08:20:45');
 
 -- --------------------------------------------------------
 
@@ -5251,7 +5908,7 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `school_id`, `city_id`, `referred_by_student_id`, `affiliate_code`, `points_balance`, `study_language`, `name`, `age`, `phone`, `email`, `password`, `image`, `is_email_verified`, `is_active`, `created_at`, `updated_at`, `fcm_token`, `academic_year_id`) VALUES
-(1001, 1, 1, NULL, 'NAJEH-STU-1001', 80.00, 'english', 'أحمد', 14, '01099998888', 'student1001@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-26 09:10:10', 'fd7eFyMMSCqssBAkLklQMj:APA91bHIeNkVUtdj9DYT4khqj7B8vtFDJzTKzhvQhLNKLtzXiMSaQ_jry9Ks6uRbp99POkKYIwqNVefdyavKKYHnQ3bi3fXA9y_xv-xQY6hThmRQHPvuHXY', NULL),
+(1001, 1, 1, NULL, 'NAJEH-STU-1001', 80.00, 'english', 'أحمد', 14, '01099998888', 'student1001@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-09-07 23:16:14', 'dWN1xbUK9t5O34qd4mA79d:APA91bHYbXcDugcmWjzdn9u5ZylubMhdkrw_uiXPN4tFT_oEKNxi2pA7YlAXukQ6dbj5iMMLr8CYz36_h0hpyG0yiOsU8X4dVdnNGE4wYmIqP4BSCca9nBU', NULL),
 (1002, 2, 2, NULL, 'NAJEH-STU-1002', 0.00, 'english', 'مريم إبراهيم عبد الله', 15, '01077001002', 'student1002@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=43', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1003, 3, 3, NULL, 'NAJEH-STU-1003', 0.00, 'english', 'عمر طارق السيد', 16, '01077001003', 'student1003@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=44', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1004, 4, 4, NULL, 'NAJEH-STU-1004', 0.00, 'english', 'سلمى أحمد سعيد', 17, '01077001004', 'student1004@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=45', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
@@ -5275,7 +5932,7 @@ INSERT INTO `students` (`id`, `school_id`, `city_id`, `referred_by_student_id`, 
 (1022, 2, 11, NULL, 'NAJEH-STU-1022', 0.00, 'english', 'روان إبراهيم عبد الله', 15, '01077001022', 'student1022@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=3', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1023, 3, 1, NULL, 'NAJEH-STU-1023', 0.00, 'english', 'ياسين طارق السيد', 16, '01077001023', 'student1023@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=4', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1024, 4, 2, NULL, 'NAJEH-STU-1024', 0.00, 'english', 'فرح أحمد سعيد', 17, '01077001024', 'student1024@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=5', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
-(1025, 4, 9, NULL, 'NAJEH-STU-1025', 0.00, 'english', 'أحمد محمود', 18, '01099998888', 'student1025@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=10', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', 'fPdydHRRRe-Tz0xPn3LGRa:APA91bGpGyk_TA1fE-QoaCtYRbAPB0m1j7IejtJuq73gQAGq-Dye5vgyR1BhQ38ikB67YoH5-6koTLcfL2P8KpB2QwM7tBFWEPDU55Yc9PAA34cvgEb2bok', NULL),
+(1025, 4, 7, NULL, 'NAJEH-STU-1025', 0.00, 'english', 'أحمد محمود', 18, '01099998888', 'student1025@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'uploads/avatars/img_6a9695ab92dc21.90325953.jpg', 1, 1, '2026-06-01 13:00:00', '2026-09-06 10:05:25', 'eX8ak1maRYGc1BO_6W57ps:APA91bEXxrEsO0kqad0f3wZIaBITOvbzUkxQPZ9sLYRyTHRDzatzffgU54-TvzVOKj_xGoernpCKvPeNERbSp9BjjnVWA1KiUEI2g1WzDEYX8MW-8cp1DI4', 5),
 (1026, 6, 4, NULL, 'NAJEH-STU-1026', 0.00, 'english', 'شهد عماد حسن', 14, '01077001026', 'student1026@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=7', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1027, 7, 5, NULL, 'NAJEH-STU-1027', 0.00, 'english', 'حمزة جمال فتحي', 15, '01077001027', 'student1027@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=8', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1028, 8, 6, NULL, 'NAJEH-STU-1028', 0.00, 'english', 'لارا خالد علي', 16, '01077001028', 'student1028@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'https://i.pravatar.cc/300?img=9', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
@@ -5313,7 +5970,9 @@ INSERT INTO `students` (`id`, `school_id`, `city_id`, `referred_by_student_id`, 
 (1060, 10, 5, NULL, 'NAJEH-STU-1060', 0.00, 'english', 'منة أحمد صبري', 18, '01077001060', 'student1060@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', 'uploads/avatars/img_6a79d43bec99a7.02642927.webp', 1, 1, '2026-06-01 13:00:00', '2026-08-26 12:20:55', NULL, NULL),
 (1062, NULL, NULL, 1001, 'NAJEH-STU-1062', 0.00, 'english', 'Ahmed Mohamed', NULL, '01012345678', 'ahmed.student2@example.com', '$2y$10$lGvcx1x0jfjbeUKjMQV4ROPrP91I9I48wBjKpBhQ/b.rUHdmsMxIm', NULL, 1, 1, '2026-08-19 15:32:10', '2026-08-26 12:20:55', NULL, NULL),
 (1063, 6, 10, NULL, 'NAJEH-STU-1063', 0.00, 'english', 'Mohammad', 24, '01093413220', 'maldb0907@gmail.com', '$2y$10$1TbPoUV0arwVjHiTuRzyve2nhAmVcRUXB6kaIYGZOC12bzTOfkbRC', NULL, 0, 1, '2026-08-20 13:37:27', '2026-08-20 13:37:27', NULL, NULL),
-(1065, 9, 8, 1001, 'NAJEH-STU-1065', 0.00, 'english', 'عمر طلعت', 18, '01098476530', 'omartalaat1276@gmail.com', '$2y$10$latrUEfpCty8IdOgKFAvsOxv52YlSJGdIoj8QaZr4DcOE4tk9XEjK', NULL, 1, 1, '2026-08-26 08:51:31', '2026-08-26 08:51:47', NULL, 7);
+(1065, 9, 8, 1001, 'NAJEH-STU-1065', 0.00, 'english', 'عمر طلعت', 18, '01098476530', 'omartalaat1276@gmail.com', '$2y$10$latrUEfpCty8IdOgKFAvsOxv52YlSJGdIoj8QaZr4DcOE4tk9XEjK', NULL, 1, 1, '2026-08-26 08:51:31', '2026-09-08 09:30:19', 'fVryNlxTnAfGpup94xqbj1:APA91bFWmj5hdzRqZFskhOrPWd5RP_uIx_pib7dqHXKKmgaYcgT1uS2AT4ih7Q74zDHAs9C7Lga3mzdzc-qgqDnK3GU4I5F1JUj_KpNq6KwmjgMTNYtf3aU', 7),
+(1066, NULL, 3, NULL, 'NAJEH-STU-1066', 0.00, 'english', 'Omar Talaat', NULL, '01098476530', 'talaato312@gmail.com', '$2y$10$HXfsqD6p2Cw0mMUVlOW9y.DNynSNhvp4wHkiAVQMZ7ZoNIqbUBMaG', NULL, 1, 1, '2026-09-01 09:47:51', '2026-09-01 09:48:18', NULL, 12),
+(1067, NULL, NULL, NULL, NULL, 0.00, 'arabic', 'باسم حسن', 22, '+20 111 111 111 111 11', 'bassemnabil11111@gmail.com', '$2y$10$tlGLXPW2AB3vASZNkvc3mOzCPJHtU02e43gUzgq8E7kYjcxxemMwW', '', 1, 1, '2026-09-05 01:07:14', '2026-09-05 01:07:14', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -5356,13 +6015,12 @@ CREATE TABLE `student_book_purchase_requests` (
 --
 
 INSERT INTO `student_book_purchase_requests` (`id`, `student_id`, `book_id`, `status`, `reviewed_by_type`, `reviewed_by_id`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 1025, 424, 'pending', NULL, NULL, NULL, '2026-08-11 13:05:48', '2026-08-11 13:05:48'),
-(2, 1025, 403, 'pending', NULL, NULL, NULL, '2026-08-11 13:17:05', '2026-08-11 13:17:05'),
-(3, 1025, 401, 'pending', NULL, NULL, NULL, '2026-08-11 13:18:24', '2026-08-12 14:12:41'),
-(4, 1025, 405, 'pending', NULL, NULL, 'تيست', '2026-08-11 13:21:31', '2026-08-12 14:12:16'),
-(6, 1001, 431, 'pending', NULL, NULL, NULL, '2026-08-13 00:09:08', '2026-08-13 00:09:08'),
-(7, 1049, 415, 'pending', NULL, NULL, NULL, '2026-08-13 00:12:50', '2026-08-13 00:12:50'),
-(8, 1001, 401, 'pending', NULL, NULL, NULL, '2026-08-20 13:27:27', '2026-08-20 13:27:27');
+(1, 1025, 424, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-11 13:05:48', '2026-08-29 09:16:39'),
+(2, 1025, 403, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-11 13:17:05', '2026-08-29 09:16:39'),
+(3, 1025, 401, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-11 13:18:24', '2026-08-29 09:16:39'),
+(4, 1025, 405, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-11 13:21:31', '2026-08-29 09:16:39'),
+(7, 1049, 415, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-13 00:12:50', '2026-08-29 09:16:39'),
+(8, 1001, 401, 'rejected', 'admin', NULL, 'Auto-rejected: this book is bundled with its course/unit and does not require a separate purchase.', '2026-08-20 13:27:27', '2026-08-29 09:16:39');
 
 -- --------------------------------------------------------
 
@@ -5620,7 +6278,18 @@ INSERT INTO `student_question_answers` (`id`, `student_id`, `question_id`, `unit
 (20119, 1060, 5056, 1036, 212, 10133, NULL, NULL, 1, 2.00, '2026-08-06 17:05:00'),
 (20120, 1060, 5057, 1036, 212, 10138, NULL, NULL, 0, 0.00, '2026-08-06 17:09:00'),
 (20121, 1025, 5001, 1003, 201, 2, NULL, '', 0, 0.00, '2026-08-17 08:28:25'),
-(20122, 1025, 5001, 1003, 201, 2, NULL, '', 0, 0.00, '2026-08-17 08:29:27');
+(20122, 1025, 5001, 1003, 201, 2, NULL, '', 0, 0.00, '2026-08-17 08:29:27'),
+(20123, 1001, 5127, 1074, 226, 10294, NULL, '', 0, 0.00, '2026-08-29 14:28:56'),
+(20124, 1001, 5126, 1074, 226, 10291, NULL, '', 0, 0.00, '2026-08-29 14:29:02'),
+(20125, 1001, 5127, 1074, 226, 10294, NULL, '', 0, 0.00, '2026-08-29 14:35:23'),
+(20126, 1001, 5127, 1074, 226, 10294, NULL, '', 0, 0.00, '2026-08-29 14:35:28'),
+(20127, 1001, 5127, 1074, 226, 10295, NULL, '', 1, 1.00, '2026-08-29 14:36:04'),
+(20128, 1001, 5127, 1074, 226, 10296, NULL, '', 0, 0.00, '2026-08-29 14:36:09'),
+(20129, 1001, 5127, 1074, 226, 10295, NULL, '', 1, 1.00, '2026-08-29 14:36:58'),
+(20130, 1001, 5126, 1074, 226, 10289, NULL, '', 1, 1.00, '2026-08-29 14:37:04'),
+(20131, 1001, 5127, 1074, 226, 10296, NULL, '', 0, 0.00, '2026-08-29 14:37:32'),
+(20132, 1001, 5126, 1074, 226, 10292, NULL, '', 0, 0.00, '2026-08-29 14:37:38'),
+(20133, 1001, 5130, 1075, 228, 10302, NULL, '', 0, 0.00, '2026-09-08 03:02:14');
 
 -- --------------------------------------------------------
 
@@ -5652,11 +6321,14 @@ INSERT INTO `student_referrals` (`id`, `referrer_student_id`, `referred_student_
 
 CREATE TABLE `student_reports` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `sender_type` enum('teacher','admin') NOT NULL DEFAULT 'teacher',
+  `sender_type` enum('teacher','admin','system') NOT NULL DEFAULT 'teacher',
   `admin_id` bigint(20) UNSIGNED DEFAULT NULL,
   `teacher_id` bigint(20) UNSIGNED DEFAULT NULL,
   `student_id` bigint(20) UNSIGNED NOT NULL,
   `subject_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `course_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `session_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `exam_attempt_id` bigint(20) UNSIGNED DEFAULT NULL,
   `report_type` enum('academic_performance','behavior_discipline','exam_result','attendance') NOT NULL DEFAULT 'academic_performance',
   `term` varchar(100) DEFAULT NULL,
   `score` decimal(5,2) DEFAULT NULL,
@@ -5676,68 +6348,70 @@ CREATE TABLE `student_reports` (
 -- Dumping data for table `student_reports`
 --
 
-INSERT INTO `student_reports` (`id`, `sender_type`, `admin_id`, `teacher_id`, `student_id`, `subject_id`, `report_type`, `term`, `score`, `max_score`, `grade_label`, `percentage`, `title`, `description`, `strengths`, `improvements`, `report_date`, `rating`, `created_at`) VALUES
-(101, 'teacher', NULL, 201, 1001, 201, 'academic_performance', 'الفصل الدراسي الأول', 70.00, 100.00, 'جيد', 70.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(102, 'teacher', NULL, 201, 1002, 1, 'exam_result', 'الفصل الدراسي الأول', 77.00, 100.00, 'جيد جدًا', 77.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(103, 'teacher', NULL, 202, 1003, 2, 'attendance', 'الفصل الدراسي الأول', 84.00, 100.00, 'جيد جدًا', 84.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(104, 'teacher', NULL, 202, 1004, 2, 'behavior_discipline', 'الفصل الدراسي الأول', 91.00, 100.00, 'ممتاز', 91.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(105, 'teacher', NULL, 203, 1005, 3, 'academic_performance', 'الفصل الدراسي الأول', 98.00, 100.00, 'ممتاز', 98.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(106, 'teacher', NULL, 203, 1006, 3, 'exam_result', 'الفصل الدراسي الأول', 74.00, 100.00, 'جيد', 74.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(107, 'teacher', NULL, 204, 1007, 4, 'attendance', 'الفصل الدراسي الأول', 81.00, 100.00, 'جيد جدًا', 81.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(108, 'teacher', NULL, 204, 1008, 4, 'behavior_discipline', 'الفصل الدراسي الأول', 88.00, 100.00, 'ممتاز', 88.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(109, 'teacher', NULL, 205, 1009, 5, 'academic_performance', 'الفصل الدراسي الأول', 95.00, 100.00, 'ممتاز', 95.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(110, 'teacher', NULL, 205, 1010, 5, 'exam_result', 'الفصل الدراسي الأول', 71.00, 100.00, 'جيد', 71.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(111, 'teacher', NULL, 206, 1011, 6, 'attendance', 'الفصل الدراسي الأول', 78.00, 100.00, 'جيد جدًا', 78.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(112, 'teacher', NULL, 206, 1012, 6, 'behavior_discipline', 'الفصل الدراسي الأول', 85.00, 100.00, 'ممتاز', 85.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(113, 'teacher', NULL, 207, 1013, 7, 'academic_performance', 'الفصل الدراسي الأول', 92.00, 100.00, 'ممتاز', 92.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(114, 'teacher', NULL, 207, 1014, 7, 'exam_result', 'الفصل الدراسي الأول', 99.00, 100.00, 'ممتاز', 99.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(115, 'teacher', NULL, 208, 1015, 8, 'attendance', 'الفصل الدراسي الأول', 75.00, 100.00, 'جيد جدًا', 75.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(116, 'teacher', NULL, 208, 1016, 8, 'behavior_discipline', 'الفصل الدراسي الأول', 82.00, 100.00, 'جيد جدًا', 82.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(117, 'teacher', NULL, 209, 1017, 9, 'academic_performance', 'الفصل الدراسي الأول', 89.00, 100.00, 'ممتاز', 89.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(118, 'teacher', NULL, 209, 1018, 9, 'exam_result', 'الفصل الدراسي الأول', 96.00, 100.00, 'ممتاز', 96.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(119, 'teacher', NULL, 210, 1019, 10, 'attendance', 'الفصل الدراسي الأول', 72.00, 100.00, 'جيد', 72.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(120, 'teacher', NULL, 210, 1020, 10, 'behavior_discipline', 'الفصل الدراسي الأول', 79.00, 100.00, 'جيد جدًا', 79.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(121, 'teacher', NULL, 211, 1021, 11, 'academic_performance', 'الفصل الدراسي الأول', 86.00, 100.00, 'ممتاز', 86.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(122, 'teacher', NULL, 211, 1022, 11, 'exam_result', 'الفصل الدراسي الأول', 93.00, 100.00, 'ممتاز', 93.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(123, 'teacher', NULL, 212, 1023, 15, 'attendance', 'الفصل الدراسي الأول', 100.00, 100.00, 'ممتاز', 100.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(124, 'teacher', NULL, 212, 1024, 15, 'behavior_discipline', 'الفصل الدراسي الأول', 76.00, 100.00, 'جيد جدًا', 76.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(125, 'teacher', NULL, 201, 1025, 1, 'academic_performance', 'الفصل الدراسي الأول', 83.00, 100.00, 'جيد جدًا', 83.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(126, 'teacher', NULL, 201, 1026, 1, 'exam_result', 'الفصل الدراسي الأول', 90.00, 100.00, 'ممتاز', 90.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(127, 'teacher', NULL, 202, 1027, 2, 'attendance', 'الفصل الدراسي الأول', 97.00, 100.00, 'ممتاز', 97.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(128, 'teacher', NULL, 202, 1028, 2, 'behavior_discipline', 'الفصل الدراسي الأول', 73.00, 100.00, 'جيد', 73.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(129, 'teacher', NULL, 203, 1029, 3, 'academic_performance', 'الفصل الدراسي الأول', 80.00, 100.00, 'جيد جدًا', 80.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(130, 'teacher', NULL, 203, 1030, 3, 'exam_result', 'الفصل الدراسي الأول', 87.00, 100.00, 'ممتاز', 87.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(131, 'teacher', NULL, 204, 1031, 4, 'attendance', 'الفصل الدراسي الأول', 94.00, 100.00, 'ممتاز', 94.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(132, 'teacher', NULL, 204, 1032, 4, 'behavior_discipline', 'الفصل الدراسي الأول', 70.00, 100.00, 'جيد', 70.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(133, 'teacher', NULL, 205, 1033, 5, 'academic_performance', 'الفصل الدراسي الأول', 77.00, 100.00, 'جيد جدًا', 77.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(134, 'teacher', NULL, 205, 1034, 5, 'exam_result', 'الفصل الدراسي الأول', 84.00, 100.00, 'جيد جدًا', 84.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(135, 'teacher', NULL, 206, 1035, 6, 'attendance', 'الفصل الدراسي الأول', 91.00, 100.00, 'ممتاز', 91.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(136, 'teacher', NULL, 206, 1036, 6, 'behavior_discipline', 'الفصل الدراسي الأول', 98.00, 100.00, 'ممتاز', 98.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(137, 'teacher', NULL, 207, 1037, 7, 'academic_performance', 'الفصل الدراسي الأول', 74.00, 100.00, 'جيد', 74.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(138, 'teacher', NULL, 207, 1038, 7, 'exam_result', 'الفصل الدراسي الأول', 81.00, 100.00, 'جيد جدًا', 81.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(139, 'teacher', NULL, 208, 1039, 8, 'attendance', 'الفصل الدراسي الأول', 88.00, 100.00, 'ممتاز', 88.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(140, 'teacher', NULL, 208, 1040, 8, 'behavior_discipline', 'الفصل الدراسي الأول', 95.00, 100.00, 'ممتاز', 95.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(141, 'teacher', NULL, 209, 1041, 9, 'academic_performance', 'الفصل الدراسي الأول', 71.00, 100.00, 'جيد', 71.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(142, 'teacher', NULL, 209, 1042, 9, 'exam_result', 'الفصل الدراسي الأول', 78.00, 100.00, 'جيد جدًا', 78.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(143, 'teacher', NULL, 210, 1043, 10, 'attendance', 'الفصل الدراسي الأول', 85.00, 100.00, 'ممتاز', 85.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(144, 'teacher', NULL, 210, 1044, 10, 'behavior_discipline', 'الفصل الدراسي الأول', 92.00, 100.00, 'ممتاز', 92.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(145, 'teacher', NULL, 211, 1045, 11, 'academic_performance', 'الفصل الدراسي الأول', 99.00, 100.00, 'ممتاز', 99.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(146, 'teacher', NULL, 211, 1046, 11, 'exam_result', 'الفصل الدراسي الأول', 75.00, 100.00, 'جيد جدًا', 75.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(147, 'teacher', NULL, 212, 1047, 15, 'attendance', 'الفصل الدراسي الأول', 82.00, 100.00, 'جيد جدًا', 82.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(148, 'teacher', NULL, 212, 1048, 15, 'behavior_discipline', 'الفصل الدراسي الأول', 89.00, 100.00, 'ممتاز', 89.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(149, 'teacher', NULL, 201, 1049, 1, 'academic_performance', 'الفصل الدراسي الأول', 96.00, 100.00, 'ممتاز', 96.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(150, 'teacher', NULL, 201, 1050, 1, 'exam_result', 'الفصل الدراسي الأول', 72.00, 100.00, 'جيد', 72.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(151, 'teacher', NULL, 202, 1051, 2, 'attendance', 'الفصل الدراسي الأول', 79.00, 100.00, 'جيد جدًا', 79.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(152, 'teacher', NULL, 202, 1052, 2, 'behavior_discipline', 'الفصل الدراسي الأول', 86.00, 100.00, 'ممتاز', 86.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(153, 'teacher', NULL, 203, 1053, 3, 'academic_performance', 'الفصل الدراسي الأول', 93.00, 100.00, 'ممتاز', 93.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(154, 'teacher', NULL, 203, 1054, 3, 'exam_result', 'الفصل الدراسي الأول', 100.00, 100.00, 'ممتاز', 100.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(155, 'teacher', NULL, 204, 1055, 4, 'attendance', 'الفصل الدراسي الأول', 76.00, 100.00, 'جيد جدًا', 76.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(156, 'teacher', NULL, 204, 1056, 4, 'behavior_discipline', 'الفصل الدراسي الأول', 83.00, 100.00, 'جيد جدًا', 83.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(157, 'teacher', NULL, 205, 1057, 5, 'academic_performance', 'الفصل الدراسي الأول', 90.00, 100.00, 'ممتاز', 90.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(158, 'teacher', NULL, 205, 1058, 5, 'exam_result', 'الفصل الدراسي الأول', 97.00, 100.00, 'ممتاز', 97.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
-(159, 'teacher', NULL, 206, 1059, 6, 'attendance', 'الفصل الدراسي الأول', 73.00, 100.00, 'جيد', 73.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(160, 'teacher', NULL, 206, 1060, 6, 'behavior_discipline', 'الفصل الدراسي الأول', 80.00, 100.00, 'جيد جدًا', 80.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
-(162, 'teacher', NULL, 201, 1, 1, 'academic_performance', 'الفصل الدراسي الأول', 85.00, 100.00, '0', 85.00, 'Monthly Progress Report', 'Overall good performance', '[\"Problem solving\",\"Participation\"]', '[\"Time management\"]', '2026-08-12', 5, '2026-08-15 07:16:26');
+INSERT INTO `student_reports` (`id`, `sender_type`, `admin_id`, `teacher_id`, `student_id`, `subject_id`, `course_id`, `session_id`, `exam_attempt_id`, `report_type`, `term`, `score`, `max_score`, `grade_label`, `percentage`, `title`, `description`, `strengths`, `improvements`, `report_date`, `rating`, `created_at`) VALUES
+(101, 'teacher', NULL, 201, 1001, 201, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 70.00, 100.00, 'جيد', 70.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(102, 'teacher', NULL, 201, 1002, 1, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 77.00, 100.00, 'جيد جدًا', 77.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(103, 'teacher', NULL, 202, 1003, 2, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 84.00, 100.00, 'جيد جدًا', 84.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(104, 'teacher', NULL, 202, 1004, 2, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 91.00, 100.00, 'ممتاز', 91.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(105, 'teacher', NULL, 203, 1005, 3, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 98.00, 100.00, 'ممتاز', 98.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(106, 'teacher', NULL, 203, 1006, 3, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 74.00, 100.00, 'جيد', 74.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(107, 'teacher', NULL, 204, 1007, 4, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 81.00, 100.00, 'جيد جدًا', 81.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(108, 'teacher', NULL, 204, 1008, 4, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 88.00, 100.00, 'ممتاز', 88.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(109, 'teacher', NULL, 205, 1009, 5, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 95.00, 100.00, 'ممتاز', 95.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(110, 'teacher', NULL, 205, 1010, 5, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 71.00, 100.00, 'جيد', 71.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(111, 'teacher', NULL, 206, 1011, 6, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 78.00, 100.00, 'جيد جدًا', 78.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(112, 'teacher', NULL, 206, 1012, 6, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 85.00, 100.00, 'ممتاز', 85.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(113, 'teacher', NULL, 207, 1013, 7, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 92.00, 100.00, 'ممتاز', 92.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(114, 'teacher', NULL, 207, 1014, 7, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 99.00, 100.00, 'ممتاز', 99.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(115, 'teacher', NULL, 208, 1015, 8, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 75.00, 100.00, 'جيد جدًا', 75.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(116, 'teacher', NULL, 208, 1016, 8, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 82.00, 100.00, 'جيد جدًا', 82.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(117, 'teacher', NULL, 209, 1017, 9, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 89.00, 100.00, 'ممتاز', 89.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(118, 'teacher', NULL, 209, 1018, 9, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 96.00, 100.00, 'ممتاز', 96.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(119, 'teacher', NULL, 210, 1019, 10, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 72.00, 100.00, 'جيد', 72.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(120, 'teacher', NULL, 210, 1020, 10, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 79.00, 100.00, 'جيد جدًا', 79.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(121, 'teacher', NULL, 211, 1021, 11, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 86.00, 100.00, 'ممتاز', 86.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(122, 'teacher', NULL, 211, 1022, 11, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 93.00, 100.00, 'ممتاز', 93.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(123, 'teacher', NULL, 212, 1023, 15, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 100.00, 100.00, 'ممتاز', 100.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(124, 'teacher', NULL, 212, 1024, 15, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 76.00, 100.00, 'جيد جدًا', 76.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(125, 'teacher', NULL, 201, 1025, 1, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 83.00, 100.00, 'جيد جدًا', 83.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(126, 'teacher', NULL, 201, 1026, 1, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 90.00, 100.00, 'ممتاز', 90.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(127, 'teacher', NULL, 202, 1027, 2, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 97.00, 100.00, 'ممتاز', 97.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(128, 'teacher', NULL, 202, 1028, 2, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 73.00, 100.00, 'جيد', 73.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(129, 'teacher', NULL, 203, 1029, 3, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 80.00, 100.00, 'جيد جدًا', 80.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(130, 'teacher', NULL, 203, 1030, 3, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 87.00, 100.00, 'ممتاز', 87.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(131, 'teacher', NULL, 204, 1031, 4, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 94.00, 100.00, 'ممتاز', 94.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(132, 'teacher', NULL, 204, 1032, 4, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 70.00, 100.00, 'جيد', 70.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(133, 'teacher', NULL, 205, 1033, 5, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 77.00, 100.00, 'جيد جدًا', 77.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(134, 'teacher', NULL, 205, 1034, 5, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 84.00, 100.00, 'جيد جدًا', 84.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(135, 'teacher', NULL, 206, 1035, 6, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 91.00, 100.00, 'ممتاز', 91.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(136, 'teacher', NULL, 206, 1036, 6, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 98.00, 100.00, 'ممتاز', 98.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(137, 'teacher', NULL, 207, 1037, 7, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 74.00, 100.00, 'جيد', 74.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(138, 'teacher', NULL, 207, 1038, 7, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 81.00, 100.00, 'جيد جدًا', 81.00, 'تقرير متابعة - التاريخ', 'أداء الطالب مستقر في التاريخ مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(139, 'teacher', NULL, 208, 1039, 8, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 88.00, 100.00, 'ممتاز', 88.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(140, 'teacher', NULL, 208, 1040, 8, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 95.00, 100.00, 'ممتاز', 95.00, 'تقرير متابعة - الجغرافيا', 'أداء الطالب مستقر في الجغرافيا مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(141, 'teacher', NULL, 209, 1041, 9, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 71.00, 100.00, 'جيد', 71.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(142, 'teacher', NULL, 209, 1042, 9, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 78.00, 100.00, 'جيد جدًا', 78.00, 'تقرير متابعة - الفلسفة والمنطق', 'أداء الطالب مستقر في الفلسفة والمنطق مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(143, 'teacher', NULL, 210, 1043, 10, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 85.00, 100.00, 'ممتاز', 85.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(144, 'teacher', NULL, 210, 1044, 10, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 92.00, 100.00, 'ممتاز', 92.00, 'تقرير متابعة - علوم الحاسب', 'أداء الطالب مستقر في علوم الحاسب مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(145, 'teacher', NULL, 211, 1045, 11, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 99.00, 100.00, 'ممتاز', 99.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(146, 'teacher', NULL, 211, 1046, 11, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 75.00, 100.00, 'جيد جدًا', 75.00, 'تقرير متابعة - اللغة الفرنسية', 'أداء الطالب مستقر في اللغة الفرنسية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(147, 'teacher', NULL, 212, 1047, 15, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 82.00, 100.00, 'جيد جدًا', 82.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(148, 'teacher', NULL, 212, 1048, 15, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 89.00, 100.00, 'ممتاز', 89.00, 'تقرير متابعة - العلوم المتكاملة', 'أداء الطالب مستقر في العلوم المتكاملة مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(149, 'teacher', NULL, 201, 1049, 1, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 96.00, 100.00, 'ممتاز', 96.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(150, 'teacher', NULL, 201, 1050, 1, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 72.00, 100.00, 'جيد', 72.00, 'تقرير متابعة - اللغة العربية', 'أداء الطالب مستقر في اللغة العربية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(151, 'teacher', NULL, 202, 1051, 2, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 79.00, 100.00, 'جيد جدًا', 79.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(152, 'teacher', NULL, 202, 1052, 2, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 86.00, 100.00, 'ممتاز', 86.00, 'تقرير متابعة - اللغة الإنجليزية', 'أداء الطالب مستقر في اللغة الإنجليزية مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(153, 'teacher', NULL, 203, 1053, 3, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 93.00, 100.00, 'ممتاز', 93.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(154, 'teacher', NULL, 203, 1054, 3, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 100.00, 100.00, 'ممتاز', 100.00, 'تقرير متابعة - الرياضيات', 'أداء الطالب مستقر في الرياضيات مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(155, 'teacher', NULL, 204, 1055, 4, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 76.00, 100.00, 'جيد جدًا', 76.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(156, 'teacher', NULL, 204, 1056, 4, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 83.00, 100.00, 'جيد جدًا', 83.00, 'تقرير متابعة - الفيزياء', 'أداء الطالب مستقر في الفيزياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(157, 'teacher', NULL, 205, 1057, 5, NULL, NULL, NULL, 'academic_performance', 'الفصل الدراسي الأول', 90.00, 100.00, 'ممتاز', 90.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(158, 'teacher', NULL, 205, 1058, 5, NULL, NULL, NULL, 'exam_result', 'الفصل الدراسي الأول', 97.00, 100.00, 'ممتاز', 97.00, 'تقرير متابعة - الكيمياء', 'أداء الطالب مستقر في الكيمياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 5, '2026-08-10 16:00:00'),
+(159, 'teacher', NULL, 206, 1059, 6, NULL, NULL, NULL, 'attendance', 'الفصل الدراسي الأول', 73.00, 100.00, 'جيد', 73.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(160, 'teacher', NULL, 206, 1060, 6, NULL, NULL, NULL, 'behavior_discipline', 'الفصل الدراسي الأول', 80.00, 100.00, 'جيد جدًا', 80.00, 'تقرير متابعة - الأحياء', 'أداء الطالب مستقر في الأحياء مع تحسن واضح في حل الأسئلة والتفاعل مع المحتوى.', '[\"الالتزام بالمحاضرات\", \"حل الواجبات\", \"تحسن سرعة الإجابة\"]', '[\"مراجعة الأخطاء أسبوعيًا\", \"زيادة التدريب على الأسئلة المركبة\"]', '2026-08-10', 4, '2026-08-10 16:00:00'),
+(167, 'system', NULL, 201, 1049, 1, 202, 102, NULL, 'attendance', NULL, 100.00, 100.00, 'حاضر', 100.00, 'الحضور بتاريخ 2026-08-31', 'حالة الطالب في الحصة بتاريخ 2026-08-31: حاضر.', NULL, NULL, '2026-08-31', 5, '2026-08-30 09:57:27'),
+(168, 'system', NULL, 201, 1049, 1, 202, NULL, 7067, 'exam_result', NULL, 6.00, 10.00, 'مقبول', 60.00, 'نتيجة امتحان: اختبار اللغة العربية - الوحدة النهائية', 'حصل الطالب على 6 من 10 (60%) في \"اختبار اللغة العربية - الوحدة النهائية\".', NULL, NULL, '2026-08-30', 5, '2026-08-30 10:00:14'),
+(169, 'system', NULL, NULL, 1001, NULL, 226, NULL, 7066, 'exam_result', NULL, 0.00, 2.00, 'راسب', 0.00, 'نتيجة امتحان: امتحان كامل تيست', 'حصل الطالب على 0 من 2 (0%) في \"امتحان كامل تيست\".', NULL, NULL, '2026-08-31', 5, '2026-08-31 10:09:02');
 
 -- --------------------------------------------------------
 
@@ -5833,7 +6507,9 @@ INSERT INTO `student_subscriptions` (`id`, `student_id`, `subscription_code_id`,
 (1073, 1062, 115, 'teacher', '2026-08-19 16:08:16', '2026-08-28 19:07:00', 1, '2026-08-19 16:08:16', '2026-08-19 16:08:16'),
 (1074, 1062, 116, 'course', '2026-08-19 16:15:45', NULL, 1, '2026-08-19 16:15:45', '2026-08-19 16:15:45'),
 (1075, 1065, 117, 'subject', '2026-08-26 09:03:04', '2026-09-25 09:03:04', 1, '2026-08-26 09:03:04', '2026-08-26 09:03:04'),
-(1076, 1065, 118, 'subject', '2026-08-26 09:05:37', '2026-09-25 09:05:37', 1, '2026-08-26 09:05:37', '2026-08-26 09:05:37');
+(1076, 1065, 118, 'subject', '2026-08-26 09:05:37', '2026-09-25 09:05:37', 1, '2026-08-26 09:05:37', '2026-08-26 09:05:37'),
+(1077, 1066, 119, 'course', '2026-09-01 09:47:52', '2026-10-01 09:47:52', 1, '2026-09-01 09:47:52', '2026-09-01 09:47:52'),
+(1078, 1066, 120, 'subject', '2026-09-01 09:52:25', '2026-10-01 09:52:25', 1, '2026-09-01 09:52:25', '2026-09-01 09:52:25');
 
 -- --------------------------------------------------------
 
@@ -5945,7 +6621,8 @@ INSERT INTO `student_subscription_courses` (`id`, `student_subscription_id`, `co
 (1073, 1072, 223),
 (1074, 1074, 219),
 (1075, 1074, 220),
-(1076, 1074, 221);
+(1076, 1074, 221),
+(1077, 1077, 227);
 
 -- --------------------------------------------------------
 
@@ -6008,7 +6685,12 @@ INSERT INTO `student_subscription_subjects` (`id`, `student_subscription_id`, `s
 (1042, 1069, 10),
 (1043, 1070, 15),
 (1044, 1075, 3),
-(1045, 1076, 13);
+(1045, 1076, 13),
+(1046, 1078, 8),
+(1047, 1078, 9),
+(1048, 1078, 10),
+(1049, 1078, 11),
+(1050, 1078, 12);
 
 -- --------------------------------------------------------
 
@@ -6095,7 +6777,9 @@ CREATE TABLE `student_video_progress` (
 --
 
 INSERT INTO `student_video_progress` (`id`, `student_id`, `video_id`, `is_completed`, `watched_seconds`, `total_seconds`, `last_position_seconds`, `completed_at`, `created_at`, `updated_at`) VALUES
-(1, 1001, 2139, 0, 56, 635, 314, NULL, '2026-08-25 12:40:10', '2026-08-25 12:48:44');
+(1, 1001, 2139, 0, 56, 635, 314, NULL, '2026-08-25 12:40:10', '2026-08-25 12:48:44'),
+(23, 1001, 2145, 1, 16, 635, 635, '2026-08-29 14:04:53', '2026-08-29 14:04:43', '2026-08-29 14:05:27'),
+(33, 1001, 2146, 1, 9, 635, 635, '2026-08-29 14:39:28', '2026-08-29 14:39:17', '2026-08-29 14:39:39');
 
 -- --------------------------------------------------------
 
@@ -6267,6 +6951,7 @@ CREATE TABLE `subscription_codes` (
   `price` decimal(10,2) NOT NULL DEFAULT 0.00,
   `max_uses` int(10) UNSIGNED NOT NULL DEFAULT 1,
   `used_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `claimed_by_student_id` bigint(20) UNSIGNED DEFAULT NULL,
   `valid_from` datetime DEFAULT NULL,
   `valid_to` datetime DEFAULT NULL,
   `duration_days` int(10) UNSIGNED DEFAULT NULL,
@@ -6280,25 +6965,127 @@ CREATE TABLE `subscription_codes` (
 -- Dumping data for table `subscription_codes`
 --
 
-INSERT INTO `subscription_codes` (`id`, `code`, `title`, `description`, `price`, `max_uses`, `used_count`, `valid_from`, `valid_to`, `duration_days`, `is_active`, `created_by_id`, `created_at`, `updated_at`) VALUES
-(101, '123456789102', 'Arabic Language 2026 Package', 'اشتراك تعليمي في اللغة العربية لمدة 180 يومًا.', 900.00, 100, 6, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:35:45'),
-(102, 'NAJEH-02-2026', 'English Language 2026 Package', 'اشتراك تعليمي في اللغة الإنجليزية لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(103, 'NAJEH-03-2026', 'Mathematics 2026 Package', 'اشتراك تعليمي في الرياضيات لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(104, 'NAJEH-04-2026', 'Physics 2026 Package', 'اشتراك تعليمي في الفيزياء لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(105, 'NAJEH-05-2026', 'Chemistry 2026 Package', 'اشتراك تعليمي في الكيمياء لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(106, 'NAJEH-06-2026', 'Biology 2026 Package', 'اشتراك تعليمي في الأحياء لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(107, 'NAJEH-07-2026', 'History 2026 Package', 'اشتراك تعليمي في التاريخ لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(108, 'NAJEH-08-2026', 'Geography 2026 Package', 'اشتراك تعليمي في الجغرافيا لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(109, 'NAJEH-09-2026', 'Philosophy & Logic 2026 Package', 'اشتراك تعليمي في الفلسفة والمنطق لمدة 180 يومًا.', 900.00, 100, 5, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
-(110, 'NAJEH-10-2026', 'Computer Science 2026 Package', 'اشتراك تعليمي في علوم الحاسب لمدة 180 يومًا.', 900.00, 100, 6, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:52:36'),
-(111, 'NAJEH-11-2026', 'French Language 2026 Package', 'اشتراك تعليمي في اللغة الفرنسية لمدة 180 يومًا.', 900.00, 100, 6, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:46:06'),
-(112, '123456789103', 'Integrated Science 2026 Package', 'اشتراك تعليمي في العلوم المتكاملة لمدة 180 يومًا.', 900.00, 100, 7, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:55:15'),
-(113, '64484446762567', 'dsf', '', 900.00, 1, 1, '2026-07-27 18:56:00', '2026-09-04 18:56:00', NULL, 1, 1, '2026-08-19 15:56:19', '2026-08-19 15:56:46'),
-(114, '30622633565524', 'هعهخع', '', 500.00, 1, 1, NULL, '2026-08-21 19:04:00', NULL, 1, 1, '2026-08-19 16:04:34', '2026-08-19 16:04:51'),
-(115, '94185970236080', 'dhhhd', '', 800.00, 1, 1, NULL, '2026-08-28 19:07:00', NULL, 1, 1, '2026-08-19 16:08:01', '2026-08-19 16:08:16'),
-(116, '61001613468746', 'ijkj', '', 500.00, 1, 1, NULL, NULL, NULL, 1, 1, '2026-08-19 16:15:36', '2026-08-19 16:15:45'),
-(117, '38931243322307', 'تيست', 'تيست', 0.00, 1, 1, NULL, NULL, 30, 1, 1, '2026-08-26 09:00:55', '2026-08-26 09:03:04'),
-(118, '47246005255006', 'تيست', 'تيست', 400.00, 1, 1, NULL, NULL, 30, 1, 1, '2026-08-26 09:04:45', '2026-08-26 09:05:37');
+INSERT INTO `subscription_codes` (`id`, `code`, `title`, `description`, `price`, `max_uses`, `used_count`, `claimed_by_student_id`, `valid_from`, `valid_to`, `duration_days`, `is_active`, `created_by_id`, `created_at`, `updated_at`) VALUES
+(101, '123456789102', 'Arabic Language 2026 Package', 'اشتراك تعليمي في اللغة العربية لمدة 180 يومًا.', 900.00, 100, 6, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:35:45'),
+(102, 'NAJEH-02-2026', 'English Language 2026 Package', 'اشتراك تعليمي في اللغة الإنجليزية لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(103, 'NAJEH-03-2026', 'Mathematics 2026 Package', 'اشتراك تعليمي في الرياضيات لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(104, 'NAJEH-04-2026', 'Physics 2026 Package', 'اشتراك تعليمي في الفيزياء لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(105, 'NAJEH-05-2026', 'Chemistry 2026 Package', 'اشتراك تعليمي في الكيمياء لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(106, 'NAJEH-06-2026', 'Biology 2026 Package', 'اشتراك تعليمي في الأحياء لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(107, 'NAJEH-07-2026', 'History 2026 Package', 'اشتراك تعليمي في التاريخ لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(108, 'NAJEH-08-2026', 'Geography 2026 Package', 'اشتراك تعليمي في الجغرافيا لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(109, 'NAJEH-09-2026', 'Philosophy & Logic 2026 Package', 'اشتراك تعليمي في الفلسفة والمنطق لمدة 180 يومًا.', 900.00, 100, 5, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-10 13:03:18'),
+(110, 'NAJEH-10-2026', 'Computer Science 2026 Package', 'اشتراك تعليمي في علوم الحاسب لمدة 180 يومًا.', 900.00, 100, 6, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:52:36'),
+(111, 'NAJEH-11-2026', 'French Language 2026 Package', 'اشتراك تعليمي في اللغة الفرنسية لمدة 180 يومًا.', 900.00, 100, 6, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:46:06'),
+(112, '123456789103', 'Integrated Science 2026 Package', 'اشتراك تعليمي في العلوم المتكاملة لمدة 180 يومًا.', 900.00, 100, 7, NULL, '2026-08-01 00:00:00', '2027-06-30 23:59:59', 180, 1, 1, '2026-08-01 04:00:00', '2026-08-19 15:55:15'),
+(113, '64484446762567', 'dsf', '', 900.00, 1, 1, NULL, '2026-07-27 18:56:00', '2026-09-04 18:56:00', NULL, 1, 1, '2026-08-19 15:56:19', '2026-08-19 15:56:46'),
+(114, '30622633565524', 'هعهخع', '', 500.00, 1, 1, NULL, NULL, '2026-08-21 19:04:00', NULL, 1, 1, '2026-08-19 16:04:34', '2026-08-19 16:04:51'),
+(115, '94185970236080', 'dhhhd', '', 800.00, 1, 1, NULL, NULL, '2026-08-28 19:07:00', NULL, 1, 1, '2026-08-19 16:08:01', '2026-08-19 16:08:16'),
+(116, '61001613468746', 'ijkj', '', 500.00, 1, 1, NULL, NULL, NULL, NULL, 1, 1, '2026-08-19 16:15:36', '2026-08-19 16:15:45'),
+(117, '38931243322307', 'تيست', 'تيست', 0.00, 1, 1, NULL, NULL, NULL, 30, 1, 1, '2026-08-26 09:00:55', '2026-08-26 09:03:04'),
+(118, '47246005255006', 'تيست', 'تيست', 400.00, 1, 1, NULL, NULL, NULL, 30, 1, 1, '2026-08-26 09:04:45', '2026-08-26 09:05:37'),
+(119, '86681971284716', 'تيستتتتتتتت', 'تيست', 0.00, 1, 1, 1066, NULL, NULL, 30, 1, 1, '2026-09-01 08:33:46', '2026-09-01 09:47:52'),
+(120, '22095099272350', 'تيست', 'تيستتتتتتت', 100.00, 1, 1, 1066, NULL, NULL, 30, 1, 1, '2026-09-01 09:52:02', '2026-09-01 09:52:25'),
+(121, '22697217938852', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(122, '43806519883332', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(123, '44440298285219', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(124, '19726538092488', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(125, '74732884935208', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(126, '74626314437737', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(127, '69248020568966', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(128, '59646744281189', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(129, '53884123230004', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(130, '83405951230379', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:34', '2026-09-05 22:33:34'),
+(131, '29304362059286', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(132, '09352896674632', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(133, '68794736289578', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(134, '72448609647553', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(135, '54611057830227', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(136, '72115382120871', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(137, '00528339118124', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(138, '96237579941191', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(139, '63649202658595', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(140, '68938428085081', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(141, '56882667293193', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(142, '60125796964608', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(143, '69115633214416', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(144, '09520124260534', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(145, '49246369799836', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(146, '05631555959672', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(147, '08228438131028', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(148, '75172519530541', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(149, '70447824627500', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(150, '07260425331116', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(151, '62138494873442', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(152, '02157621135544', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(153, '33378770165086', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(154, '30040474912946', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(155, '63615817587955', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(156, '21180508352189', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(157, '47447251907113', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(158, '32897937167609', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(159, '35598818202732', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(160, '01594577935805', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(161, '57059460610666', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(162, '60429024211284', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(163, '24659290304210', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(164, '28981778890987', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(165, '30588749292154', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(166, '37960540584268', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(167, '96013059251912', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(168, '59597617209593', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(169, '86666149476598', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(170, '55039962771636', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(171, '76149671987229', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(172, '30651473444869', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(173, '24289004953294', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(174, '95456308455929', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(175, '05199077146391', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(176, '13597283573895', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(177, '56018534895428', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(178, '41475499750541', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(179, '60881538111442', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(180, '80563708943050', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(181, '42691760202293', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(182, '43239610446679', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(183, '16184225930693', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(184, '28043356010469', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(185, '96116940458325', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(186, '75794859980162', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(187, '97778870921164', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(188, '51508139738258', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(189, '58052816831422', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(190, '56007190044766', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(191, '87051381575536', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(192, '36464835508950', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(193, '25766185982274', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(194, '62702942454556', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(195, '45053959379931', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(196, '81246657697205', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(197, '18386169066173', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(198, '84116625594355', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(199, '43637328298423', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(200, '54331037134324', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(201, '13761201225712', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(202, '63206066175476', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(203, '96102587518366', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(204, '28205763432959', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(205, '81648566004668', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(206, '85388894817256', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(207, '14713355502338', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(208, '40266930731970', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(209, '99774827268312', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(210, '40239839988886', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(211, '80278900285807', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(212, '57837836987602', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(213, '12074676422870', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(214, '14146074859916', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(215, '40474990365179', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(216, '43059499157664', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(217, '76348858727051', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(218, '82623622304686', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(219, '18760060699788', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35'),
+(220, '12083843290584', 'ناجح', '', 0.00, 1, 0, NULL, NULL, NULL, 30, 1, 1, '2026-09-05 22:33:35', '2026-09-05 22:33:35');
 
 -- --------------------------------------------------------
 
@@ -6345,7 +7132,8 @@ INSERT INTO `subscription_code_courses` (`id`, `subscription_code_id`, `course_i
 (1031, 114, 223),
 (1036, 116, 219),
 (1035, 116, 220),
-(1034, 116, 221);
+(1034, 116, 221),
+(1037, 119, 227);
 
 -- --------------------------------------------------------
 
@@ -6377,7 +7165,312 @@ INSERT INTO `subscription_code_subjects` (`id`, `subscription_code_id`, `subject
 (1011, 111, 11),
 (1012, 112, 15),
 (1013, 117, 3),
-(1014, 118, 13);
+(1014, 118, 13),
+(1016, 120, 8),
+(1017, 120, 9),
+(1015, 120, 10),
+(1018, 120, 11),
+(1019, 120, 12),
+(1020, 121, 10),
+(1021, 121, 12),
+(1022, 121, 15),
+(1023, 122, 10),
+(1024, 122, 12),
+(1025, 122, 15),
+(1026, 123, 10),
+(1027, 123, 12),
+(1028, 123, 15),
+(1029, 124, 10),
+(1030, 124, 12),
+(1031, 124, 15),
+(1032, 125, 10),
+(1033, 125, 12),
+(1034, 125, 15),
+(1035, 126, 10),
+(1036, 126, 12),
+(1037, 126, 15),
+(1038, 127, 10),
+(1039, 127, 12),
+(1040, 127, 15),
+(1041, 128, 10),
+(1042, 128, 12),
+(1043, 128, 15),
+(1044, 129, 10),
+(1045, 129, 12),
+(1046, 129, 15),
+(1047, 130, 10),
+(1048, 130, 12),
+(1049, 130, 15),
+(1050, 131, 10),
+(1051, 131, 12),
+(1052, 131, 15),
+(1053, 132, 10),
+(1054, 132, 12),
+(1055, 132, 15),
+(1056, 133, 10),
+(1057, 133, 12),
+(1058, 133, 15),
+(1059, 134, 10),
+(1060, 134, 12),
+(1061, 134, 15),
+(1062, 135, 10),
+(1063, 135, 12),
+(1064, 135, 15),
+(1065, 136, 10),
+(1066, 136, 12),
+(1067, 136, 15),
+(1068, 137, 10),
+(1069, 137, 12),
+(1070, 137, 15),
+(1071, 138, 10),
+(1072, 138, 12),
+(1073, 138, 15),
+(1074, 139, 10),
+(1075, 139, 12),
+(1076, 139, 15),
+(1077, 140, 10),
+(1078, 140, 12),
+(1079, 140, 15),
+(1080, 141, 10),
+(1081, 141, 12),
+(1082, 141, 15),
+(1083, 142, 10),
+(1084, 142, 12),
+(1085, 142, 15),
+(1086, 143, 10),
+(1087, 143, 12),
+(1088, 143, 15),
+(1089, 144, 10),
+(1090, 144, 12),
+(1091, 144, 15),
+(1092, 145, 10),
+(1093, 145, 12),
+(1094, 145, 15),
+(1095, 146, 10),
+(1096, 146, 12),
+(1097, 146, 15),
+(1098, 147, 10),
+(1099, 147, 12),
+(1100, 147, 15),
+(1101, 148, 10),
+(1102, 148, 12),
+(1103, 148, 15),
+(1104, 149, 10),
+(1105, 149, 12),
+(1106, 149, 15),
+(1107, 150, 10),
+(1108, 150, 12),
+(1109, 150, 15),
+(1110, 151, 10),
+(1111, 151, 12),
+(1112, 151, 15),
+(1113, 152, 10),
+(1114, 152, 12),
+(1115, 152, 15),
+(1116, 153, 10),
+(1117, 153, 12),
+(1118, 153, 15),
+(1119, 154, 10),
+(1120, 154, 12),
+(1121, 154, 15),
+(1122, 155, 10),
+(1123, 155, 12),
+(1124, 155, 15),
+(1125, 156, 10),
+(1126, 156, 12),
+(1127, 156, 15),
+(1128, 157, 10),
+(1129, 157, 12),
+(1130, 157, 15),
+(1131, 158, 10),
+(1132, 158, 12),
+(1133, 158, 15),
+(1134, 159, 10),
+(1135, 159, 12),
+(1136, 159, 15),
+(1137, 160, 10),
+(1138, 160, 12),
+(1139, 160, 15),
+(1140, 161, 10),
+(1141, 161, 12),
+(1142, 161, 15),
+(1143, 162, 10),
+(1144, 162, 12),
+(1145, 162, 15),
+(1146, 163, 10),
+(1147, 163, 12),
+(1148, 163, 15),
+(1149, 164, 10),
+(1150, 164, 12),
+(1151, 164, 15),
+(1152, 165, 10),
+(1153, 165, 12),
+(1154, 165, 15),
+(1155, 166, 10),
+(1156, 166, 12),
+(1157, 166, 15),
+(1158, 167, 10),
+(1159, 167, 12),
+(1160, 167, 15),
+(1161, 168, 10),
+(1162, 168, 12),
+(1163, 168, 15),
+(1164, 169, 10),
+(1165, 169, 12),
+(1166, 169, 15),
+(1167, 170, 10),
+(1168, 170, 12),
+(1169, 170, 15),
+(1170, 171, 10),
+(1171, 171, 12),
+(1172, 171, 15),
+(1173, 172, 10),
+(1174, 172, 12),
+(1175, 172, 15),
+(1176, 173, 10),
+(1177, 173, 12),
+(1178, 173, 15),
+(1179, 174, 10),
+(1180, 174, 12),
+(1181, 174, 15),
+(1182, 175, 10),
+(1183, 175, 12),
+(1184, 175, 15),
+(1185, 176, 10),
+(1186, 176, 12),
+(1187, 176, 15),
+(1188, 177, 10),
+(1189, 177, 12),
+(1190, 177, 15),
+(1191, 178, 10),
+(1192, 178, 12),
+(1193, 178, 15),
+(1194, 179, 10),
+(1195, 179, 12),
+(1196, 179, 15),
+(1197, 180, 10),
+(1198, 180, 12),
+(1199, 180, 15),
+(1200, 181, 10),
+(1201, 181, 12),
+(1202, 181, 15),
+(1203, 182, 10),
+(1204, 182, 12),
+(1205, 182, 15),
+(1206, 183, 10),
+(1207, 183, 12),
+(1208, 183, 15),
+(1209, 184, 10),
+(1210, 184, 12),
+(1211, 184, 15),
+(1212, 185, 10),
+(1213, 185, 12),
+(1214, 185, 15),
+(1215, 186, 10),
+(1216, 186, 12),
+(1217, 186, 15),
+(1218, 187, 10),
+(1219, 187, 12),
+(1220, 187, 15),
+(1221, 188, 10),
+(1222, 188, 12),
+(1223, 188, 15),
+(1224, 189, 10),
+(1225, 189, 12),
+(1226, 189, 15),
+(1227, 190, 10),
+(1228, 190, 12),
+(1229, 190, 15),
+(1230, 191, 10),
+(1231, 191, 12),
+(1232, 191, 15),
+(1233, 192, 10),
+(1234, 192, 12),
+(1235, 192, 15),
+(1236, 193, 10),
+(1237, 193, 12),
+(1238, 193, 15),
+(1239, 194, 10),
+(1240, 194, 12),
+(1241, 194, 15),
+(1242, 195, 10),
+(1243, 195, 12),
+(1244, 195, 15),
+(1245, 196, 10),
+(1246, 196, 12),
+(1247, 196, 15),
+(1248, 197, 10),
+(1249, 197, 12),
+(1250, 197, 15),
+(1251, 198, 10),
+(1252, 198, 12),
+(1253, 198, 15),
+(1254, 199, 10),
+(1255, 199, 12),
+(1256, 199, 15),
+(1257, 200, 10),
+(1258, 200, 12),
+(1259, 200, 15),
+(1260, 201, 10),
+(1261, 201, 12),
+(1262, 201, 15),
+(1263, 202, 10),
+(1264, 202, 12),
+(1265, 202, 15),
+(1266, 203, 10),
+(1267, 203, 12),
+(1268, 203, 15),
+(1269, 204, 10),
+(1270, 204, 12),
+(1271, 204, 15),
+(1272, 205, 10),
+(1273, 205, 12),
+(1274, 205, 15),
+(1275, 206, 10),
+(1276, 206, 12),
+(1277, 206, 15),
+(1278, 207, 10),
+(1279, 207, 12),
+(1280, 207, 15),
+(1281, 208, 10),
+(1282, 208, 12),
+(1283, 208, 15),
+(1284, 209, 10),
+(1285, 209, 12),
+(1286, 209, 15),
+(1287, 210, 10),
+(1288, 210, 12),
+(1289, 210, 15),
+(1290, 211, 10),
+(1291, 211, 12),
+(1292, 211, 15),
+(1293, 212, 10),
+(1294, 212, 12),
+(1295, 212, 15),
+(1296, 213, 10),
+(1297, 213, 12),
+(1298, 213, 15),
+(1299, 214, 10),
+(1300, 214, 12),
+(1301, 214, 15),
+(1302, 215, 10),
+(1303, 215, 12),
+(1304, 215, 15),
+(1305, 216, 10),
+(1306, 216, 12),
+(1307, 216, 15),
+(1308, 217, 10),
+(1309, 217, 12),
+(1310, 217, 15),
+(1311, 218, 10),
+(1312, 218, 12),
+(1313, 218, 15),
+(1314, 219, 10),
+(1315, 219, 12),
+(1316, 219, 15),
+(1317, 220, 10),
+(1318, 220, 12),
+(1319, 220, 15);
 
 -- --------------------------------------------------------
 
@@ -6457,7 +7550,8 @@ INSERT INTO `teachers` (`id`, `subject_id`, `city_id`, `name`, `email`, `passwor
 (209, 9, 1, 'د. عمر نبيل', 'teacher209@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', '01088000209', 'خبرة عملية وتدريسية تتراوح بين 8 و15 عامًا في المنطق والتفكير النقدي.', 'Philosophy & Logic', 'مدرس متخصص في المنطق والتفكير النقدي مع تركيز على الفهم والتطبيق وحل الأسئلة.', 'بكالوريوس متخصص ودورات تدريبية في التعليم الرقمي', 4.92, 'https://www.youtube.com/watch?v=O-6q-siuMik', 'https://i.pravatar.cc/400?img=30', NULL, 'شرح منظم، واجبات أسبوعية، اختبارات قصيرة ومتابعة تقدم الطالب.', 1, 1, 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (210, 10, 1, 'م. مروان طارق', 'teacher210@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', '01088000210', 'خبرة عملية وتدريسية تتراوح بين 8 و15 عامًا في Python والخوارزميات وقواعد البيانات.', 'Computer Science', 'مدرس متخصص في Python والخوارزميات وقواعد البيانات مع تركيز على الفهم والتطبيق وحل الأسئلة.', 'بكالوريوس متخصص ودورات تدريبية في التعليم الرقمي', 4.91, 'https://www.youtube.com/watch?v=rJCRGiEidZ4', 'https://i.pravatar.cc/400?img=31', NULL, 'شرح منظم، واجبات أسبوعية، اختبارات قصيرة ومتابعة تقدم الطالب.', 1, 1, 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (211, 11, 3, 'أ. ماريان عادل', 'teacher211@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', '01088000211', 'خبرة عملية وتدريسية تتراوح بين 8 و15 عامًا في Grammaire, vocabulaire et conversation.', 'French Language', 'مدرس متخصص في Grammaire, vocabulaire et conversation مع تركيز على الفهم والتطبيق وحل الأسئلة.', 'بكالوريوس متخصص ودورات تدريبية في التعليم الرقمي', 4.75, 'https://www.youtube.com/watch?v=O-6q-siuMik', 'https://i.pravatar.cc/400?img=32', NULL, 'شرح منظم، واجبات أسبوعية، اختبارات قصيرة ومتابعة تقدم الطالب.', 1, 1, 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(212, 15, 9, 'أ. إيمان سامح', 'teacher212@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', '01088000212', 'خبرة عملية وتدريسية تتراوح بين 8 و15 عامًا في العلوم المتكاملة والتجارب المبسطة.', 'Integrated Science', 'مدرس متخصص في العلوم المتكاملة والتجارب المبسطة مع تركيز على الفهم والتطبيق وحل الأسئلة.', 'بكالوريوس متخصص ودورات تدريبية في التعليم الرقمي', 4.82, 'https://www.youtube.com/watch?v=_wmwmMeF3pE', 'https://i.pravatar.cc/400?img=33', NULL, 'شرح منظم، واجبات أسبوعية، اختبارات قصيرة ومتابعة تقدم الطالب.', 1, 1, 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00');
+(212, 15, 9, 'أ. إيمان سامح', 'teacher212@example.com', '$2y$10$7qKfbH6uSIvZH1VWxyZP7.kCLP4hXLPE5eQAkQquX5cG21Hz/kBCu', '01088000212', 'خبرة عملية وتدريسية تتراوح بين 8 و15 عامًا في العلوم المتكاملة والتجارب المبسطة.', 'Integrated Science', 'مدرس متخصص في العلوم المتكاملة والتجارب المبسطة مع تركيز على الفهم والتطبيق وحل الأسئلة.', 'بكالوريوس متخصص ودورات تدريبية في التعليم الرقمي', 4.82, 'https://www.youtube.com/watch?v=_wmwmMeF3pE', 'https://i.pravatar.cc/400?img=33', NULL, 'شرح منظم، واجبات أسبوعية، اختبارات قصيرة ومتابعة تقدم الطالب.', 1, 1, 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
+(213, 11, NULL, 'عمر طلعت', 'omartalaat1276@gmail.com', '$2y$10$Un5cwA.dE7ohPH9j8k6dN.ME94RRJUxOnyuPZbLWvxmYpF7maxz6m', '', '', '', '', '', 0.00, '', 'uploads/avatars/img_6a9545f5e1fe18.28413448.webp', NULL, '', 1, 1, 1, '2026-08-31 09:14:30', '2026-08-31 09:14:30');
 
 -- --------------------------------------------------------
 
@@ -6552,6 +7646,7 @@ CREATE TABLE `teacher_subjects` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `teacher_id` bigint(20) UNSIGNED NOT NULL,
   `subject_id` bigint(20) UNSIGNED NOT NULL,
+  `academic_year_id` bigint(20) UNSIGNED DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -6560,19 +7655,22 @@ CREATE TABLE `teacher_subjects` (
 -- Dumping data for table `teacher_subjects`
 --
 
-INSERT INTO `teacher_subjects` (`id`, `teacher_id`, `subject_id`, `is_active`, `created_at`) VALUES
-(500, 201, 1, 1, '2026-08-10 16:00:00'),
-(501, 202, 2, 1, '2026-08-10 16:00:00'),
-(502, 203, 3, 1, '2026-08-10 16:00:00'),
-(503, 204, 4, 1, '2026-08-10 16:00:00'),
-(504, 205, 5, 1, '2026-08-10 16:00:00'),
-(505, 206, 6, 1, '2026-08-10 16:00:00'),
-(506, 207, 7, 1, '2026-08-10 16:00:00'),
-(507, 208, 8, 1, '2026-08-10 16:00:00'),
-(508, 209, 9, 1, '2026-08-10 16:00:00'),
-(509, 210, 10, 1, '2026-08-10 16:00:00'),
-(510, 211, 11, 1, '2026-08-10 16:00:00'),
-(511, 212, 15, 1, '2026-08-10 16:00:00');
+INSERT INTO `teacher_subjects` (`id`, `teacher_id`, `subject_id`, `academic_year_id`, `is_active`, `created_at`) VALUES
+(500, 201, 1, NULL, 1, '2026-08-10 16:00:00'),
+(501, 202, 2, NULL, 1, '2026-08-10 16:00:00'),
+(502, 203, 3, NULL, 1, '2026-08-10 16:00:00'),
+(503, 204, 4, NULL, 1, '2026-08-10 16:00:00'),
+(504, 205, 5, NULL, 1, '2026-08-10 16:00:00'),
+(505, 206, 6, NULL, 1, '2026-08-10 16:00:00'),
+(506, 207, 7, NULL, 1, '2026-08-10 16:00:00'),
+(507, 208, 8, NULL, 1, '2026-08-10 16:00:00'),
+(508, 209, 9, NULL, 1, '2026-08-10 16:00:00'),
+(509, 210, 10, NULL, 1, '2026-08-10 16:00:00'),
+(510, 211, 11, NULL, 1, '2026-08-10 16:00:00'),
+(511, 212, 15, NULL, 1, '2026-08-10 16:00:00'),
+(525, 213, 3, NULL, 1, '2026-08-31 09:44:08'),
+(526, 213, 11, NULL, 1, '2026-08-31 09:44:08'),
+(527, 213, 12, NULL, 1, '2026-08-31 09:44:08');
 
 -- --------------------------------------------------------
 
@@ -7095,7 +8193,8 @@ INSERT INTO `true_false_answers` (`id`, `question_id`, `correct_answer`, `is_act
 (1021, 5104, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (1022, 5109, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
 (1023, 5114, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
-(1024, 5119, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00');
+(1024, 5119, 1, 1, '2026-08-01 14:00:00', '2026-08-10 16:00:00'),
+(1025, 5129, 1, 1, '2026-08-29 14:45:45', '2026-08-29 14:45:45');
 
 -- --------------------------------------------------------
 
@@ -7108,6 +8207,8 @@ CREATE TABLE `units` (
   `course_id` bigint(20) UNSIGNED NOT NULL,
   `subject_id` bigint(20) UNSIGNED DEFAULT NULL,
   `code` varchar(120) NOT NULL,
+  `order_num` int(11) NOT NULL DEFAULT 0,
+  `videos_drip_enabled` tinyint(1) NOT NULL DEFAULT 0,
   `duration` int(10) UNSIGNED DEFAULT NULL,
   `duration_unit` enum('day','week','month') DEFAULT NULL,
   `lessons_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -7122,79 +8223,83 @@ CREATE TABLE `units` (
 -- Dumping data for table `units`
 --
 
-INSERT INTO `units` (`id`, `course_id`, `subject_id`, `code`, `duration`, `duration_unit`, `lessons_count`, `is_active`, `created_by_type`, `created_by_id`, `created_at`, `updated_at`) VALUES
-(1001, 201, 1, 'C201-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1002, 201, 1, 'C201-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1003, 201, 1, 'C201-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1004, 202, 1, 'C202-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1005, 202, 1, 'C202-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1006, 202, 1, 'C202-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1007, 203, 2, 'C203-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1008, 203, 2, 'C203-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1009, 203, 2, 'C203-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1010, 204, 2, 'C204-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1011, 204, 2, 'C204-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1012, 204, 2, 'C204-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1013, 205, 3, 'C205-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1014, 205, 3, 'C205-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1015, 205, 3, 'C205-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1016, 206, 3, 'C206-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1017, 206, 3, 'C206-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1018, 206, 3, 'C206-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1019, 207, 4, 'C207-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1020, 207, 4, 'C207-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1021, 207, 4, 'C207-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1022, 208, 4, 'C208-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1023, 208, 4, 'C208-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1024, 208, 4, 'C208-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1025, 209, 5, 'C209-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1026, 209, 5, 'C209-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1027, 209, 5, 'C209-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1028, 210, 5, 'C210-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1029, 210, 5, 'C210-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1030, 210, 5, 'C210-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1031, 211, 6, 'C211-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1032, 211, 6, 'C211-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1033, 211, 6, 'C211-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1034, 212, 6, 'C212-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1035, 212, 6, 'C212-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1036, 212, 6, 'C212-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1037, 213, 7, 'C213-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1038, 213, 7, 'C213-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1039, 213, 7, 'C213-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1040, 214, 7, 'C214-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1041, 214, 7, 'C214-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1042, 214, 7, 'C214-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1043, 215, 8, 'C215-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1044, 215, 8, 'C215-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1045, 215, 8, 'C215-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1046, 216, 8, 'C216-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1047, 216, 8, 'C216-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1048, 216, 8, 'C216-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1049, 217, 9, 'C217-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1050, 217, 9, 'C217-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1051, 217, 9, 'C217-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1052, 218, 9, 'C218-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1053, 218, 9, 'C218-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1054, 218, 9, 'C218-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1055, 219, 10, 'C219-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1056, 219, 10, 'C219-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1057, 219, 10, 'C219-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1058, 220, 10, 'C220-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1059, 220, 10, 'C220-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1060, 220, 10, 'C220-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1061, 221, 11, 'C221-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1062, 221, 11, 'C221-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1063, 221, 11, 'C221-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1064, 222, 11, 'C222-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1065, 222, 11, 'C222-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1066, 222, 11, 'C222-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1067, 223, 15, 'C223-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1068, 223, 15, 'C223-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1069, 223, 15, 'C223-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1070, 224, 15, 'C224-U1', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1071, 224, 15, 'C224-U2', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(1072, 224, 15, 'C224-U3', 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00');
+INSERT INTO `units` (`id`, `course_id`, `subject_id`, `code`, `order_num`, `videos_drip_enabled`, `duration`, `duration_unit`, `lessons_count`, `is_active`, `created_by_type`, `created_by_id`, `created_at`, `updated_at`) VALUES
+(1001, 201, 1, 'C201-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1002, 201, 1, 'C201-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1003, 201, 1, 'C201-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1004, 202, 1, 'C202-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1005, 202, 1, 'C202-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1006, 202, 1, 'C202-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1007, 203, 2, 'C203-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1008, 203, 2, 'C203-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1009, 203, 2, 'C203-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1010, 204, 2, 'C204-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1011, 204, 2, 'C204-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1012, 204, 2, 'C204-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1013, 205, 3, 'C205-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1014, 205, 3, 'C205-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1015, 205, 3, 'C205-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1016, 206, 3, 'C206-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1017, 206, 3, 'C206-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1018, 206, 3, 'C206-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1019, 207, 4, 'C207-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1020, 207, 4, 'C207-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1021, 207, 4, 'C207-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1022, 208, 4, 'C208-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1023, 208, 4, 'C208-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1024, 208, 4, 'C208-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1025, 209, 5, 'C209-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1026, 209, 5, 'C209-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1027, 209, 5, 'C209-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1028, 210, 5, 'C210-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1029, 210, 5, 'C210-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1030, 210, 5, 'C210-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1031, 211, 6, 'C211-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1032, 211, 6, 'C211-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1033, 211, 6, 'C211-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1034, 212, 6, 'C212-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1035, 212, 6, 'C212-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1036, 212, 6, 'C212-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1037, 213, 7, 'C213-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1038, 213, 7, 'C213-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1039, 213, 7, 'C213-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1040, 214, 7, 'C214-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1041, 214, 7, 'C214-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1042, 214, 7, 'C214-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1043, 215, 8, 'C215-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1044, 215, 8, 'C215-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1045, 215, 8, 'C215-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1046, 216, 8, 'C216-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1047, 216, 8, 'C216-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1048, 216, 8, 'C216-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1049, 217, 9, 'C217-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1050, 217, 9, 'C217-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1051, 217, 9, 'C217-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1052, 218, 9, 'C218-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1053, 218, 9, 'C218-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1054, 218, 9, 'C218-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1055, 219, 10, 'C219-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1056, 219, 10, 'C219-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1057, 219, 10, 'C219-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1058, 220, 10, 'C220-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1059, 220, 10, 'C220-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1060, 220, 10, 'C220-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1061, 221, 11, 'C221-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1062, 221, 11, 'C221-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1063, 221, 11, 'C221-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1064, 222, 11, 'C222-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1065, 222, 11, 'C222-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1066, 222, 11, 'C222-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1067, 223, 15, 'C223-U1', 1, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1068, 223, 15, 'C223-U2', 2, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1069, 223, 15, 'C223-U3', 3, 0, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 11:46:34'),
+(1070, 224, 15, 'C224-U1', 1, 1, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 12:01:20'),
+(1071, 224, 15, 'C224-U2', 2, 1, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 12:01:23'),
+(1072, 224, 15, 'C224-U3', 3, 1, 2, 'week', 6, 1, 'admin', 1, '2026-07-01 14:00:00', '2026-08-29 12:01:26'),
+(1073, 226, 15, 'unit-j20mqi', 2, 0, NULL, NULL, 0, 1, 'admin', NULL, '2026-08-29 13:45:54', '2026-08-29 13:47:24'),
+(1074, 226, 15, 'unit-lnpgpn', 1, 1, NULL, NULL, 0, 1, 'admin', NULL, '2026-08-29 13:47:13', '2026-08-29 13:47:24'),
+(1075, 228, 15, 'unit-4dl7cg', 1, 0, NULL, NULL, 0, 1, 'admin', NULL, '2026-09-05 22:11:59', '2026-09-05 22:22:51'),
+(1076, 228, 15, 'unit-r1f11s', 2, 0, NULL, NULL, 0, 1, 'admin', NULL, '2026-09-05 22:21:57', '2026-09-05 22:22:51');
 
 -- --------------------------------------------------------
 
@@ -7361,7 +8466,15 @@ INSERT INTO `units_translations` (`id`, `unit_id`, `language_id`, `name`, `descr
 (3141, 1071, 1, 'التطبيق وحل المسائل - العلوم المتكاملة', 'وحدة تعليمية تغطي التطبيق وحل المسائل مع أمثلة وأسئلة تطبيقية.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (3142, 1071, 2, 'Application and Problem Solving - Integrated Science', 'Learning unit covering application and problem solving with examples and practice.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (3143, 1072, 1, 'المراجعة والاختبار الشامل - العلوم المتكاملة', 'وحدة تعليمية تغطي المراجعة والاختبار الشامل مع أمثلة وأسئلة تطبيقية.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(3144, 1072, 2, 'Revision and Comprehensive Practice - Integrated Science', 'Learning unit covering revision and comprehensive practice with examples and practice.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00');
+(3144, 1072, 2, 'Revision and Comprehensive Practice - Integrated Science', 'Learning unit covering revision and comprehensive practice with examples and practice.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
+(3145, 1073, 1, 'تيست', 'تيست ديسكربشن', 1, '2026-08-29 13:45:54', '2026-08-29 13:45:54'),
+(3146, 1073, 2, 'test', 'test desc', 1, '2026-08-29 13:45:54', '2026-08-29 13:45:54'),
+(3147, 1074, 1, 'تيست تو', 'تيست ديسكربشن تو', 1, '2026-08-29 13:47:13', '2026-08-29 13:47:13'),
+(3148, 1074, 2, 'test 2', 'test desc 2', 1, '2026-08-29 13:47:13', '2026-08-29 13:47:13'),
+(3149, 1075, 1, 'الحركة', '', 1, '2026-09-05 22:11:59', '2026-09-05 22:11:59'),
+(3150, 1075, 2, 'alharaka', '', 1, '2026-09-05 22:11:59', '2026-09-05 22:11:59'),
+(3151, 1076, 1, 'السرعة', '', 1, '2026-09-05 22:21:57', '2026-09-05 22:21:57'),
+(3152, 1076, 2, 'alsoraa', '', 1, '2026-09-05 22:21:57', '2026-09-05 22:21:57');
 
 -- --------------------------------------------------------
 
@@ -7620,7 +8733,11 @@ INSERT INTO `videos` (`id`, `unit_id`, `code`, `duration_seconds`, `publish_stat
 (2141, 1071, 'V-224-2-1', 1380, 'published', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (2142, 1071, 'V-224-2-2', 1560, 'published', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (2143, 1072, 'V-224-3-1', 1560, 'published', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(2144, 1072, 'V-224-3-2', 1740, 'published', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00');
+(2144, 1072, 'V-224-3-2', 1740, 'published', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
+(2145, 1074, 'video-6a92e666b2e53', 12, 'published', 1, '2026-08-29 14:02:14', '2026-08-29 14:02:14'),
+(2146, 1074, 'video-6a92e68b8255f', 15, 'published', 1, '2026-08-29 14:02:51', '2026-08-29 14:02:51'),
+(2147, 1073, 'video-6a92e6bec686c', 14, 'published', 1, '2026-08-29 14:03:42', '2026-08-29 14:03:42'),
+(2148, 1073, 'video-6a92e6e36455e', 15, 'published', 1, '2026-08-29 14:04:19', '2026-08-29 14:04:19');
 
 -- --------------------------------------------------------
 
@@ -7931,7 +9048,15 @@ INSERT INTO `videos_translations` (`id`, `video_id`, `language_id`, `name`, `des
 (5285, 2143, 1, 'الدرس 1: المراجعة والاختبار الشامل', 'شرح فيديو تطبيقي ضمن وحدة العلوم المتكاملة.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (5286, 2143, 2, 'Lesson 1: Revision and Comprehensive Practice', 'Practical video lesson in the Integrated Science unit.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
 (5287, 2144, 1, 'الدرس 2: المراجعة والاختبار الشامل', 'شرح فيديو تطبيقي ضمن وحدة العلوم المتكاملة.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
-(5288, 2144, 2, 'Lesson 2: Revision and Comprehensive Practice', 'Practical video lesson in the Integrated Science unit.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00');
+(5288, 2144, 2, 'Lesson 2: Revision and Comprehensive Practice', 'Practical video lesson in the Integrated Science unit.', 1, '2026-07-01 14:00:00', '2026-08-10 16:00:00'),
+(5289, 2145, 1, 'تيست', 'تيست ديس', 1, '2026-08-29 14:02:14', '2026-08-29 14:02:14'),
+(5290, 2145, 2, 'تيست', '', 1, '2026-08-29 14:02:14', '2026-08-29 14:02:14'),
+(5291, 2146, 1, 'تيست2', 'تيست ديس 2', 1, '2026-08-29 14:02:51', '2026-08-29 14:02:51'),
+(5292, 2146, 2, 'تيست2', '', 1, '2026-08-29 14:02:51', '2026-08-29 14:02:51'),
+(5293, 2147, 1, 'تيست', 'تيست ديس', 1, '2026-08-29 14:03:42', '2026-08-29 14:03:42'),
+(5294, 2147, 2, 'test', 'test des', 1, '2026-08-29 14:03:42', '2026-08-29 14:03:42'),
+(5295, 2148, 1, 'تيست 2', 'تيست ديسكربشن 2', 1, '2026-08-29 14:04:19', '2026-08-29 14:04:19'),
+(5296, 2148, 2, 'test 2', 'test desc 2', 1, '2026-08-29 14:04:19', '2026-08-29 14:04:19');
 
 -- --------------------------------------------------------
 
@@ -8239,6 +9364,15 @@ ALTER TABLE `admins`
   ADD KEY `fk_admins_role` (`role_id`);
 
 --
+-- Indexes for table `admin_permissions`
+--
+ALTER TABLE `admin_permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_admin_permission` (`admin_id`,`permission_id`),
+  ADD KEY `idx_admin_permissions_admin` (`admin_id`),
+  ADD KEY `idx_admin_permissions_permission` (`permission_id`);
+
+--
 -- Indexes for table `advertisements`
 --
 ALTER TABLE `advertisements`
@@ -8352,7 +9486,8 @@ ALTER TABLE `class_sessions`
   ADD KEY `idx_csn_teacher` (`teacher_id`),
   ADD KEY `idx_csn_subject` (`subject_id`),
   ADD KEY `idx_csn_course` (`course_id`),
-  ADD KEY `idx_csn_day` (`day_of_week`);
+  ADD KEY `idx_csn_day` (`day_of_week`),
+  ADD KEY `fk_class_sessions_academic_year` (`academic_year_id`);
 
 --
 -- Indexes for table `class_session_notification_log`
@@ -8989,8 +10124,9 @@ ALTER TABLE `teacher_ratings`
 --
 ALTER TABLE `teacher_subjects`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_teacher_subjects` (`teacher_id`,`subject_id`),
-  ADD KEY `idx_teacher_subjects_subject` (`subject_id`);
+  ADD UNIQUE KEY `uq_teacher_subjects` (`teacher_id`,`subject_id`,`academic_year_id`),
+  ADD KEY `idx_teacher_subjects_subject` (`subject_id`),
+  ADD KEY `fk_teacher_subjects_academic_year` (`academic_year_id`);
 
 --
 -- Indexes for table `transactions`
@@ -9127,6 +10263,12 @@ ALTER TABLE `admins`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT for table `admin_permissions`
+--
+ALTER TABLE `admin_permissions`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
 -- AUTO_INCREMENT for table `advertisements`
 --
 ALTER TABLE `advertisements`
@@ -9142,7 +10284,7 @@ ALTER TABLE `advertisements_translations`
 -- AUTO_INCREMENT for table `affiliates`
 --
 ALTER TABLE `affiliates`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `affiliate_commissions`
@@ -9202,37 +10344,37 @@ ALTER TABLE `cities_translations`
 -- AUTO_INCREMENT for table `class_sessions`
 --
 ALTER TABLE `class_sessions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=126;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
 
 --
 -- AUTO_INCREMENT for table `class_session_notification_log`
 --
 ALTER TABLE `class_session_notification_log`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `code_redemptions_log`
 --
 ALTER TABLE `code_redemptions_log`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1072;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1074;
 
 --
 -- AUTO_INCREMENT for table `consultation_slots`
 --
 ALTER TABLE `consultation_slots`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=134;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=137;
 
 --
 -- AUTO_INCREMENT for table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=226;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=229;
 
 --
 -- AUTO_INCREMENT for table `courses_translations`
 --
 ALTER TABLE `courses_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1065;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1073;
 
 --
 -- AUTO_INCREMENT for table `course_books`
@@ -9244,7 +10386,7 @@ ALTER TABLE `course_books`
 -- AUTO_INCREMENT for table `course_books_translations`
 --
 ALTER TABLE `course_books_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9063;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9065;
 
 --
 -- AUTO_INCREMENT for table `course_categories`
@@ -9262,13 +10404,13 @@ ALTER TABLE `course_categories_translations`
 -- AUTO_INCREMENT for table `course_exams`
 --
 ALTER TABLE `course_exams`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=625;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=634;
 
 --
 -- AUTO_INCREMENT for table `course_exams_translations`
 --
 ALTER TABLE `course_exams_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11049;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11063;
 
 --
 -- AUTO_INCREMENT for table `course_ratings`
@@ -9280,7 +10422,7 @@ ALTER TABLE `course_ratings`
 -- AUTO_INCREMENT for table `course_teachers`
 --
 ALTER TABLE `course_teachers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=526;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=529;
 
 --
 -- AUTO_INCREMENT for table `course_videos`
@@ -9298,19 +10440,19 @@ ALTER TABLE `course_videos_translations`
 -- AUTO_INCREMENT for table `email_verification_codes`
 --
 ALTER TABLE `email_verification_codes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `exam_attempts`
 --
 ALTER TABLE `exam_attempts`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7066;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7069;
 
 --
 -- AUTO_INCREMENT for table `exam_attempt_answers`
 --
 ALTER TABLE `exam_attempt_answers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15321;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15335;
 
 --
 -- AUTO_INCREMENT for table `exam_teachers`
@@ -9328,7 +10470,7 @@ ALTER TABLE `homework`
 -- AUTO_INCREMENT for table `homework_submissions`
 --
 ALTER TABLE `homework_submissions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=173;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=174;
 
 --
 -- AUTO_INCREMENT for table `languages`
@@ -9346,25 +10488,25 @@ ALTER TABLE `languages_translations`
 -- AUTO_INCREMENT for table `mcq_options`
 --
 ALTER TABLE `mcq_options`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10289;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10303;
 
 --
 -- AUTO_INCREMENT for table `mcq_options_translations`
 --
 ALTER TABLE `mcq_options_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20577;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20605;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
 
 --
 -- AUTO_INCREMENT for table `notification_recipients`
 --
 ALTER TABLE `notification_recipients`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=588;
 
 --
 -- AUTO_INCREMENT for table `parents`
@@ -9394,25 +10536,25 @@ ALTER TABLE `payment_transactions`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `permissions_translations`
 --
 ALTER TABLE `permissions_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
 
 --
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5121;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5131;
 
 --
 -- AUTO_INCREMENT for table `questions_translations`
 --
 ALTER TABLE `questions_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12241;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12259;
 
 --
 -- AUTO_INCREMENT for table `resources`
@@ -9472,7 +10614,7 @@ ALTER TABLE `school_types_translations`
 -- AUTO_INCREMENT for table `session_attendance`
 --
 ALTER TABLE `session_attendance`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1205;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1207;
 
 --
 -- AUTO_INCREMENT for table `session_files`
@@ -9490,7 +10632,7 @@ ALTER TABLE `session_file_submissions`
 -- AUTO_INCREMENT for table `session_reschedule_requests`
 --
 ALTER TABLE `session_reschedule_requests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT for table `site_settings`
@@ -9502,7 +10644,7 @@ ALTER TABLE `site_settings`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1066;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1068;
 
 --
 -- AUTO_INCREMENT for table `student_book_progress`
@@ -9538,7 +10680,7 @@ ALTER TABLE `student_point_transactions`
 -- AUTO_INCREMENT for table `student_question_answers`
 --
 ALTER TABLE `student_question_answers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20123;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20134;
 
 --
 -- AUTO_INCREMENT for table `student_referrals`
@@ -9550,13 +10692,13 @@ ALTER TABLE `student_referrals`
 -- AUTO_INCREMENT for table `student_reports`
 --
 ALTER TABLE `student_reports`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=165;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=170;
 
 --
 -- AUTO_INCREMENT for table `student_subscriptions`
 --
 ALTER TABLE `student_subscriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1077;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1079;
 
 --
 -- AUTO_INCREMENT for table `student_subscription_books`
@@ -9568,13 +10710,13 @@ ALTER TABLE `student_subscription_books`
 -- AUTO_INCREMENT for table `student_subscription_courses`
 --
 ALTER TABLE `student_subscription_courses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1077;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1078;
 
 --
 -- AUTO_INCREMENT for table `student_subscription_subjects`
 --
 ALTER TABLE `student_subscription_subjects`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1046;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1051;
 
 --
 -- AUTO_INCREMENT for table `student_subscription_teachers`
@@ -9586,7 +10728,7 @@ ALTER TABLE `student_subscription_teachers`
 -- AUTO_INCREMENT for table `student_video_progress`
 --
 ALTER TABLE `student_video_progress`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `subjects`
@@ -9610,19 +10752,19 @@ ALTER TABLE `subject_academic_years`
 -- AUTO_INCREMENT for table `subscription_codes`
 --
 ALTER TABLE `subscription_codes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=119;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=221;
 
 --
 -- AUTO_INCREMENT for table `subscription_code_courses`
 --
 ALTER TABLE `subscription_code_courses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1037;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1038;
 
 --
 -- AUTO_INCREMENT for table `subscription_code_subjects`
 --
 ALTER TABLE `subscription_code_subjects`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1015;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1320;
 
 --
 -- AUTO_INCREMENT for table `subscription_code_teachers`
@@ -9634,7 +10776,7 @@ ALTER TABLE `subscription_code_teachers`
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=213;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=214;
 
 --
 -- AUTO_INCREMENT for table `teacher_ratings`
@@ -9646,7 +10788,7 @@ ALTER TABLE `teacher_ratings`
 -- AUTO_INCREMENT for table `teacher_subjects`
 --
 ALTER TABLE `teacher_subjects`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=512;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=528;
 
 --
 -- AUTO_INCREMENT for table `transactions`
@@ -9676,19 +10818,19 @@ ALTER TABLE `transaction_items_translations`
 -- AUTO_INCREMENT for table `true_false_answers`
 --
 ALTER TABLE `true_false_answers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1025;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1026;
 
 --
 -- AUTO_INCREMENT for table `units`
 --
 ALTER TABLE `units`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1073;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1077;
 
 --
 -- AUTO_INCREMENT for table `units_translations`
 --
 ALTER TABLE `units_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3145;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3153;
 
 --
 -- AUTO_INCREMENT for table `unit_teachers`
@@ -9700,13 +10842,13 @@ ALTER TABLE `unit_teachers`
 -- AUTO_INCREMENT for table `videos`
 --
 ALTER TABLE `videos`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2145;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2149;
 
 --
 -- AUTO_INCREMENT for table `videos_translations`
 --
 ALTER TABLE `videos_translations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5289;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5297;
 
 --
 -- AUTO_INCREMENT for table `video_teachers`
@@ -9775,6 +10917,12 @@ ALTER TABLE `banner_views`
 ALTER TABLE `cities_translations`
   ADD CONSTRAINT `fk_cities_translations_city` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_cities_translations_language` FOREIGN KEY (`language_id`) REFERENCES `languages` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `class_sessions`
+--
+ALTER TABLE `class_sessions`
+  ADD CONSTRAINT `fk_class_sessions_academic_year` FOREIGN KEY (`academic_year_id`) REFERENCES `academic_years` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `courses`
@@ -9975,6 +11123,7 @@ ALTER TABLE `teachers`
 -- Constraints for table `teacher_subjects`
 --
 ALTER TABLE `teacher_subjects`
+  ADD CONSTRAINT `fk_teacher_subjects_academic_year` FOREIGN KEY (`academic_year_id`) REFERENCES `academic_years` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_teacher_subjects_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_teacher_subjects_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 

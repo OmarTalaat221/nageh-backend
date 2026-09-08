@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/easykash.php';
+require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 
 if (!function_exists('payments_resolve_purchasable_item')) {
     function payments_resolve_purchasable_item($con, string $itemType, int $itemId) {
@@ -52,6 +53,8 @@ if (!function_exists('payments_grant_access')) {
             $linkStmt = mysqli_prepare($con, "INSERT INTO student_subscription_courses (student_subscription_id, course_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE course_id = course_id");
             mysqli_stmt_bind_param($linkStmt, "ii", $subId, $itemId);
             mysqli_stmt_execute($linkStmt);
+
+            notify_of_course_subscription($con, $studentId, [$itemId], 'شراء مباشر');
 
             return $subId;
         }

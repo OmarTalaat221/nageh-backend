@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../../../helpers/admin_notifications.php';
 
 if (!function_exists('ensure_consultation_slots_type_column')) {
     function ensure_consultation_slots_type_column($con): void {
@@ -238,7 +239,10 @@ if (!function_exists('teacherCreateConsultationSlot')) {
             return ['status' => 'error', 'message' => 'Failed to create slot: ' . mysqli_error($con)];
         }
 
-        return ['status' => 'success', 'message' => trans('slot_added_success'), 'data' => get_consultation_slot_details($con, mysqli_insert_id($con))];
+        $newSlotId = mysqli_insert_id($con);
+        notify_of_consultation_slot_created($con, $teacherId, $subjectId, $slotDate, $slotTime);
+
+        return ['status' => 'success', 'message' => trans('slot_added_success'), 'data' => get_consultation_slot_details($con, $newSlotId)];
     }
 }
 

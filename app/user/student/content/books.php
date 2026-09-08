@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
+require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 
 if (!function_exists('enrich_student_book_details')) {
     function enrich_student_book_details($con, array $row) {
@@ -489,6 +490,8 @@ if (!function_exists('studentSubscribeBook')) {
         }
 
         mysqli_query($con, "INSERT INTO student_book_purchase_requests (student_id, book_id, status) VALUES ({$stId}, {$bookId}, 'pending')");
+
+        notify_of_book_purchase_request($con, $stId, $bookId);
 
         return [
             'status' => 'success',
