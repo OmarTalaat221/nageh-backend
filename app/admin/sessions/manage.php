@@ -155,6 +155,7 @@ if (!function_exists('adminCreateSession')) {
         $subjectId = isset($body['subject_id']) && $body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
         $courseId = isset($body['course_id']) && $body['course_id'] > 0 ? (int)$body['course_id'] : null;
         $dayOfWeek = trim($body['day_of_week'] ?? '');
+        $days = isset($body['days']) && is_array($body['days']) ? array_values(array_unique(array_map('trim', $body['days']))) : [$dayOfWeek];
         $startTime = !empty($body['start_time']) ? date('H:i:s', strtotime($body['start_time'])) : null;
         $endTime = !empty($body['end_time']) ? date('H:i:s', strtotime($body['end_time'])) : null;
         $room = trim($body['room'] ?? '');
@@ -178,26 +179,32 @@ if (!function_exists('adminCreateSession')) {
         }
 
         $allowedDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        if (empty($dayOfWeek) || !in_array($dayOfWeek, $allowedDays, true)) {
-            return ['status' => 'error', 'message' => 'Valid day_of_week is required'];
+        $days = array_filter($days, fn($d) => in_array($d, $allowedDays, true));
+        if (empty($days)) {
+            return ['status' => 'error', 'message' => 'Valid day_of_week (or days) is required'];
         }
         if (empty($startTime) || empty($endTime)) {
             return ['status' => 'error', 'message' => 'start_time and end_time are required'];
         }
 
-        $code = uniqid('SESS-');
+        $created = [];
+        foreach ($days as $day) {
+            $code = uniqid('SESS-');
 
-        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
-        mysqli_stmt_bind_param($stmt, "iiisssssissi", $teacherId, $subjectId, $courseId, $code, $dayOfWeek, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId);
+            $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+            mysqli_stmt_bind_param($stmt, "iiisssssissi", $teacherId, $subjectId, $courseId, $code, $day, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId);
 
-        if (!mysqli_stmt_execute($stmt)) {
-            return ['status' => 'error', 'message' => 'Failed to create class session: ' . mysqli_error($con)];
+            if (!mysqli_stmt_execute($stmt)) {
+                return ['status' => 'error', 'message' => 'Failed to create class session: ' . mysqli_error($con)];
+            }
+
+            $created[] = get_class_session_details($con, mysqli_insert_id($con));
         }
 
         return [
             'status' => 'success',
             'message' => 'Class session created successfully',
-            'data' => get_class_session_details($con, mysqli_insert_id($con))
+            'data' => count($created) === 1 ? $created[0] : $created
         ];
     }
 }

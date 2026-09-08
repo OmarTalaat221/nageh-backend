@@ -259,6 +259,9 @@ if (!function_exists('teacherListSessions')) {
             }
         }
 
+        $courseId = (int)($_GET['course_id'] ?? 0);
+        $subjectId = (int)($_GET['subject_id'] ?? 0);
+
         $where = ["teacher_id = ?"];
         $params = [$teacherId];
         $types = "i";
@@ -267,6 +270,16 @@ if (!function_exists('teacherListSessions')) {
             $where[] = "day_of_week = ?";
             $params[] = $day;
             $types .= "s";
+        }
+        if ($courseId > 0) {
+            $where[] = "course_id = ?";
+            $params[] = $courseId;
+            $types .= "i";
+        }
+        if ($subjectId > 0) {
+            $where[] = "subject_id = ?";
+            $params[] = $subjectId;
+            $types .= "i";
         }
 
         $whereSql = implode(" AND ", $where);
@@ -316,7 +329,9 @@ if (!function_exists('teacherCreateSession')) {
         $code = trim($body['code'] ?? '');
         $day = trim($body['day_of_week'] ?? $body['day'] ?? '');
         $allowedDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        if (!in_array($day, $allowedDays)) {
+        $days = isset($body['days']) && is_array($body['days']) ? array_values(array_unique(array_map('trim', $body['days']))) : [$day];
+        $days = array_filter($days, fn($d) => in_array($d, $allowedDays, true));
+        if (empty($days)) {
             return ['status' => 'error', 'message' => 'day_of_week must be one of: ' . implode(', ', $allowedDays)];
         }
         $startTime = !empty($body['start_time']) ? date('H:i:s', strtotime($body['start_time'])) : null;
@@ -334,34 +349,43 @@ if (!function_exists('teacherCreateSession')) {
             return ['status' => 'error', 'message' => 'meeting_link is required when is_online is true'];
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "iiisssssissii", $teacherId, $subjectId, $courseId, $code, $day, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId, $isActive);
-        if (!mysqli_stmt_execute($stmt)) {
-            return ['status' => 'error', 'message' => 'Failed to create session: ' . mysqli_error($con)];
-        }
+        $created = [];
+        foreach ($days as $day) {
+            $stmt = mysqli_prepare($con, "INSERT INTO class_sessions (teacher_id, subject_id, course_id, code, day_of_week, start_time, end_time, room, is_online, meeting_link, grade, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, "iiisssssissii", $teacherId, $subjectId, $courseId, $code, $day, $startTime, $endTime, $room, $isOnline, $meetingLink, $grade, $academicYearId, $isActive);
+            if (!mysqli_stmt_execute($stmt)) {
+                return ['status' => 'error', 'message' => 'Failed to create session: ' . mysqli_error($con)];
+            }
 
-        $newSessionId = mysqli_insert_id($con);
+            $newSessionId = mysqli_insert_id($con);
 
-        if ($day === get_request_now()->format('l')) {
-            $today = get_request_now()->format('Y-m-d');
-            if (mark_session_notification_once($con, $newSessionId, 'created', $today)) {
-                $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId, $teacherId);
-                if (!empty($studentIds)) {
-                    send_notification_to_users(
-                        $con,
-                        'student',
-                        $studentIds,
-                        'حصة جديدة اليوم',
-                        "تمت إضافة حصة اليوم الساعة {$startTime}" . (!empty($grade) ? " - {$grade}" : ''),
-                        ['type' => 'session_created', 'session_id' => $newSessionId],
-                        'teacher',
-                        $teacherId
-                    );
+            if ($day === get_request_now()->format('l')) {
+                $today = get_request_now()->format('Y-m-d');
+                if (mark_session_notification_once($con, $newSessionId, 'created', $today)) {
+                    $studentIds = get_active_student_ids_for_session($con, $courseId, $subjectId, $teacherId);
+                    if (!empty($studentIds)) {
+                        send_notification_to_users(
+                            $con,
+                            'student',
+                            $studentIds,
+                            'حصة جديدة اليوم',
+                            "تمت إضافة حصة اليوم الساعة {$startTime}" . (!empty($grade) ? " - {$grade}" : ''),
+                            ['type' => 'session_created', 'session_id' => $newSessionId],
+                            'teacher',
+                            $teacherId
+                        );
+                    }
                 }
             }
+
+            $created[] = get_class_session_details($con, $newSessionId);
         }
 
-        return ['status' => 'success', 'message' => 'Session created successfully', 'data' => get_class_session_details($con, $newSessionId)];
+        return [
+            'status' => 'success',
+            'message' => 'Session created successfully',
+            'data' => count($created) === 1 ? $created[0] : $created
+        ];
     }
 }
 

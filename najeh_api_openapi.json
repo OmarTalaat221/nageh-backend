@@ -2418,8 +2418,8 @@
         "tags": [
           "Admin / Sessions"
         ],
-        "summary": "Create session",
-        "description": "CASE (validation path depends on which of course_id/subject_id is sent):\n- course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n- course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\nCASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).",
+        "summary": "Create session (update-1: days[] batch create)",
+        "description": "CASE (validation path depends on which of course_id/subject_id is sent):\n- course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n- course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\nCASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\nCASE (update-1, days vs day_of_week): if `days` (array) is sent, one class_sessions row is inserted per day in one call (all other fields shared) and `data` returns an ARRAY of created sessions; if only `day_of_week` is sent (legacy, unchanged), `data` returns a single object exactly as before.",
         "security": [
           {
             "AdminAuth": []
@@ -2452,7 +2452,24 @@
                       "Thu",
                       "Fri",
                       "Sat"
-                    ]
+                    ],
+                    "description": "Legacy single-day create — still supported and still returns a single object, not an array"
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday"
+                      ]
+                    },
+                    "description": "update-1: optional — pick multiple days to create the same recurring session on all of them in one call, e.g. attaching a full weekly schedule to a course at once. Takes precedence over day_of_week when present."
                   },
                   "start_time": {
                     "type": "string"
@@ -2483,7 +2500,7 @@
                   }
                 }
               },
-              "example": "// CASE (validation path depends on which of course_id/subject_id is sent):\n// - course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n// - course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\n// CASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\n\n{\n  \"teacher_id\": 1,\n  \"subject_id\": 1,\n  \"course_id\": 1,\n  \"day_of_week\": \"Sun\",\n  \"start_time\": \"string\",\n  \"end_time\": \"string\",\n  \"room\": \"string\",\n  \"is_online\": 0,\n  \"meeting_link\": \"string\",\n  \"grade\": \"string\",\n  \"academic_year_id\": 1\n}"
+              "example": "// CASE (validation path depends on which of course_id/subject_id is sent):\n// - course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n// - course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\n// CASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\n// CASE (update-1, days vs day_of_week): sending \"days\" creates one row per day and returns an array in `data`; sending only \"day_of_week\" (legacy) returns a single object in `data`, unchanged.\n\n{\n  \"teacher_id\": 1,\n  \"subject_id\": 1,\n  \"course_id\": 1,\n  \"days\": [\"Saturday\", \"Monday\", \"Wednesday\"],\n  \"start_time\": \"string\",\n  \"end_time\": \"string\",\n  \"room\": \"string\",\n  \"is_online\": 0,\n  \"meeting_link\": \"string\",\n  \"grade\": \"string\",\n  \"academic_year_id\": 1\n}"
             }
           }
         },
@@ -2665,11 +2682,81 @@
       }
     },
     "/teacher/sessions": {
+      "get": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "List own sessions (update-1: course_id/subject_id filters)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "update-1: filter to sessions belonging to this course (used by the new course-scoped schedule tab)"
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "update-1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Teacher / Sessions"
         ],
-        "summary": "Create session",
+        "summary": "Create session (update-1: days[] batch create)",
         "security": [
           {
             "TeacherAuth": []
@@ -2692,7 +2779,24 @@
                     "description": "NEW"
                   },
                   "day_of_week": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Legacy single-day create — still supported, still returns a single object in `data`"
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday"
+                      ]
+                    },
+                    "description": "update-1: optional — pick multiple days to create the same recurring session on all of them in one call. Takes precedence over day_of_week when present; response `data` becomes an array."
                   },
                   "start_time": {
                     "type": "string"
@@ -2719,7 +2823,7 @@
                 "subject_id": 1,
                 "course_id": 1,
                 "academic_year_id": 1,
-                "day_of_week": "string",
+                "days": ["Saturday", "Monday", "Wednesday"],
                 "start_time": "string",
                 "end_time": "string",
                 "room": "string",

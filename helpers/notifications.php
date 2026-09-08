@@ -258,6 +258,7 @@ if (!function_exists('send_notification_to_user')) {
 if (!function_exists('get_active_student_ids_for_session')) {
     function get_active_student_ids_for_session($con, ?int $courseId, ?int $subjectId, ?int $teacherId = null): array {
         $ids = [];
+        
         if (!empty($courseId)) {
             $res = mysqli_query($con, "
                 SELECT DISTINCT ss.student_id FROM student_subscription_courses ssc
