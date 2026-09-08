@@ -122,12 +122,14 @@ function sendFirebaseNotification($accessToken, $projectId, $token, $title, $bod
 {
     $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
+    // Data-only message (no top-level "notification" object) on purpose: when a
+    // message has BOTH a "notification" payload AND a registered
+    // onBackgroundMessage handler, Chrome/Edge display the notification TWICE —
+    // once via the browser's own auto-display of the "notification" payload,
+    // and once via our service worker's explicit showNotification() call.
+    // Sending data-only means only our SW decides if/how to display it.
     $message = [
         "token" => $token,
-        "notification" => [
-            "title" => $title,
-            "body"  => $body
-        ],
         "android" => [
             "priority" => "high",
             "notification" => [
@@ -143,11 +145,14 @@ function sendFirebaseNotification($accessToken, $projectId, $token, $title, $bod
         ]
     ];
 
+    $data["title"] = $title;
+    $data["body"] = $body;
+
     if (!empty($link)) {
-        // Lets a clicked background/OS push notification open (or focus) this
-        // URL in the browser — the Firebase Web SDK's service worker handles
-        // this automatically once fcm_options.link is present, no custom
-        // notificationclick listener needed in firebase-messaging-sw.js.
+        // Delivered to the client as payload.fcmOptions.link — read by our
+        // service worker's onBackgroundMessage handler (firebase-messaging-sw.js)
+        // and stored on the notification so its notificationclick listener knows
+        // which URL to open/focus.
         $message["webpush"] = [
             "fcm_options" => [
                 "link" => $link
@@ -162,7 +167,7 @@ function sendFirebaseNotification($accessToken, $projectId, $token, $title, $bod
     }
 
     if (!empty($image)) {
-        $message["notification"]["image"] = $image;
+        $message["data"]["image"] = $image;
     }
 
     $payload = json_encode([
