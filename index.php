@@ -2109,6 +2109,46 @@ $routes = [
         ],
         [
             "method" => "GET",
+            "path" => "/najeh/admin/notifications/inbox",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/notifications/inbox.php";
+                $adminData = adminAuthMiddleware();
+                return adminListMyNotifications($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/notifications/inbox/unread-count",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/notifications/inbox.php";
+                $adminData = adminAuthMiddleware();
+                return adminGetNotificationUnreadCount($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/notifications/inbox/read",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/notifications/inbox.php";
+                $adminData = adminAuthMiddleware();
+                return adminMarkNotificationRead($con, $adminData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/notifications/inbox",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/notifications/inbox.php";
+                $adminData = adminAuthMiddleware();
+                return adminDeleteMyNotification($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
             "path" => "/najeh/admin/dashboard/statistics",
             "handler" => function ($con) {
                 include_once "./middlewares/adminauthmiddleware.php";
