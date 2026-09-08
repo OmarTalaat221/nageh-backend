@@ -6270,6 +6270,230 @@
           }
         }
       }
+    },
+    "/admin/notifications/inbox": {
+      "get": {
+        "tags": [
+          "Admin / Notifications Inbox (NEW)"
+        ],
+        "summary": "(NEW) List the automatic system notifications addressed to the logged-in admin",
+        "description": "Separate module (app/admin/notifications/inbox.php) from the existing send/history endpoints — this is what the admin RECEIVES (new student registration, course subscription, book purchase request, session started, consultation created), not what they sent. TEST CYCLE (real data from the latest DB dump): 1) POST /admin/auth/login with a real admin email (e.g. info@najeh.com, id=1, role=super_admin — password is hashed in the dump, you must supply the real plaintext yourself) to get an admin Bearer token. 2) Fire the event: POST /user/student/auth/login with {email:\"omartalaat1276@gmail.com\", password:\"12345678\"} (real, active student id=1065), then POST /student/subscriptions/redeem-code with {code:\"123456789102\"} using that student's token — this is a real, still-valid, unused-by-this-student code granting courses 201+202 (teacher id 201) and fires notify_of_course_subscription() for real. 3) Call this endpoint with the admin token to see the resulting notification.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "is_read",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "unread_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": [
+                    {
+                      "id": 501,
+                      "notification_id": 990,
+                      "is_sent": 0,
+                      "is_read": 0,
+                      "error": "No FCM token registered",
+                      "received_at": "2026-09-08 12:00:00",
+                      "sender_type": "system",
+                      "sender_id": null,
+                      "title": "اشتراك جديد في كورس",
+                      "body": "الطالب عمر طلعت اشترك في كورس \"اللغة العربية - الصف الثاني الثانوي\" (كود اشتراك).",
+                      "data": {
+                        "type": "course_subscription",
+                        "student_id": 1065,
+                        "course_id": 201
+                      },
+                      "created_at": "2026-09-08 12:00:00"
+                    }
+                  ],
+                  "pagination": {
+                    "current_page": 1,
+                    "per_page": 20,
+                    "total_records": 1,
+                    "total_pages": 1,
+                    "has_next_page": false,
+                    "has_prev_page": false
+                  },
+                  "unread_count": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin / Notifications Inbox (NEW)"
+        ],
+        "summary": "(NEW) Delete one received notification from the admin inbox",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "notification_recipients.id or notifications.id"
+                  }
+                }
+              },
+              "example": {
+                "id": 501
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/inbox/unread-count": {
+      "get": {
+        "tags": [
+          "Admin / Notifications Inbox (NEW)"
+        ],
+        "summary": "(NEW) Unread count for the admin inbox bell icon",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "unread_count": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/inbox/read": {
+      "post": {
+        "tags": [
+          "Admin / Notifications Inbox (NEW)"
+        ],
+        "summary": "(NEW) Mark one or all admin inbox notifications as read",
+        "description": "CASE all=true: marks every unread notification for this admin as read (used automatically when the bell dropdown is opened). CASE notification_id set: marks just that one.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "all": {
+                    "type": "boolean"
+                  },
+                  "notification_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": "// CASE all=true: marks every unread notification as read. CASE notification_id set: marks just that one.\n\n{\n  \"all\": true\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

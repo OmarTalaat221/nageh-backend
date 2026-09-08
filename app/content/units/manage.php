@@ -243,6 +243,21 @@ if (!function_exists('adminGetUnit')) {
     }
 }
 
+if (!function_exists('generate_unique_unit_code')) {
+    function generate_unique_unit_code($con, int $courseId): string {
+        do {
+            $randomPart = substr(bin2hex(random_bytes(4)), 0, 6);
+            $code = "unit-{$randomPart}";
+            $stmt = mysqli_prepare($con, "SELECT id FROM units WHERE course_id = ? AND code = ? LIMIT 1");
+            mysqli_stmt_bind_param($stmt, "is", $courseId, $code);
+            mysqli_stmt_execute($stmt);
+            $exists = (bool)mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        } while ($exists);
+
+        return $code;
+    }
+}
+
 if (!function_exists('adminCreateUnit')) {
     function adminCreateUnit($con, $creatorData = null) {
         ensure_content_tables_schema($con);
@@ -278,7 +293,7 @@ if (!function_exists('adminCreateUnit')) {
             return ['status' => 'error', 'message' => 'Unit name/title is required'];
         }
         if (empty($code)) {
-            $code = preg_replace('/[^a-z0-9]+/i', '-', strtolower($nameEn)) ?: ('unit-' . uniqid());
+            $code = generate_unique_unit_code($con, $courseId);
         }
 
         $nextOrderRes = mysqli_query($con, "SELECT COALESCE(MAX(order_num), 0) + 1 AS next_order FROM units WHERE course_id = {$courseId}");
