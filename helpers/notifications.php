@@ -132,6 +132,17 @@ if (!function_exists('ensure_notifications_tables')) {
     }
 }
 
+if (!function_exists('get_notification_click_link')) {
+    function get_notification_click_link(string $userType): string {
+        $links = [
+            'student' => 'https://nageh-dash-student.vercel.app/notifications',
+            'parent'  => 'https://nageh-dash-student.vercel.app/parent/dashboard',
+            'teacher' => 'https://najeh-teacher.vercel.app/notifications',
+        ];
+        return $links[$userType] ?? '';
+    }
+}
+
 if (!function_exists('_send_notification_to_users_impl')) {
     function _send_notification_to_users_impl($con, string $userType, array $userIds, string $title, string $body, array $data, string $senderType, ?int $senderId, ?string $dataJson, array $channels = ['push']): array {
         ensure_notifications_tables($con);
@@ -174,7 +185,7 @@ if (!function_exists('_send_notification_to_users_impl')) {
                     $failedCount++;
                     $error = $access['message'] ?? 'Failed to obtain Firebase access token';
                 } else {
-                    $result = sendFirebaseNotification($access['access_token'], $access['project_id'], $token, $title, $body, $data);
+                    $result = sendFirebaseNotification($access['access_token'], $access['project_id'], $token, $title, $body, $data, "", get_notification_click_link($userType));
                     if (($result['status'] ?? 'error') === 'success') {
                         $isSent = 1;
                         $sentCount++;

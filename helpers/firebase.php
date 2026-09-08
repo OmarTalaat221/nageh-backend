@@ -118,7 +118,7 @@ function normalizeFirebaseData($data = [])
     return $normalized;
 }
 
-function sendFirebaseNotification($accessToken, $projectId, $token, $title, $body, $data = [], $image = "")
+function sendFirebaseNotification($accessToken, $projectId, $token, $title, $body, $data = [], $image = "", $link = "")
 {
     $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
@@ -142,6 +142,18 @@ function sendFirebaseNotification($accessToken, $projectId, $token, $title, $bod
             ]
         ]
     ];
+
+    if (!empty($link)) {
+        // Lets a clicked background/OS push notification open (or focus) this
+        // URL in the browser — the Firebase Web SDK's service worker handles
+        // this automatically once fcm_options.link is present, no custom
+        // notificationclick listener needed in firebase-messaging-sw.js.
+        $message["webpush"] = [
+            "fcm_options" => [
+                "link" => $link
+            ]
+        ];
+    }
 
     $normalizedData = normalizeFirebaseData($data);
 
