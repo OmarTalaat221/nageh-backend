@@ -83,12 +83,15 @@ if (!function_exists('studentTodaySessions')) {
         // sensitive fields like meeting_link stay hidden until the session actually starts
         // (see get_class_session_details), so this preview can't be used to join early.
         $requestedCourseId = (int)($_GET['course_id'] ?? 0);
+        $isPreviewOnly = false;
         if ($requestedCourseId > 0) {
-            $canPreview = in_array($requestedCourseId, $courseIds, true);
+            $isSubscribedToCourse = in_array($requestedCourseId, $courseIds, true);
+            $canPreview = $isSubscribedToCourse;
             if (!$canPreview) {
                 $kindRes = mysqli_query($con, "SELECT kind FROM courses WHERE id = {$requestedCourseId} LIMIT 1");
                 $kindRow = $kindRes ? mysqli_fetch_assoc($kindRes) : null;
                 $canPreview = ($kindRow['kind'] ?? '') === 'package';
+                $isPreviewOnly = $canPreview;
             }
             $courseIds = $canPreview ? [$requestedCourseId] : [];
             $subjectIds = [];
@@ -208,6 +211,9 @@ if (!function_exists('studentTodaySessions')) {
                 if ($details) {
                     $details['next_session_date'] = date('Y-m-d', $entry['occ']);
                     $details['next_start_datetime'] = date('Y-m-d H:i:s', $entry['occ']);
+                    if ($isPreviewOnly) {
+                        $details['meeting_link'] = null;
+                    }
                     $items[] = $details;
                 }
             }
@@ -238,7 +244,11 @@ if (!function_exists('studentTodaySessions')) {
             $res = mysqli_stmt_get_result($stmt);
             if ($res) {
                 while ($row = mysqli_fetch_assoc($res)) {
-                    $items[] = get_class_session_details($con, (int)$row['id'], $overrideDate);
+                    $sessionDetails = get_class_session_details($con, (int)$row['id'], $overrideDate);
+                    if ($sessionDetails && $isPreviewOnly) {
+                        $sessionDetails['meeting_link'] = null;
+                    }
+                    $items[] = $sessionDetails;
                 }
             }
         }
