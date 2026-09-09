@@ -1490,6 +1490,16 @@ $routes = [
         },
     ],
     [
+        "method" => "POST",
+        "path" => "/najeh/teacher/consultations/recurring",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/consultations/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherCreateRecurringConsultationSlots($con, $teacherData);
+        },
+    ],
+    [
         "method" => "DELETE",
         "path" => "/najeh/teacher/consultations",
         "handler" => function ($con) {

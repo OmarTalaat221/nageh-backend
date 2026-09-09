@@ -246,6 +246,139 @@ if (!function_exists('teacherCreateConsultationSlot')) {
     }
 }
 
+if (!function_exists('teacherCreateRecurringConsultationSlots')) {
+    function teacherCreateRecurringConsultationSlots($con, $teacherData) {
+        $teacherId = (int)($teacherData['id'] ?? 0);
+        $body = read_json_body();
+
+        ensure_consultation_slots_type_column($con);
+
+        $allowedDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        $rawDays = $body['days'] ?? [];
+        if (!is_array($rawDays)) {
+            $rawDays = [$rawDays];
+        }
+        $days = [];
+        foreach ($rawDays as $rawDay) {
+            $normalized = ucfirst(strtolower(trim((string)$rawDay)));
+            if (in_array($normalized, $allowedDays, true) && !in_array($normalized, $days, true)) {
+                $days[] = $normalized;
+            }
+        }
+        if (empty($days)) {
+            return ['status' => 'error', 'message' => trans('at_least_one_day_required')];
+        }
+
+        $rawType = strtolower(trim($body['type'] ?? $body['consultation_type'] ?? 'educational'));
+        if (in_array($rawType, ['psychological', 'psych', 'نفسية', 'نفسيه'])) {
+            $type = 'psychological';
+        } else {
+            $type = 'educational';
+        }
+
+        $meetingType = strtolower(trim($body['meeting_type'] ?? 'video_call'));
+        if (!in_array($meetingType, ['offline', 'video_call', 'chat', 'online'])) {
+            return ['status' => 'error', 'message' => trans('invalid_meeting_type')];
+        }
+
+        $subjectId = isset($body['subject_id']) && $body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
+        $slotTime = !empty($body['slot_time']) ? date('H:i:s', strtotime($body['slot_time'])) : null;
+        $notes = trim($body['notes'] ?? '');
+
+        if (empty($slotTime)) {
+            return ['status' => 'error', 'message' => trans('slot_time_required')];
+        }
+
+        $endDateStr = !empty($body['end_date']) ? date('Y-m-d', strtotime($body['end_date'])) : null;
+        if (empty($endDateStr)) {
+            return ['status' => 'error', 'message' => trans('end_date_required')];
+        }
+
+        $today = get_request_now();
+        $todayStr = $today->format('Y-m-d');
+        if ($endDateStr < $todayStr) {
+            return ['status' => 'error', 'message' => trans('end_date_must_be_in_future')];
+        }
+
+        $maxEndDateStr = (clone $today)->modify('+180 days')->format('Y-m-d');
+        if ($endDateStr > $maxEndDateStr) {
+            return ['status' => 'error', 'message' => trans('end_date_too_far')];
+        }
+
+        // For every selected weekday, walk from today (or that weekday's next occurrence)
+        // in 7-day steps up to end_date inclusive — same day-name resolution approach as
+        // get_session_calculated_date() for class_sessions, just repeated until the end date
+        // instead of stopping at the first occurrence.
+        $datesToCreate = [];
+        foreach ($days as $dayName) {
+            $cursor = clone $today;
+            if (strcasecmp($today->format('l'), $dayName) !== 0) {
+                $cursor->modify("next {$dayName}");
+            }
+
+            while ($cursor->format('Y-m-d') <= $endDateStr) {
+                $datesToCreate[] = $cursor->format('Y-m-d');
+                $cursor = clone $cursor;
+                $cursor->modify('+7 days');
+            }
+        }
+
+        $datesToCreate = array_values(array_unique($datesToCreate));
+        sort($datesToCreate);
+
+        if (empty($datesToCreate)) {
+            return ['status' => 'error', 'message' => trans('no_dates_in_range')];
+        }
+
+        if (count($datesToCreate) > 200) {
+            return ['status' => 'error', 'message' => trans('too_many_slots_requested')];
+        }
+
+        // Skip dates where this exact teacher+date+time slot already exists, so running
+        // this twice (or with overlapping ranges) never creates duplicates.
+        $existingDates = [];
+        $placeholders = implode(',', array_fill(0, count($datesToCreate), '?'));
+        $existingStmt = mysqli_prepare($con, "SELECT slot_date FROM consultation_slots WHERE teacher_id = ? AND slot_time = ? AND slot_date IN ({$placeholders})");
+        if ($existingStmt) {
+            $bindTypes = 'is' . str_repeat('s', count($datesToCreate));
+            $bindParams = array_merge([$teacherId, $slotTime], $datesToCreate);
+            mysqli_stmt_bind_param($existingStmt, $bindTypes, ...$bindParams);
+            mysqli_stmt_execute($existingStmt);
+            $existingRes = mysqli_stmt_get_result($existingStmt);
+            while ($existingRow = mysqli_fetch_assoc($existingRes)) {
+                $existingDates[] = $existingRow['slot_date'];
+            }
+        }
+
+        $newDates = array_values(array_diff($datesToCreate, $existingDates));
+
+        $createdSlots = [];
+        $insertStmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
+        foreach ($newDates as $slotDate) {
+            mysqli_stmt_bind_param($insertStmt, "iisssss", $teacherId, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+            if (mysqli_stmt_execute($insertStmt)) {
+                $createdSlots[] = ['id' => mysqli_insert_id($con), 'slot_date' => $slotDate, 'slot_time' => $slotTime];
+            }
+        }
+
+        if (!empty($createdSlots)) {
+            // One summary notification for the whole batch instead of one per generated
+            // date, so this doesn't spam admins/students with dozens of near-identical alerts.
+            notify_of_consultation_slot_created($con, $teacherId, $subjectId, $createdSlots[0]['slot_date'], $slotTime);
+        }
+
+        return [
+            'status' => 'success',
+            'message' => trans('recurring_slots_created_success'),
+            'data' => [
+                'created_count' => count($createdSlots),
+                'skipped_count' => count($existingDates),
+                'slots' => $createdSlots,
+            ],
+        ];
+    }
+}
+
 if (!function_exists('teacherRespondToConsultationBooking')) {
     function teacherRespondToConsultationBooking($con, $teacherData) {
         $teacherId = (int)($teacherData['id'] ?? 0);
