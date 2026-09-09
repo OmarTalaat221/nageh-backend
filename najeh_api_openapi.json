@@ -2419,7 +2419,7 @@
           "Admin / Sessions"
         ],
         "summary": "Create session (update-1: days[] batch create)",
-        "description": "CASE (validation path depends on which of course_id/subject_id is sent):\n- course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it.\n- course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\nCASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\nCASE (update-1, days vs day_of_week): if `days` (array) is sent, one class_sessions row is inserted per day in one call (all other fields shared) and `data` returns an ARRAY of created sessions; if only `day_of_week` is sent (legacy, unchanged), `data` returns a single object exactly as before.",
+        "description": "CASE (validation path depends on which of course_id/subject_id is sent):\n- course_id set -> validated as a COURSE session: rejected if the teacher isn't assigned to that course, or if another teacher already owns it. EXCEPTION (update-1): if the course has NEITHER an assigned teacher NOR a subject_id (e.g. a content-free package with no teacher pinned yet), ANY teacher is allowed - this lets a different teacher be picked per session/day on the same course.\n- course_id empty + subject_id set -> validated as a SUBJECT session: rejected if the teacher isn't assigned to that subject for the given academic_year_id (grade).\nCASE (academic_year_id): null/omitted = session is open to ALL grades; a specific id = session is grade-locked and only shows to students of that exact grade (see /student/sessions/today).\nCASE (update-1, days vs day_of_week): if `days` (array) is sent, one class_sessions row is inserted per day in one call (all other fields shared) and `data` returns an ARRAY of created sessions; if only `day_of_week` is sent (legacy, unchanged), `data` returns a single object exactly as before.",
         "security": [
           {
             "AdminAuth": []
@@ -2757,6 +2757,7 @@
           "Teacher / Sessions"
         ],
         "summary": "Create session (update-1: days[] batch create)",
+        "description": "update-1: if course_id is set and that course has NEITHER an assigned teacher NOR a subject_id (e.g. a content-free package with no teacher pinned yet), the requesting teacher is allowed regardless of subject assignment - this lets a different teacher be picked per session/day on the same course. Otherwise the existing course/subject assignment check still applies.",
         "security": [
           {
             "TeacherAuth": []

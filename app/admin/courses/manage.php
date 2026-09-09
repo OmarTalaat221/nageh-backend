@@ -269,26 +269,30 @@ if (!function_exists('adminListCourses')) {
 
         $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
 
-        $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM courses");
-        $statRow = mysqli_fetch_assoc($statRes);
-        $totalRecords = (int)($statRow['total'] ?? 0);
+        // update-1: stats must respect the same filters as the list itself (e.g. `kind`) — this
+        // used to always count the whole `courses` table regardless of any filter, which showed
+        // e.g. 27 "active" packages in the stat cards while the (correctly filtered) table below
+        // was empty.
+        $statSql = "SELECT COUNT(DISTINCT c.id) AS total, SUM(CASE WHEN c.is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN c.is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM courses c {$joinCt} LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id {$whereClause}";
+        $statStmt = mysqli_prepare($con, $statSql);
+        $totalRecords = 0;
         $statistics = [
-            'total_count' => $totalRecords,
-            'active_count' => (int)($statRow['active_count'] ?? 0),
-            'inactive_count' => (int)($statRow['inactive_count'] ?? 0)
+            'total_count' => 0,
+            'active_count' => 0,
+            'inactive_count' => 0,
         ];
-
-        if (!empty($whereClause)) {
-            $countSql = "SELECT COUNT(DISTINCT c.id) AS total FROM courses c {$joinCt} LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id {$whereClause}";
-            $countStmt = mysqli_prepare($con, $countSql);
-            if ($countStmt) {
-                if (!empty($types)) {
-                    mysqli_stmt_bind_param($countStmt, $types, ...$params);
-                }
-                mysqli_stmt_execute($countStmt);
-                $countRes = mysqli_stmt_get_result($countStmt);
-                $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
+        if ($statStmt) {
+            if (!empty($types)) {
+                mysqli_stmt_bind_param($statStmt, $types, ...$params);
             }
+            mysqli_stmt_execute($statStmt);
+            $statRow = mysqli_fetch_assoc(mysqli_stmt_get_result($statStmt));
+            $totalRecords = (int)($statRow['total'] ?? 0);
+            $statistics = [
+                'total_count' => $totalRecords,
+                'active_count' => (int)($statRow['active_count'] ?? 0),
+                'inactive_count' => (int)($statRow['inactive_count'] ?? 0),
+            ];
         }
 
         $sql = "

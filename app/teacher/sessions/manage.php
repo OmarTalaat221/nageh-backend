@@ -64,7 +64,15 @@ if (!function_exists('teacher_can_use_course_for_session')) {
             mysqli_stmt_execute($anyCtStmt);
             $hasAnyTeacher = (bool)mysqli_fetch_assoc(mysqli_stmt_get_result($anyCtStmt));
             if (!$hasAnyTeacher) {
-                return is_subject_assigned_to_teacher($con, $teacherId, (int)$course['subject_id']);
+                $courseSubjectId = (int)($course['subject_id'] ?? 0);
+                // update-1: a course/package with NEITHER an assigned teacher NOR a subject is
+                // fully open - any teacher can add a session to it (e.g. a content-free package
+                // where a different teacher runs each weekly slot). Once it has a subject, the
+                // existing subject-assignment check still applies as before.
+                if ($courseSubjectId <= 0) {
+                    return true;
+                }
+                return is_subject_assigned_to_teacher($con, $teacherId, $courseSubjectId);
             }
         }
 
