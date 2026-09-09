@@ -59,6 +59,13 @@ if (!function_exists('listPublicCourses')) {
             $types .= "s";
         }
 
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereConditions[] = "c.kind = ?";
+            $params[] = $kindFilter;
+            $types .= "s";
+        }
+
         if (!empty($search)) {
             $searchPattern = '%' . $search . '%';
             $whereConditions[] = "(c.slug LIKE ? OR ct_trans.name LIKE ? OR ct_trans.description LIKE ?)";
@@ -84,7 +91,7 @@ if (!function_exists('listPublicCourses')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at,
+            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at,
                    COALESCE(ct_trans.name, c.slug) AS name, ct_trans.description
             FROM courses c
             {$joinCt}
@@ -115,6 +122,7 @@ if (!function_exists('listPublicCourses')) {
             $row['category_id'] = $catId;
             $row['academic_year_id'] = $ayId;
             $row['type'] = $row['type'] ?? 'recorded';
+            $row['kind'] = $row['kind'] ?? 'normal';
             $row['price'] = (float)$row['price'];
             $row['lessons_count'] = (int)$row['lessons_count'];
             $row['created_by_type'] = $row['created_by_type'] ?: 'admin';

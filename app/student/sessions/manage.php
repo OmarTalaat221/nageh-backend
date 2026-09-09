@@ -74,6 +74,16 @@ if (!function_exists('studentTodaySessions')) {
         $courseIds = $accessible['course_ids'] ?? [];
         $subjectIds = $accessible['subject_ids'] ?? [];
         $teacherIds = $accessible['teacher_ids'] ?? [];
+
+        // update-1: optional narrowing to a single course's own schedule (e.g. viewing a package's
+        // weekly sessions on its course-details page) — still constrained to the student's
+        // accessible course ids above, just filtered down to one of them.
+        $requestedCourseId = (int)($_GET['course_id'] ?? 0);
+        if ($requestedCourseId > 0) {
+            $courseIds = in_array($requestedCourseId, $courseIds, true) ? [$requestedCourseId] : [];
+            $subjectIds = [];
+            $teacherIds = [];
+        }
         $studentAcademicYearId = get_student_academic_year_id($con, $studentId);
 
         $where = ["is_active = 1"];
@@ -125,7 +135,10 @@ if (!function_exists('studentTodaySessions')) {
         $whereSql = implode(" AND ", $where);
 
         if ($upcoming) {
-            $sql = "SELECT id, day_of_week, start_time FROM class_sessions WHERE {$whereSql}";
+            // Safety cap: this pulls every session the student can access (before computing this
+            // week's occurrence per row and paginating in PHP) — bounded so a student with a very
+            // large number of accessible courses/subjects/teachers can't force an unbounded scan.
+            $sql = "SELECT id, day_of_week, start_time FROM class_sessions WHERE {$whereSql} LIMIT 500";
             $stmt = mysqli_prepare($con, $sql);
             $rows = [];
             if ($stmt) {

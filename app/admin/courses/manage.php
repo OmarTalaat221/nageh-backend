@@ -215,6 +215,13 @@ if (!function_exists('adminListCourses')) {
             $types .= "s";
         }
 
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereConditions[] = "c.kind = ?";
+            $params[] = $kindFilter;
+            $types .= "s";
+        }
+
         $search = trim($_GET['search'] ?? $_GET['q'] ?? $_GET['query'] ?? $_GET['name'] ?? '');
         if (!empty($search)) {
             $searchPattern = '%' . $search . '%';
@@ -285,7 +292,7 @@ if (!function_exists('adminListCourses')) {
         }
 
         $sql = "
-            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
+            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
             FROM courses c
             {$joinCt}
             LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id
@@ -301,7 +308,7 @@ if (!function_exists('adminListCourses')) {
         $stmt = mysqli_prepare($con, $sql);
         if (!$stmt) {
             $sqlFallback = "
-                SELECT DISTINCT c.id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.lessons_count, c.is_active, c.created_at, c.updated_at
+                SELECT DISTINCT c.id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.lessons_count, c.is_active, c.created_at, c.updated_at
                 FROM courses c
                 {$joinCt}
                 LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id
@@ -332,6 +339,7 @@ if (!function_exists('adminListCourses')) {
                     $row['can_edit'] = ($row['created_by_type'] ?? 'admin') !== 'admin';
                 }
                 $row['type'] = $row['type'] ?? 'english';
+                $row['kind'] = $row['kind'] ?? 'normal';
                 $row['intro_video'] = $row['video_preview_url'] ?? null;
                 $row['subject_id'] = $sId;
                 $row['category_id'] = $catId;
@@ -387,9 +395,9 @@ if (!function_exists('adminGetCourse')) {
             return ['status' => 'error', 'message' => 'Course ID is required'];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, subject_id, category_id, academic_year_id, teacher_id, slug, type, price, image, lessons_count, is_active, created_by_type, created_by_id, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, price, image, lessons_count, is_active, created_by_type, created_by_id, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
         if (!$stmt) {
-            $stmt = mysqli_prepare($con, "SELECT id, category_id, academic_year_id, teacher_id, slug, type, price, image, lessons_count, is_active, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
+            $stmt = mysqli_prepare($con, "SELECT id, category_id, academic_year_id, teacher_id, slug, type, kind, price, image, lessons_count, is_active, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
         }
 
         if (!$stmt) {
@@ -412,6 +420,7 @@ if (!function_exists('adminGetCourse')) {
 
         $row['id'] = $cId;
         $row['type'] = $row['type'] ?? 'recorded';
+        $row['kind'] = $row['kind'] ?? 'normal';
         $row['subject_id'] = $sId;
         $row['category_id'] = $catId;
         $row['academic_year_id'] = $ayId;
@@ -470,6 +479,7 @@ if (!function_exists('adminCreateCourse')) {
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
         $slug = strtolower(trim($body['slug'] ?? ''));
         $type = isset($body['type']) && trim($body['type']) !== '' ? strtolower(trim($body['type'])) : 'recorded';
+        $kind = isset($body['kind']) && strtolower(trim($body['kind'])) === 'package' ? 'package' : 'normal';
 
         if (empty($nameAr)) {
             return ['status' => 'error', 'message' => 'Course name (name_ar) is required'];
@@ -495,8 +505,8 @@ if (!function_exists('adminCreateCourse')) {
         $createdByAdminId = $adminId > 0 ? $adminId : null;
 
         $stmt = mysqli_prepare($con, "
-            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, price, image, is_active, created_by_type, created_by_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?)
+            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, price, image, is_active, created_by_type, created_by_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?)
         ");
         if (!$stmt) {
             $stmt = mysqli_prepare($con, "
@@ -507,7 +517,7 @@ if (!function_exists('adminCreateCourse')) {
                 mysqli_stmt_bind_param($stmt, "iiissdsi", $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $price, $image, $isActive);
             }
         } else {
-            mysqli_stmt_bind_param($stmt, "iiiissdsii", $subjectId, $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $price, $image, $isActive, $createdByAdminId);
+            mysqli_stmt_bind_param($stmt, "iiiisssdsii", $subjectId, $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $kind, $price, $image, $isActive, $createdByAdminId);
         }
 
         if (!$stmt || !mysqli_stmt_execute($stmt)) {
@@ -579,6 +589,7 @@ if (!function_exists('adminUpdateCourse')) {
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : null;
         $slug = isset($body['slug']) ? strtolower(trim($body['slug'])) : null;
         $type = isset($body['type']) && trim($body['type']) !== '' ? strtolower(trim($body['type'])) : null;
+        $kind = isset($body['kind']) && in_array(strtolower(trim($body['kind'])), ['normal', 'package'], true) ? strtolower(trim($body['kind'])) : null;
 
         $imageInput = $body['image'] ?? null;
         $fileImage = $_FILES['image'] ?? $_FILES['file'] ?? null;
@@ -609,6 +620,13 @@ if (!function_exists('adminUpdateCourse')) {
             $stmt = mysqli_prepare($con, "UPDATE courses SET type = ? WHERE id = ?");
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, "si", $type, $id);
+                mysqli_stmt_execute($stmt);
+            }
+        }
+        if ($kind !== null) {
+            $stmt = mysqli_prepare($con, "UPDATE courses SET kind = ? WHERE id = ?");
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "si", $kind, $id);
                 mysqli_stmt_execute($stmt);
             }
         }

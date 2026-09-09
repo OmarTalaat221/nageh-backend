@@ -59,6 +59,10 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
             $tp = mysqli_real_escape_string($con, $typeFilter);
             $whereConditions[] = "c.type = '{$tp}'";
         }
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereConditions[] = "c.kind = '{$kindFilter}'";
+        }
         if (!empty($search)) {
             $sp = '%' . mysqli_real_escape_string($con, $search) . '%';
             $whereConditions[] = "(c.slug LIKE '{$sp}' OR ct.name LIKE '{$sp}' OR ct.description LIKE '{$sp}')";
@@ -71,7 +75,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.is_active, c.created_at,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -87,6 +91,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
                 $cId = (int)$row['id'];
                 $row['id'] = $cId;
                 $row['type'] = $row['type'] ?? 'recorded';
+                $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
                 $isOwn = in_array($cId, $accessibleCourseIds);
                 $row['own'] = $isOwn;
@@ -143,6 +148,10 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
             $tp = mysqli_real_escape_string($con, $typeFilter);
             $whereSearch .= " AND c.type = '{$tp}'";
         }
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereSearch .= " AND c.kind = '{$kindFilter}'";
+        }
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -152,7 +161,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.is_active, c.created_at,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -168,6 +177,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
                 $cId = (int)$row['id'];
                 $row['id'] = $cId;
                 $row['type'] = $row['type'] ?? 'recorded';
+                $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
                 $row['own'] = true;
                 $row['is_subscribed'] = true;
@@ -211,7 +221,7 @@ if (!function_exists('studentGetCourseDetails')) {
         $whereCond = $courseId > 0 ? "c.id = {$courseId}" : "c.slug = '" . mysqli_real_escape_string($con, $slug) . "'";
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.price, c.image, c.video_preview_url, c.is_active, c.created_at, c.what_you_will_learn AS c_learn,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.kind, c.price, c.image, c.video_preview_url, c.is_active, c.created_at, c.what_you_will_learn AS c_learn,
                    COALESCE(ct.name, c.slug) AS name, ct.description, ct.what_you_will_learn AS ct_learn,
                    t.id AS t_id, t.name AS teacher_name, t.specialization AS teacher_specialization, t.image AS teacher_image, t.rating AS teacher_rating, t.experience AS teacher_experience,
                    sub_t.name AS subject_name, ay_t.name AS academic_year_name
@@ -443,6 +453,7 @@ if (!function_exists('studentGetCourseDetails')) {
         $responseData = [
             'id' => $cId,
             'slug' => $cRow['slug'],
+            'kind' => $cRow['kind'] ?? 'normal',
             'name' => $cRow['name'],
             'description' => $cRow['description'] ?? '',
             'price' => $price,
@@ -731,9 +742,13 @@ if (!function_exists('studentGetTeacherProfileDetails')) {
             $tp = mysqli_real_escape_string($con, $typeFilter);
             $typeCondition = " AND c.type = '{$tp}'";
         }
+        $kindFilter = strtolower(trim($_GET['kind'] ?? read_json_body()['kind'] ?? ''));
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $typeCondition .= " AND c.kind = '{$kindFilter}'";
+        }
 
         $cRes = mysqli_query($con, "
-            SELECT DISTINCT c.id, c.subject_id, c.type, COALESCE(ct.name, c.slug) AS name, c.price, c.image, ct.description
+            SELECT DISTINCT c.id, c.subject_id, c.type, c.kind, COALESCE(ct.name, c.slug) AS name, c.price, c.image, ct.description
             FROM courses c
             LEFT JOIN course_teachers cot ON c.id = cot.course_id
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -747,6 +762,7 @@ if (!function_exists('studentGetTeacherProfileDetails')) {
                 $cRow['id'] = (int)$cRow['id'];
                 $cRow['subject_id'] = $cRow['subject_id'] ? (int)$cRow['subject_id'] : null;
                 $cRow['type'] = $cRow['type'] ?? 'recorded';
+                $cRow['kind'] = $cRow['kind'] ?? 'normal';
                 $cRow['price'] = (float)$cRow['price'];
                 $courses[] = $cRow;
             }
