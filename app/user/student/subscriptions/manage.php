@@ -132,10 +132,11 @@ if (!function_exists('get_student_subscription_details')) {
         $row['teachers'] = $teachers;
 
         $courses = [];
-        $cRes = mysqli_query($con, "SELECT c.id, c.slug, c.price, c.image, ct.name FROM student_subscription_courses ssc JOIN courses c ON ssc.course_id = c.id LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1 WHERE ssc.student_subscription_id = {$subId}");
+        $cRes = mysqli_query($con, "SELECT c.id, c.slug, c.kind, c.price, c.image, ct.name FROM student_subscription_courses ssc JOIN courses c ON ssc.course_id = c.id LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1 WHERE ssc.student_subscription_id = {$subId}");
         if ($cRes) {
             while ($cRow = mysqli_fetch_assoc($cRes)) {
                 $cRow['id'] = (int)$cRow['id'];
+                $cRow['kind'] = $cRow['kind'] ?? 'normal';
                 $cRow['price'] = (float)$cRow['price'];
                 $courses[] = format_response_images($cRow);
             }
@@ -218,10 +219,19 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
         }
 
         $courses = [];
+        $coursesAllPackages = false;
         $cRes = mysqli_query($con, "SELECT course_id FROM subscription_code_courses WHERE subscription_code_id = {$codeId}");
         if ($cRes) {
             while ($cRow = mysqli_fetch_assoc($cRes)) {
                 $courses[] = (int)$cRow['course_id'];
+            }
+        }
+        if (!empty($courses)) {
+            $courseListStr = implode(',', $courses);
+            $kindCheckRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN kind = 'package' THEN 1 ELSE 0 END) AS package_count FROM courses WHERE id IN ({$courseListStr})");
+            if ($kindCheckRes && $kindCheckRow = mysqli_fetch_assoc($kindCheckRes)) {
+                $coursesAllPackages = (int)($kindCheckRow['total'] ?? 0) > 0
+                    && (int)($kindCheckRow['total'] ?? 0) === (int)($kindCheckRow['package_count'] ?? 0);
             }
         }
 
@@ -230,7 +240,7 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
         }
 
         $subType = 'custom';
-        if (!empty($courses) && empty($subjects) && empty($teachers)) $subType = 'course';
+        if (!empty($courses) && empty($subjects) && empty($teachers)) $subType = $coursesAllPackages ? 'package' : 'course';
         if (!empty($subjects) && empty($courses) && empty($teachers)) $subType = 'subject';
         if (!empty($teachers) && empty($courses) && empty($subjects)) $subType = 'teacher';
 

@@ -745,8 +745,18 @@ if (!function_exists('adminCreateStudentSubscription')) {
             return ['status' => 'error', 'message' => 'At least one subject, teacher, or course must be selected for subscription'];
         }
 
+        $coursesAllPackages = false;
+        if (!empty($courseIds)) {
+            $courseListStr = implode(',', array_map('intval', $courseIds));
+            $kindCheckRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN kind = 'package' THEN 1 ELSE 0 END) AS package_count FROM courses WHERE id IN ({$courseListStr})");
+            if ($kindCheckRes && $kindCheckRow = mysqli_fetch_assoc($kindCheckRes)) {
+                $coursesAllPackages = (int)($kindCheckRow['total'] ?? 0) > 0
+                    && (int)($kindCheckRow['total'] ?? 0) === (int)($kindCheckRow['package_count'] ?? 0);
+            }
+        }
+
         $subType = 'custom';
-        if (!empty($courseIds) && empty($subjectIds) && empty($teacherIds)) $subType = 'course';
+        if (!empty($courseIds) && empty($subjectIds) && empty($teacherIds)) $subType = $coursesAllPackages ? 'package' : 'course';
         if (!empty($subjectIds) && empty($courseIds) && empty($teacherIds)) $subType = 'subject';
         if (!empty($teacherIds) && empty($courseIds) && empty($subjectIds)) $subType = 'teacher';
 
