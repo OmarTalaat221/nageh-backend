@@ -708,6 +708,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
         $search = trim($_GET['search'] ?? $_GET['q'] ?? '');
         $body = read_json_body();
         $typeFilter = strtolower(trim($_GET['type'] ?? $_GET['course_type'] ?? $_GET['type_id'] ?? $body['type'] ?? $body['course_type'] ?? ''));
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
 
         $cListStr = implode(',', array_map('intval', $courseIds));
         $whereSearch = "";
@@ -719,6 +720,9 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
             $tp = mysqli_real_escape_string($con, $typeFilter);
             $whereSearch .= " AND c.type = '{$tp}'";
         }
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereSearch .= " AND c.kind = '{$kindFilter}'";
+        }
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -728,7 +732,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.is_active, c.created_at,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -744,6 +748,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
                 $cId = (int)$row['id'];
                 $row['id'] = $cId;
                 $row['type'] = $row['type'] ?? 'recorded';
+                $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
                 $row['is_subscribed'] = true;
 
@@ -1170,6 +1175,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
         $academicYearId = isset($_GET['academic_year_id']) ? (int)$_GET['academic_year_id'] : 0;
         $body = read_json_body();
         $typeFilter = strtolower(trim($_GET['type'] ?? $_GET['course_type'] ?? $_GET['type_id'] ?? $body['type'] ?? $body['course_type'] ?? ''));
+        $kindFilter = strtolower(trim($_GET['kind'] ?? $body['kind'] ?? ''));
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -1181,6 +1187,9 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
         if (!empty($typeFilter)) {
             $tp = mysqli_real_escape_string($con, $typeFilter);
             $whereConditions[] = "c.type = '{$tp}'";
+        }
+        if (in_array($kindFilter, ['normal', 'package'], true)) {
+            $whereConditions[] = "c.kind = '{$kindFilter}'";
         }
         if (!empty($search)) {
             $sp = '%' . mysqli_real_escape_string($con, $search) . '%';
@@ -1194,7 +1203,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.is_active, c.created_at,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -1210,6 +1219,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
                 $cId = (int)$row['id'];
                 $row['id'] = $cId;
                 $row['type'] = $row['type'] ?? 'recorded';
+                $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
                 $isOwn = in_array($cId, $accessibleCourseIds);
                 $row['own'] = $isOwn;
