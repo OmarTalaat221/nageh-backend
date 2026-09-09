@@ -96,13 +96,16 @@ if (!function_exists('notify_of_course_subscription')) {
 
             foreach ($courseIds as $courseId) {
                 $course = get_course_details($con, $courseId);
-                $courseName = $course['name'] ?? "كورس #{$courseId}";
+                $isPackage = ($course['kind'] ?? 'normal') === 'package';
+                $entityLabel = $isPackage ? 'باقة' : 'كورس';
+                $entityLabelPossessive = $isPackage ? 'باقتك' : 'كورسك';
+                $courseName = $course['name'] ?? "{$entityLabel} #{$courseId}";
 
                 if ($notifyAdmin) {
                     notify_admins(
                         $con,
-                        'اشتراك جديد في كورس',
-                        "الطالب {$studentName} اشترك في كورس \"{$courseName}\" ({$source}).",
+                        "اشتراك جديد في {$entityLabel}",
+                        "الطالب {$studentName} اشترك في {$entityLabel} \"{$courseName}\" ({$source}).",
                         ['type' => 'course_subscription', 'student_id' => $studentId, 'course_id' => $courseId]
                     );
                 }
@@ -114,8 +117,8 @@ if (!function_exists('notify_of_course_subscription')) {
                         $con,
                         'teacher',
                         $teacherIds,
-                        'طالب جديد اشترك في كورسك',
-                        "الطالب {$studentName} اشترك في كورس \"{$courseName}\" ({$source}).",
+                        "طالب جديد اشترك في {$entityLabelPossessive}",
+                        "الطالب {$studentName} اشترك في {$entityLabel} \"{$courseName}\" ({$source}).",
                         ['type' => 'course_subscription', 'student_id' => $studentId, 'course_id' => $courseId],
                         'system',
                         null,
