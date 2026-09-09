@@ -76,11 +76,21 @@ if (!function_exists('studentTodaySessions')) {
         $teacherIds = $accessible['teacher_ids'] ?? [];
 
         // update-1: optional narrowing to a single course's own schedule (e.g. viewing a package's
-        // weekly sessions on its course-details page) — still constrained to the student's
-        // accessible course ids above, just filtered down to one of them.
+        // weekly sessions on its course-details page) — normally still constrained to the
+        // student's accessible course ids above, filtered down to one of them. A package's
+        // schedule is shown as a preview on its details page even before the student
+        // subscribes (so they can see the days/times/teacher before deciding to join) —
+        // sensitive fields like meeting_link stay hidden until the session actually starts
+        // (see get_class_session_details), so this preview can't be used to join early.
         $requestedCourseId = (int)($_GET['course_id'] ?? 0);
         if ($requestedCourseId > 0) {
-            $courseIds = in_array($requestedCourseId, $courseIds, true) ? [$requestedCourseId] : [];
+            $canPreview = in_array($requestedCourseId, $courseIds, true);
+            if (!$canPreview) {
+                $kindRes = mysqli_query($con, "SELECT kind FROM courses WHERE id = {$requestedCourseId} LIMIT 1");
+                $kindRow = $kindRes ? mysqli_fetch_assoc($kindRes) : null;
+                $canPreview = ($kindRow['kind'] ?? '') === 'package';
+            }
+            $courseIds = $canPreview ? [$requestedCourseId] : [];
             $subjectIds = [];
             $teacherIds = [];
         }
