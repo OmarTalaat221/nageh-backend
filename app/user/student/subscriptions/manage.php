@@ -733,9 +733,11 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
 
         $sql = "
             SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
-                   COALESCE(ct.name, c.slug) AS name, ct.description
+                   COALESCE(ct.name, c.slug) AS name, ct.description,
+                   t.id AS teacher_id_join, t.name AS teacher_name, t.image AS teacher_image
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
+            LEFT JOIN teachers t ON c.teacher_id = t.id
             WHERE c.id IN ({$cListStr}) AND c.is_active = 1 {$whereSearch}
             ORDER BY c.id DESC
             LIMIT {$limit} OFFSET {$offset}
@@ -751,6 +753,14 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
                 $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
                 $row['is_subscribed'] = true;
+
+                $rowTeacherId = (int)($row['teacher_id_join'] ?? 0);
+                $row['teacher'] = $rowTeacherId > 0 ? [
+                    'id' => $rowTeacherId,
+                    'name' => $row['teacher_name'] ?? '',
+                    'image' => $row['teacher_image'] ?? null,
+                ] : null;
+                unset($row['teacher_id_join'], $row['teacher_name'], $row['teacher_image']);
 
                 $stats = get_student_course_progress_stats($con, $stId, $cId);
                 $row['total_lessons_count'] = $stats['total_lessons_count'];
