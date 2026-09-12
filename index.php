@@ -1724,6 +1724,68 @@ $routes = [
         },
     ],
 
+    // Teacher Attendance Exceptions & Wallet Routes (Section 10) --------------------------------
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/attendance/exceptions",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherRequestAttendanceException($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/teacher/attendance/exceptions",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherListMyAttendanceExceptionRequests($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/teacher/wallet",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherGetWallet($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/teacher/wallet/transactions",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherListWalletTransactions($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/wallet/appeals",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherCreateDeductionAppeal($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/teacher/wallet/appeals",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/attendance/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherListMyAppeals($con, $teacherData);
+        },
+    ],
+
     // Teacher Session Files Routes --------------------------------
     [
         "method" => "GET",
@@ -1795,6 +1857,38 @@ $routes = [
             include_once "./app/teacher/sessions/manage.php";
             $studentData = studentAuthMiddlewareOptional();
             return studentListMyRescheduleRequests($con, $studentData);
+        },
+    ],
+
+    // Student Attendance Routes (Section 10) --------------------------------
+    [
+        "method" => "POST",
+        "path" => "/najeh/student/attendance/check-in",
+        "handler" => function ($con) {
+            include_once "./middlewares/studentauthmiddleware.php";
+            include_once "./app/student/attendance/manage.php";
+            $studentData = studentAuthMiddleware();
+            return studentCheckInSession($con, $studentData);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/student/attendance/exceptions",
+        "handler" => function ($con) {
+            include_once "./middlewares/studentauthmiddleware.php";
+            include_once "./app/student/attendance/manage.php";
+            $studentData = studentAuthMiddleware();
+            return studentRequestAttendanceException($con, $studentData);
+        },
+    ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/student/attendance/exceptions",
+        "handler" => function ($con) {
+            include_once "./middlewares/studentauthmiddleware.php";
+            include_once "./app/student/attendance/manage.php";
+            $studentData = studentAuthMiddleware();
+            return studentListMyAttendanceExceptionRequests($con, $studentData);
         },
     ],
 
@@ -3556,6 +3650,129 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
                 return adminReviewRescheduleRequest($con);
+            },
+        ],
+
+        // Admin: HR Policy Settings, Attendance Exceptions, Teacher Wallets & Appeals (Section 10)
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/hr-settings",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/hr_settings/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminGetHrPolicySettings($con);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/hr-settings",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/hr_settings/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminUpdateHrPolicySettings($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/teachers/pay-rate",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/hr_settings/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminSetTeacherPayRate($con);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/teachers/pay-rate",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/hr_settings/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminClearTeacherPayRate($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/attendance/exceptions",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListAttendanceExceptionRequests($con);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/attendance/exceptions",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminReviewAttendanceExceptionRequest($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/teacher-wallets",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListTeacherWallets($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/teacher-wallets/ledger",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminGetTeacherWalletLedger($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/teacher-wallets/adjust",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminAdjustTeacherWallet($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/deduction-appeals",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListDeductionAppeals($con);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/deduction-appeals",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminReviewDeductionAppeal($con, $adminData);
             },
         ],
 

@@ -2687,6 +2687,7 @@
           "Teacher / Sessions"
         ],
         "summary": "List own sessions (update-1: course_id/subject_id filters)",
+        "description": "update-2: each row's embedded `course` object now also carries `kind` ('normal' | 'package') — lets the teacher app tell a package's session apart from a normal course's session in the same list without a second lookup. No other change to this endpoint.",
         "security": [
           {
             "TeacherAuth": []
@@ -3576,6 +3577,7 @@
           "Content / Exams"
         ],
         "summary": "List exams",
+        "description": "update-2: each row's embedded `course` object (when the exam is course-scoped) now also carries `kind` ('normal' | 'package'), same as everywhere else `course` is embedded — no other change to this endpoint.",
         "security": [
           {
             "AdminAuth": []
@@ -4511,10 +4513,31 @@
         "tags": [
           "Student / Sessions"
         ],
-        "summary": "Today's sessions (now grade-filtered by academic_year_id)",
+        "summary": "Today's sessions (now grade-filtered by academic_year_id; update-2: package preview + join-lock)",
+        "description": "update-2 (Student): a `course_id` (or `day=all`) request for a course whose `kind` is `package` is now allowed to preview that package's schedule EVEN IF the student is not subscribed to it yet (previously the request was rejected outright, which made the student-facing package details page show \"no schedule yet\" for a package that already had sessions). SECURITY (update-2): when a session is returned only for this preview reason (not because the student is actually subscribed), `meeting_link` is forced to `null` in the response so an unsubscribed student can see that a session exists and when it happens, but cannot open/join the live meeting — joining still requires an active subscription to the package.",
         "security": [
           {
             "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "update-2: optional. When set to a package course's id, returns/allows previewing that package's schedule even before subscribing (see description). meeting_link is nulled out in that preview case."
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "e.g. \"all\" to list every upcoming session instead of just the next one."
           }
         ],
         "responses": {
@@ -5680,7 +5703,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1: List student subscriptions (grants)",
-        "description": "update-1: paginated list of student_subscriptions rows, each with resolved subjects/teachers/courses and student summary.",
+        "description": "update-1: paginated list of student_subscriptions rows, each with resolved subjects/teachers/courses and student summary. update-2 (Admin): subscription_type now also resolves to 'package' when every course linked to the grant has courses.kind='package' (previously it could only be 'course'/'subject'/'teacher'/'custom', so a package-only grant was mislabeled as 'course'). This is derived server-side from courses.kind, not a value the admin sends.",
         "security": [
           {
             "AdminAuth": []
@@ -5752,11 +5775,13 @@
               "type": "string",
               "enum": [
                 "course",
+                "package",
                 "subject",
                 "teacher",
                 "custom"
               ]
-            }
+            },
+            "description": "update-2: 'package' added — matches grants where every linked course is a package (courses.kind='package')."
           },
           {
             "name": "status",
@@ -5814,7 +5839,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Grant a subscription directly to a student, with NO code",
-        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required.",
+        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".",
         "security": [
           {
             "AdminAuth": []
@@ -6328,7 +6353,7 @@
           "Student / Subscriptions (update-1)"
         ],
         "summary": "update-1: Redeem a subscription code as a logged-in student",
-        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone).",
+        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone). update-2 (Student): the resulting subscription's type is now 'package' (instead of always 'course') when every course the code is linked to has kind='package'. NOTE for API consumers creating codes (see POST /admin/subscription-codes): if a code is created with NO course_ids/subject_ids/teacher_ids linked at all, redeeming it here returns success but the message is \"this activation code isn't linked to any content\" and no access is granted — always send at least one of those three arrays when creating a code.",
         "security": [
           {
             "StudentAuth": []
@@ -6382,7 +6407,7 @@
           "Admin / Notifications Inbox (NEW)"
         ],
         "summary": "(NEW) List the automatic system notifications addressed to the logged-in admin",
-        "description": "Separate module (app/admin/notifications/inbox.php) from the existing send/history endpoints — this is what the admin RECEIVES (new student registration, course subscription, book purchase request, session started, consultation created), not what they sent. TEST CYCLE (real data from the latest DB dump): 1) POST /admin/auth/login with a real admin email (e.g. info@najeh.com, id=1, role=super_admin — password is hashed in the dump, you must supply the real plaintext yourself) to get an admin Bearer token. 2) Fire the event: POST /user/student/auth/login with {email:\"omartalaat1276@gmail.com\", password:\"12345678\"} (real, active student id=1065), then POST /student/subscriptions/redeem-code with {code:\"123456789102\"} using that student's token — this is a real, still-valid, unused-by-this-student code granting courses 201+202 (teacher id 201) and fires notify_of_course_subscription() for real. 3) Call this endpoint with the admin token to see the resulting notification.",
+        "description": "Separate module (app/admin/notifications/inbox.php) from the existing send/history endpoints — this is what the admin RECEIVES (new student registration, course subscription, book purchase request, session started, consultation created), not what they sent. TEST CYCLE (real data from the latest DB dump): 1) POST /admin/auth/login with a real admin email (e.g. info@najeh.com, id=1, role=super_admin — password is hashed in the dump, you must supply the real plaintext yourself) to get an admin Bearer token. 2) Fire the event: POST /user/student/auth/login with {email:\"omartalaat1276@gmail.com\", password:\"12345678\"} (real, active student id=1065), then POST /student/subscriptions/redeem-code with {code:\"123456789102\"} using that student's token — this is a real, still-valid, unused-by-this-student code granting courses 201+202 (teacher id 201) and fires notify_of_course_subscription() for real. 3) Call this endpoint with the admin token to see the resulting notification. update-2 (Admin + Teacher): the \"new subscription\" notification's title/body now say \"باقة\"/\"package\" instead of always \"كورس\"/\"course\" when the subscribed course has kind='package' (including the correct Arabic possessive form, e.g. \"باقتك\" not \"كورسك\"). Same wording fix applies to the equivalent push notification sent to the course's teacher — no field/shape change, text content only.",
         "security": [
           {
             "AdminAuth": []
@@ -6586,6 +6611,1018 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/my-courses-progress": {
+      "get": {
+        "tags": [
+          "Student / Courses (update-2)"
+        ],
+        "summary": "update-2: List the logged-in student's subscribed courses/packages with progress (bugfix: kind + teachers restored)",
+        "description": "update-2 (Student): fixes a real production bug — this route's handler function was defined twice in the codebase (a duplicate `function_exists`-guarded copy in a different file was loading first and silently winning), so two things were missing from every response even though the fix had been written and deployed elsewhere: (1) the `kind` field ('normal' | 'package') was always absent from each course row, and (2) `teachers` was missing entirely. Both are now present on every item, sourced from the SAME shared helper used by the admin/teacher course-details endpoints, so the shape matches exactly. No change to auth, pagination, or any other field — safe to just start reading `kind` and `teachers[]` on this endpoint now.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "curriculum type filter, e.g. arabic/english/french/recorded — unrelated to kind"
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "package"
+              ]
+            },
+            "description": "update-2: filter to only normal courses or only packages. Omit to get both mixed together (each row still carries its own `kind`)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                },
+                "example": {
+                  "status": "success",
+                  "data": [
+                    {
+                      "id": 229,
+                      "name": "باقة متابعة أسبوعية عامة",
+                      "kind": "package",
+                      "type": "recorded",
+                      "price": 49.99,
+                      "is_subscribed": true,
+                      "teachers": [
+                        {
+                          "id": 12,
+                          "name": "أ.محمد علي",
+                          "image": "https://.../teacher12.jpg"
+                        }
+                      ],
+                      "total_lessons_count": 0,
+                      "completed_lessons_count": 0,
+                      "progress_percentage": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/consultations/recurring": {
+      "post": {
+        "tags": [
+          "Teacher / Consultations (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW): Create a repeating weekly consultation slot for the logged-in teacher, bounded by an end date",
+        "description": "update-2 (Teacher): companion to the existing single-slot POST /teacher/consultations. Instead of creating one dated slot, this materializes one consultation_slots row PER matching calendar date for every selected weekday between today and end_date (inclusive) — e.g. days=[Saturday,Thursday] with end_date next month creates one slot for every upcoming Saturday and every upcoming Thursday up to that date, all at the same slot_time. Safety caps: end_date cannot be more than 180 days out, and a single call cannot generate more than 200 dates total (split into multiple calls if needed). Any date that would collide with an existing (teacher_id, slot_time, slot_date) slot is silently skipped, not duplicated or erroring the whole request — the response reports how many were created vs skipped. Exactly ONE notification is sent for the whole batch (not one per generated slot).",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "days",
+                  "slot_time",
+                  "end_date"
+                ],
+                "properties": {
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Saturday",
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday"
+                      ]
+                    },
+                    "description": "one or more weekdays to repeat on; at least one required"
+                  },
+                  "slot_time": {
+                    "type": "string",
+                    "description": "HH:MM, shared by every generated date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "last date (inclusive) to generate slots up to; max 180 days from today"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "omit for a psychological consultation"
+                  },
+                  "meeting_type": {
+                    "type": "string",
+                    "enum": [
+                      "video_call",
+                      "chat",
+                      "online",
+                      "offline"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "educational",
+                      "psychological"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "// creates one slot every Saturday and every Thursday at 18:00 from today through 2026-10-15\n\n{\n  \"days\": [\n    \"Saturday\",\n    \"Thursday\"\n  ],\n  \"slot_time\": \"18:00\",\n  \"end_date\": \"2026-10-15\",\n  \"subject_id\": 3,\n  \"meeting_type\": \"video_call\",\n  \"type\": \"educational\",\n  \"notes\": \"Weekly review session\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "created_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer",
+                          "description": "dates skipped because an identical slot already existed"
+                        },
+                        "slots": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          },
+                          "description": "the newly created consultation_slots rows"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No day selected / missing time or end_date / end_date in the past or beyond 180 days / more than 200 dates would be generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/consultations/recurring": {
+      "post": {
+        "tags": [
+          "Admin / Consultations (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW): Admin creates a repeating weekly consultation slot on behalf of any teacher",
+        "description": "update-2 (Admin): identical behavior and validation to POST /teacher/consultations/recurring (same shared core function under the hood, so the two routes cannot drift out of sync), except the target teacher is chosen by the admin via `teacher_id` in the body instead of being taken from the caller's own auth token. Returns an error if teacher_id doesn't reference an existing teacher.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "days",
+                  "slot_time",
+                  "end_date"
+                ],
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer",
+                    "description": "update-2: the only field this endpoint adds on top of the teacher-facing version — which teacher the generated slots belong to"
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Saturday",
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday"
+                      ]
+                    }
+                  },
+                  "slot_time": {
+                    "type": "string"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "meeting_type": {
+                    "type": "string",
+                    "enum": [
+                      "video_call",
+                      "chat",
+                      "online",
+                      "offline"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "educational",
+                      "psychological"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "{\n  \"teacher_id\": 12,\n  \"days\": [\n    \"Saturday\",\n    \"Thursday\"\n  ],\n  \"slot_time\": \"18:00\",\n  \"end_date\": \"2026-10-15\",\n  \"meeting_type\": \"video_call\",\n  \"type\": \"educational\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK, same data shape as POST /teacher/consultations/recurring",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "teacher_id missing/not found, or same validation errors as the teacher-facing route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/courses": {
+      "get": {
+        "tags": [
+          "Admin / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): List courses, now filterable by kind (course vs package)",
+        "description": "update-2 (Admin): this endpoint and its filters (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, min/max lessons, search, sort, pagination, etc.) already existed and are unchanged — the only genuinely NEW thing is the `kind` filter/field below, added for the packages feature. Every course row in the response now also carries `kind` ('normal' | 'package'), defaulting to 'normal' for any pre-existing row. A 'package' course is just a course row with no units/videos/exams attached — it is organized around a weekly `class_sessions` schedule (see GET /admin/sessions and GET /teacher/sessions, both course_id-filterable, update-1) plus the existing course-files feature, instead of curriculum content.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "package"
+              ]
+            },
+            "description": "update-2 (NEW): filter to only normal courses or only packages. Omit to get both. The admin dashboard's \"Courses\" screen sends kind=normal and its separate \"Packages\" screen sends kind=package, so the two never mix in either list."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids; pre-existing, unchanged"
+          },
+          {
+            "name": "teacher_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids; pre-existing, unchanged"
+          },
+          {
+            "name": "academic_year_ids",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "comma-separated ids; pre-existing, unchanged"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                },
+                "example": {
+                  "status": "success",
+                  "data": [
+                    {
+                      "id": 229,
+                      "name": "باقة متابعة أسبوعية عامة",
+                      "kind": "package",
+                      "type": "recorded",
+                      "price": 49.99,
+                      "is_active": 1,
+                      "teachers": []
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): Create a course or package",
+        "description": "update-2 (Admin): request shape unchanged except for the new optional `kind` field. Everything else (name_ar/name_en, subject_id, category_id, academic_year_id, teacher_ids, price, image, slug, type, is_active) already existed and works exactly as before regardless of kind.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name_ar"
+                ],
+                "properties": {
+                  "name_ar": {
+                    "type": "string"
+                  },
+                  "name_en": {
+                    "type": "string"
+                  },
+                  "description_ar": {
+                    "type": "string"
+                  },
+                  "description_en": {
+                    "type": "string"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "category_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "academic_year_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "package"
+                    ],
+                    "default": "normal",
+                    "description": "update-2 (NEW): defaults to 'normal' when omitted, so every pre-update-2 integration keeps creating plain courses unless it explicitly opts into 'package'."
+                  }
+                }
+              },
+              "example": "// update-2: only `kind` is new here; sending it as \"package\" is the only thing that distinguishes this create call from a normal course create\n\n{\n  \"name_ar\": \"باقة متابعة أسبوعية عامة\",\n  \"price\": 49.99,\n  \"kind\": \"package\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "name_ar missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): Update a course or package, including switching its kind",
+        "description": "update-2 (Admin): only `kind`, when present in the body, is new; every other field is pre-existing and updates only when present (partial update semantics), unchanged.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "package"
+                    ],
+                    "description": "update-2 (NEW): omit to leave kind unchanged; invalid values are silently ignored (kind stays whatever it already was)."
+                  }
+                }
+              },
+              "example": "{\n  \"id\": 229,\n  \"kind\": \"package\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/courses/show": {
+      "get": {
+        "tags": [
+          "Admin / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): Course details (now includes kind)",
+        "description": "update-2 (Admin): the only new field is `kind` ('normal' | 'package'), defaulting to 'normal'. Everything else in this response (teachers[], subject, category, academic_year, created_by) is pre-existing, unchanged.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Course not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/courses": {
+      "get": {
+        "tags": [
+          "Teacher / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): List the logged-in teacher's own courses (now kind-filterable)",
+        "description": "update-2 (Teacher): thin wrapper around GET /admin/courses pre-scoped to this teacher (teacher_id forced server-side) — same `kind` filter/field applies, same response shape.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "package"
+              ]
+            },
+            "description": "update-2 (NEW): same semantics as GET /admin/courses"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Teacher / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): Create a course or package as a teacher (own subject only)",
+        "description": "update-2 (Teacher): same new `kind` field as POST /admin/courses; unlike admin, subject_id is required and must already be assigned to this teacher. The created course is auto-linked to this teacher.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject_id",
+                  "name_ar"
+                ],
+                "properties": {
+                  "subject_id": {
+                    "type": "integer"
+                  },
+                  "name_ar": {
+                    "type": "string"
+                  },
+                  "name_en": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "package"
+                    ],
+                    "default": "normal",
+                    "description": "update-2 (NEW): defaults to 'normal' when omitted"
+                  }
+                }
+              },
+              "example": "{\n  \"subject_id\": 3,\n  \"name_ar\": \"باقة متابعة أسبوعية\",\n  \"price\": 49.99,\n  \"kind\": \"package\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "subject_id not assigned to this teacher, or name_ar missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Teacher / Courses (NEW - update-2)"
+        ],
+        "summary": "update-2 (NEW doc): Update own course/package (including kind)",
+        "description": "update-2 (Teacher): thin wrapper around PUT /admin/courses after an ownership check; same new `kind` field.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "package"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not owner/assigned teacher of this course",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/courses": {
+      "get": {
+        "tags": [
+          "Student / Courses (update-2)"
+        ],
+        "summary": "update-2: Public course/package listing (works logged-out; kind-filterable)",
+        "description": "update-2 (Student, works with or without a token — StudentAuth optional): the only new things are the `kind` filter/field. When a student token IS sent, each row also gets `is_own`/`is_subscribed` as before (pre-existing behavior, unrelated to this update). BUGFIX (update-2): on this exact route the `kind` filter/field had briefly stopped working in production — a second, stale copy of this same handler function existed in another file and was silently shadowing the fixed one because it happened to load first. Fixed by patching the copy that actually runs; behavior now matches this doc. Alias: GET /student/courses is the exact same handler, exact same params/response.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "package"
+              ]
+            },
+            "description": "update-2 (NEW): omit to get both kinds mixed together in one list, each row carrying its own `kind`."
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "curriculum type filter (arabic/english/french/recorded) — unrelated to kind, pre-existing"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/courses": {
+      "get": {
+        "tags": [
+          "Student / Courses (update-2)"
+        ],
+        "summary": "update-2: Alias of GET /courses (identical handler, params and response)",
+        "description": "update-2: kept as a separate path only because both existed already; not a different implementation. See GET /courses for the full description of the kind filter/field and the shadowing bugfix.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/courses/show": {
+      "get": {
+        "tags": [
+          "Student / Courses (update-2)"
+        ],
+        "summary": "update-2: Course/package details page (now includes kind)",
+        "description": "update-2 (Student, works with or without a token — StudentAuth optional): the only new field is `kind` ('normal' | 'package'). Everything else in this response (curriculum/units, teacher, subject, academic_year, price/discount) is pre-existing, unchanged. CASE (mobile integration guidance, not a schema change): when `kind` is 'package', expect `units`/curriculum to be empty by convention — instead fetch that package's weekly schedule from GET /student/sessions/today?course_id={id}&day=all (works pre-subscription as a read-only preview, see update-2 note on that endpoint) and its downloadable files from the existing course-files endpoints. Alias: GET /student/courses/show is the exact same handler, accepts the same `id`/`slug` query params.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "id": 229,
+                    "name": "باقة متابعة أسبوعية عامة",
+                    "kind": "package",
+                    "price": 49.99,
+                    "is_subscribed": false,
+                    "curriculum": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Course not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/courses/show": {
+      "get": {
+        "tags": [
+          "Student / Courses (update-2)"
+        ],
+        "summary": "update-2: Alias of GET /courses/show (identical handler, params and response)",
+        "description": "update-2: kept as a separate path only because both existed already; not a different implementation. See GET /courses/show for the full description of the kind field and package integration guidance.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

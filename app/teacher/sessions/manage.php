@@ -6,6 +6,7 @@ require_once __DIR__ . '/../courses/manage.php';
 require_once __DIR__ . '/../../user/student/subscriptions/manage.php';
 require_once __DIR__ . '/../../../helpers/notifications.php';
 require_once __DIR__ . '/../../../helpers/admin_notifications.php';
+require_once __DIR__ . '/../../../helpers/attendance_core.php';
 require_once __DIR__ . '/files.php';
 
 if (!function_exists('is_teacher_request')) {
@@ -406,7 +407,7 @@ if (!function_exists('teacherStartSession')) {
             return ['status' => 'error', 'message' => trans('session_id_required')];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id, start_time FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "ii", $sessionId, $teacherId);
         mysqli_stmt_execute($stmt);
         $session = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
@@ -435,6 +436,10 @@ if (!function_exists('teacherStartSession')) {
             }
 
             notify_admins_of_session_started($con, $teacherId, $courseId, $subjectId);
+
+            // Section 10: this is also the teacher's own check-in — record attendance for this
+            // occurrence date exactly once (guarded by the same idempotent notification-log flag).
+            record_teacher_session_checkin($con, $sessionId, $teacherId, $today, $session['start_time'], $courseId, $subjectId);
         }
 
         return [
@@ -454,7 +459,7 @@ if (!function_exists('teacherEndSession')) {
             return ['status' => 'error', 'message' => trans('session_id_required')];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, course_id, subject_id, start_time, end_time FROM class_sessions WHERE id = ? AND teacher_id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "ii", $sessionId, $teacherId);
         mysqli_stmt_execute($stmt);
         $session = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
@@ -463,7 +468,12 @@ if (!function_exists('teacherEndSession')) {
         }
 
         $today = get_request_now()->format('Y-m-d');
-        mark_session_notification_once($con, $sessionId, 'ended', $today);
+        $wasFirstEnd = mark_session_notification_once($con, $sessionId, 'ended', $today);
+
+        if ($wasFirstEnd) {
+            // Section 10: the teacher's own check-out + salary calculation for this occurrence.
+            record_teacher_session_checkout($con, $sessionId, $teacherId, $today, $session['start_time'], $session['end_time']);
+        }
 
         return [
             'status' => 'success',
@@ -600,6 +610,11 @@ if (!function_exists('teacherRequestReschedule')) {
             return ['status' => 'error', 'message' => trans('session_not_found_or_not_owned')];
         }
 
+        $policy = get_hr_policy_settings($con);
+        if (count_reschedule_requests_this_month($con, 'teacher', $teacherId) >= $policy['teacher_max_reschedule_per_month']) {
+            return ['status' => 'error', 'message' => trans('max_reschedule_requests_reached')];
+        }
+
         $newStart = !empty($body['new_start_time']) ? date('H:i:s', strtotime($body['new_start_time'])) : null;
         $newEnd = !empty($body['new_end_time']) ? date('H:i:s', strtotime($body['new_end_time'])) : null;
 
@@ -609,7 +624,10 @@ if (!function_exists('teacherRequestReschedule')) {
             return ['status' => 'error', 'message' => 'Failed to send request: ' . mysqli_error($con)];
         }
 
-        return ['status' => 'success', 'message' => 'Reschedule request sent to admin', 'data' => get_reschedule_request_details($con, mysqli_insert_id($con))];
+        $requestId = (int)mysqli_insert_id($con);
+        notify_admins($con, 'طلب تأجيل حصة جديد', 'معلم أرسل طلب تأجيل لإحدى حصصه.', ['type' => 'reschedule_request_created', 'request_id' => $requestId]);
+
+        return ['status' => 'success', 'message' => 'Reschedule request sent to admin', 'data' => get_reschedule_request_details($con, $requestId)];
     }
 }
 
@@ -660,6 +678,11 @@ if (!function_exists('studentRequestReschedule')) {
             return ['status' => 'error', 'message' => trans('not_subscribed_to_session')];
         }
 
+        $policy = get_hr_policy_settings($con);
+        if (count_reschedule_requests_this_month($con, 'student', $studentId) >= $policy['student_max_reschedule_per_month']) {
+            return ['status' => 'error', 'message' => trans('max_reschedule_requests_reached')];
+        }
+
         $newStart = !empty($body['new_start_time']) ? date('H:i:s', strtotime($body['new_start_time'])) : null;
         $newEnd = !empty($body['new_end_time']) ? date('H:i:s', strtotime($body['new_end_time'])) : null;
 
@@ -669,7 +692,10 @@ if (!function_exists('studentRequestReschedule')) {
             return ['status' => 'error', 'message' => 'Failed to send request: ' . mysqli_error($con)];
         }
 
-        return ['status' => 'success', 'message' => 'Reschedule request sent to the teacher', 'data' => get_reschedule_request_details($con, mysqli_insert_id($con))];
+        $requestId = (int)mysqli_insert_id($con);
+        send_notification_to_users($con, 'teacher', [(int)$session['teacher_id']], 'طلب تأجيل حصة من طالب', 'أحد الطلاب أرسل طلب تأجيل لحصة يحضرها.', ['type' => 'reschedule_request_created', 'request_id' => $requestId], 'system', null, ['push']);
+
+        return ['status' => 'success', 'message' => 'Reschedule request sent to the teacher', 'data' => get_reschedule_request_details($con, $requestId)];
     }
 }
 
@@ -749,6 +775,12 @@ if (!function_exists('teacherReviewRescheduleRequest')) {
             mysqli_stmt_execute($sStmt);
         }
 
+        $requesterId = (int)($reqRow['requested_by_id'] ?? 0);
+        if ($requesterId > 0) {
+            $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه' : 'تم رفضه';
+            send_notification_to_users($con, 'student', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسلته {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'teacher', $teacherId, ['push']);
+        }
+
         return ['status' => 'success', 'message' => 'Reschedule request ' . $decision, 'data' => get_reschedule_request_details($con, $id)];
     }
 }
@@ -806,7 +838,7 @@ if (!function_exists('adminReviewRescheduleRequest')) {
             return ['status' => 'error', 'message' => 'id and a valid decision (approved/rejected) are required'];
         }
 
-        $reqStmt = mysqli_prepare($con, "SELECT session_id, new_day, new_start_time, new_end_time FROM session_reschedule_requests WHERE id = ? AND requested_by_type = 'teacher' AND status = 'pending' LIMIT 1");
+        $reqStmt = mysqli_prepare($con, "SELECT session_id, requested_by_id, new_day, new_start_time, new_end_time FROM session_reschedule_requests WHERE id = ? AND requested_by_type = 'teacher' AND status = 'pending' LIMIT 1");
         mysqli_stmt_bind_param($reqStmt, "i", $id);
         mysqli_stmt_execute($reqStmt);
         $reqRow = mysqli_fetch_assoc(mysqli_stmt_get_result($reqStmt));
@@ -864,6 +896,12 @@ if (!function_exists('adminReviewRescheduleRequest')) {
         $uStmt = mysqli_prepare($con, "UPDATE session_reschedule_requests SET status = ?, admin_note = ?, reviewed_by_type = 'admin', reviewed_at = NOW() WHERE id = ?");
         mysqli_stmt_bind_param($uStmt, "ssi", $decision, $adminNote, $id);
         mysqli_stmt_execute($uStmt);
+
+        $requesterId = (int)($reqRow['requested_by_id'] ?? 0);
+        if ($requesterId > 0) {
+            $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه' : 'تم رفضه';
+            send_notification_to_users($con, 'teacher', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسلته {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'system', null, ['push']);
+        }
 
         return ['status' => 'success', 'message' => 'Reschedule request ' . $decision, 'data' => get_reschedule_request_details($con, $id)];
     }

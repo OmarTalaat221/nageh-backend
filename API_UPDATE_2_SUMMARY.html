@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Najeh API — Update-2 Changes Summary</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 16mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    direction: rtl;
+    text-align: right;
+    color: #1f2430;
+    line-height: 1.75;
+    font-size: 13.5px;
+  }
+  .cover {
+    text-align: center;
+    padding-top: 60px;
+    page-break-after: always;
+  }
+  .cover h1 {
+    font-size: 30px;
+    color: #16336b;
+    margin-bottom: 8px;
+  }
+  .cover .subtitle {
+    font-size: 15px;
+    color: #6b7280;
+    margin-bottom: 40px;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: #16336b;
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+  .cover .note {
+    max-width: 480px;
+    margin: 40px auto 0;
+    background: #f4f6fb;
+    border-radius: 12px;
+    padding: 18px 22px;
+    font-size: 12.5px;
+    color: #374151;
+    text-align: right;
+  }
+  h1 {
+    font-size: 22px;
+    color: #16336b;
+    border-bottom: 3px solid #bd9b2f;
+    padding-bottom: 8px;
+    margin-top: 0;
+  }
+  h2 {
+    font-size: 18px;
+    color: #16336b;
+    background: #eef2fb;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border-right: 5px solid #16336b;
+    margin-top: 34px;
+    page-break-before: auto;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 15px;
+    color: #123;
+    margin-top: 24px;
+    padding: 4px 10px;
+    border-right: 4px solid #bd9b2f;
+    background: #fbf8ef;
+    border-radius: 4px;
+    page-break-after: avoid;
+  }
+  h3 code { background: #fff; }
+  p { margin: 8px 0; }
+  hr {
+    border: none;
+    border-top: 1px solid #e2e5ec;
+    margin: 26px 0;
+  }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    background: #f1f3f8;
+    color: #b7472a;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    direction: ltr;
+    unicode-bidi: embed;
+  }
+  pre {
+    background: #1e2430;
+    color: #e8ebf3;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+  }
+  ul, ol { margin: 6px 0; padding-inline-start: 22px; }
+  li { margin: 4px 0; }
+  strong { color: #0f2050; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 12.5px;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #dde1ea;
+    padding: 7px 10px;
+    text-align: right;
+    vertical-align: top;
+  }
+  th {
+    background: #16336b;
+    color: #fff;
+    font-weight: bold;
+  }
+  tr:nth-child(even) td { background: #f7f9fc; }
+  .callout {
+    background: #fff8e6;
+    border-right: 5px solid #bd9b2f;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px 0;
+  }
+  .callout.security {
+    background: #fdecec;
+    border-right-color: #c0392b;
+  }
+  .callout.tip {
+    background: #eaf6ee;
+    border-right-color: #1f8a4c;
+  }
+  .callout b.tag {
+    display: inline-block;
+    font-size: 11px;
+    background: #16336b;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-inline-end: 6px;
+  }
+  .callout.security b.tag { background: #c0392b; }
+  .callout.tip b.tag { background: #1f8a4c; }
+  .footer-note {
+    margin-top: 40px;
+    padding: 16px;
+    background: #f4f6fb;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #4b5563;
+  }
+  section { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="badge">Najeh API Documentation</div>
+  <h1>ملخص تحديثات الـ API</h1>
+  <div class="subtitle">Update-2 — كل ما هو جديد بعد الـ baseline المعروف بـ Update-1</div>
+  <div class="note">
+    هذا المستند مُعدّ لمطوّر تطبيق الموبايل. يغطي كل إندبوينت تأثّر بالتحديث، مقسّمًا حسب الدور
+    (طالب / معلم / أدمن)، مع أمثلة Request &amp; Response وجدول مرجعي سريع في النهاية.
+    <br><br>
+    التفاصيل التقنية الخام (JSON Schema الكامل) موجودة في ملف <code>najeh_api_openapi.json</code> المرفق.
+  </div>
+</div>
+
+<p>هذا السماري بيغطي كل حاجة اتضافت أو اتغيرت في الـ API بعد الـ baseline المعروف بـ <code>update-1</code>.
+كل نقطة موثّقة بالتفصيل كمان جوه <code>najeh_api_openapi.json</code> (دوّر على كلمة <code>update-2</code>
+في التاجز/الوصف/الملاحظات لأي إندبوينت لو عايز التفاصيل الخام: query params, request body schema, response example).</p>
+
+<div class="callout tip">
+  <b class="tag">Backward-compatible</b>
+  كل التعديلات دي إضافية (additive) وليست breaking — أي تطبيق موبايل شغال حاليًا هيفضل شغال بدون أي تعديل،
+  لأن أي حقل جديد له قيمة افتراضية (<code>kind = "normal"</code>)، وأي endpoint جديد اختياري الاستخدام.
+</div>
+
+<hr>
+
+<h1>1) الفكرة الأساسية: فصل "الباقات" عن "الكورسات" (<code>kind</code>)</h1>
+
+<p>من أهم أجزاء هذا الـ update: كل صف في جدول <code>courses</code> بقى عنده عمود جديد اسمه <strong>kind</strong>، وقيمته واحدة من اتنين:</p>
+<ul>
+  <li><code>"normal"</code> — كورس عادي زي ما هو دايمًا (وحدات، فيديوهات، امتحانات). <strong>ده الافتراضي</strong>، فأي كورس قديم في قاعدة البيانات اتحط له <code>kind = normal</code> تلقائيًا.</li>
+  <li><code>"package"</code> — "باقة": نفس جدول الكورسات بالضبط (نفس الـ id، نفس كل الحقول)، لكن من غير محتوى تعليمي (مفيهاش وحدات/فيديوهات/امتحانات). الباقة بتتمحور حول:
+    <ul>
+      <li><strong>جدول حصص أسبوعي</strong> (نفس نظام <code>class_sessions</code> المستخدم للكورسات العادية، فلترة بـ <code>course_id</code> — موثق تحت update-1).</li>
+      <li><strong>ملفات</strong> (نفس فيتشر ملفات الكورس الموجود بالفعل).</li>
+    </ul>
+  </li>
+</ul>
+
+<div class="callout">
+  <b class="tag">مهم للموبايل</b>
+  <ul style="margin:8px 0 0;">
+    <li>أي مكان بيرجّع كورس (list أو details) دلوقتي بيرجّع <code>kind</code> كمان. لو عايز تفرّق بين "كورساتي" و"باقاتي"، دلوقتي تقدر تفلتر أو تعرض badge مختلف بناءً على القيمة دي.</li>
+    <li>أي endpoint بيعرض قايمة كورسات (أدمن/معلم/طالب) بقى بيقبل query param اسمه <code>kind</code> (<code>normal</code> أو <code>package</code>) — لو مبعتوش، هترجعلك القائمتين مخلوطين مع بعض (كل صف عليه <code>kind</code> بتاعه).</li>
+    <li>لو <code>kind == "package"</code>: متتوقعش تلاقي <code>units</code>/curriculum — دور بدل منها على جدول الحصص (<code>/student/sessions/today?course_id=X&amp;day=all</code>) والملفات.</li>
+  </ul>
+</div>
+
+<hr>
+
+<h1>2) الطالب (Student)</h1>
+
+<h3>2.1 <code>GET /courses</code> و <code>GET /student/courses</code> (نفس الـ handler بالظبط)</h3>
+<ul>
+  <li><strong>الجديد:</strong> query param اختياري <code>kind</code> (<code>normal</code> | <code>package</code>).</li>
+  <li><strong>بدون توكن:</strong> الإندبوينت شغال حتى من غير تسجيل دخول (زي الأول تمامًا).</li>
+</ul>
+<div class="callout security">
+  <b class="tag">باج تم إصلاحه</b>
+  كان فيه نسخة تانية (قديمة/متروكة) من نفس الدالة اللي بترجّع الكورسات معرّفة في ملف تاني في الكود، وكانت هي اللي
+  بتشتغل فعليًا بدل النسخة الصح (بسبب ترتيب الـ include) — يعني الفلتر بـ <code>kind</code> كان بيوصل للسيرفر بس
+  مبيأثرش فعليًا. اتصلح، والسلوك دلوقتي مطابق تمامًا لما هو موثّق.
+</div>
+
+<h3>2.2 <code>GET /courses/show</code> و <code>GET /student/courses/show</code> (نفس الـ handler)</h3>
+<ul>
+  <li><strong>الجديد:</strong> حقل <code>kind</code> في رد تفاصيل الكورس.</li>
+  <li><strong>إرشاد مهم للتكامل:</strong> لو <code>kind == "package"</code>، الـ <code>curriculum</code>/الوحدات هتيجي فاضية (ده طبيعي، مش error) — اجيب الجدول والملفات من الإندبوينتس المذكورة تحت.</li>
+</ul>
+
+<h3>2.3 <code>GET /student/my-courses-progress</code></h3>
+<p><strong>إندبوينت موجود من الأول بس مكنش موثّق خالص قبل كده — دلوقتي موثّق بالكامل.</strong></p>
+<div class="callout security">
+  <b class="tag">إصلاح باج حقيقي</b>
+  كان بيحصل نفس مشكلة "نسخة مكررة من الدالة" المذكورة فوق، وكانت النتيجة إن حقلين كانوا بيختفوا من كل صف كورس
+  بيرجع من الإندبوينت ده رغم إن الإصلاح كان موجود ومكتوب في مكان تاني من الكود:
+  <ol>
+    <li><code>kind</code> (كان دايمًا مفقود).</li>
+    <li><code>teachers</code> (array) — كان مفقود تمامًا.</li>
+  </ol>
+</div>
+<p>دلوقتي: كل صف فيه <code>kind</code> + <code>teachers[]</code> (كل عنصر فيها <code>{id, name, image, ...}</code> —
+نفس الشكل المستخدم في تفاصيل الكورس في الأدمن/المعلم).</p>
+
+<p><strong>مثال رد:</strong></p>
+<pre><code>{
+  "status": "success",
+  "data": [
+    {
+      "id": 229,
+      "name": "باقة متابعة أسبوعية عامة",
+      "kind": "package",
+      "type": "recorded",
+      "price": 49.99,
+      "is_subscribed": true,
+      "teachers": [
+        { "id": 12, "name": "أ.محمد علي", "image": "https://.../teacher12.jpg" }
+      ],
+      "total_lessons_count": 0,
+      "completed_lessons_count": 0,
+      "progress_percentage": 0
+    }
+  ]
+}</code></pre>
+<p>كمان بيدعم نفس <code>kind</code> query param فلتر لو عايز.</p>
+
+<h3>2.4 <code>GET /student/sessions/today</code> — معاينة جدول الباقة + قفل الانضمام أمنيًا</h3>
+<p>ده أهم تعديل من ناحية الأمان في كل الـ update.</p>
+<p><strong>المشكلة اللي كانت موجودة:</strong> طالب لسه مش مشترك في باقة معينة، مفيش وسيلة يشوف بيها جدول حصص
+الباقة قبل ما يقرر يشترك — الإندبوينت كان بيرفض أي طلب لكورس مش من ضمن كورسات الطالب المشترك فيها.</p>
+<p><strong>الحل:</strong></p>
+<ul>
+  <li>لو بعتّ <code>course_id</code> في الـ query وكان الكورس ده <code>kind = package</code>، الإندبوينت دلوقتي
+    <strong>بيسمح بمعاينة الجدول حتى لو الطالب مش مشترك فيه</strong>، عشان يقدر يشوف الأيام/الأوقات/المدرس قبل ما يقرر.</li>
+</ul>
+<div class="callout security">
+  <b class="tag">أمان</b>
+  لو الطلب اترجّع بسبب المعاينة دي بس (مش لأن الطالب فعلاً مشترك)، السيرفر بيمسح قيمة <code>meeting_link</code>
+  ويرجّعها <code>null</code> في الرد. يعني الطالب يقدر يشوف إن فيه حصة يوم كذا الساعة كذا، بس
+  <strong>مش هيقدر يفتح لينك الاجتماع أو ينضم للحصة اللايف</strong> غير لو مشترك فعلاً في الباقة. ده اكتشفناه
+  واتصلح بعد ما لاحظنا إن أول نسخة من فيتشر "المعاينة" كانت هتسمح بالانضمام الفعلي لأي حد، مش بس المعاينة —
+  اتقفل الفجوة دي فورًا.
+</div>
+<p><strong>للموبايل:</strong> لو بتعمل شاشة "تفاصيل الباقة" وفيها معاينة جدول قبل الاشتراك، ابعت <code>course_id</code>
+مع <code>day=all</code>، واتأكد إن زرار "انضم للحصة" بيكون مقفول/مخفي لو <code>meeting_link</code> جالك <code>null</code>
+(أو لو الطالب مش مشترك أصلًا).</p>
+
+<h3>2.5 <code>POST /student/subscriptions/redeem-code</code></h3>
+<ul>
+  <li><strong>الجديد:</strong> لو كل الكورسات المرتبطة بالكود المُفعَّل من نوع <code>kind = package</code>، نوع الاشتراك
+  الناتج (<code>subscription_type</code>) بقى <code>"package"</code> بدل <code>"course"</code> (كان دايمًا <code>"course"</code>
+  قبل كده حتى لو الكود بتاع باقة).</li>
+</ul>
+<div class="callout">
+  <b class="tag">ملاحظة تكامل</b>
+  لو الأدمن عمل كود تفعيل من غير ما يربطه بأي <code>course_ids</code>/<code>subject_ids</code>/<code>teacher_ids</code>
+  خالص، التفعيل هيرجع <code>success</code> بس من غير أي صلاحية وصول فعلية. لو بتعمل شاشة أدمن لإنشاء أكواد في تطبيق
+  الموبايل، تأكد إن فيه دايمًا حاجة واحدة على الأقل من التلاتة دول متبعتة.
+</div>
+
+<hr>
+
+<h1>3) الأدمن (Admin)</h1>
+
+<h3>3.1 <code>GET /admin/courses</code>, <code>GET /admin/courses/show</code>, <code>POST /admin/courses</code>, <code>PUT /admin/courses</code></h3>
+<p><strong>مسارات موجودة من الأول، دلوقتي موثقة بالكامل لأول مرة.</strong></p>
+<ul>
+  <li><strong>الجديد الوحيد فعليًا:</strong> حقل/فلتر <code>kind</code>.</li>
+  <li><code>GET /admin/courses</code>: query param <code>kind</code> (<code>normal</code> | <code>package</code>) — الفلاتر
+    التانية كلها زي ما هي (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, search, sort...).</li>
+  <li><code>POST /admin/courses</code>: body field <code>kind</code> اختياري، افتراضي <code>"normal"</code> لو ما بعتّوش.</li>
+  <li><code>PUT /admin/courses</code>: body field <code>kind</code> اختياري — لو اتبعت، بيغيّر نوع الكورس (ممكن تحول
+    كورس عادي لباقة أو العكس). لو اتبعت قيمة غير <code>normal</code>/<code>package</code>، بيتجاهلها ويسيب الـ kind زي ما هو.</li>
+  <li><code>GET /admin/courses/show</code>: حقل <code>kind</code> في رد تفاصيل الكورس.</li>
+</ul>
+<p><strong>مثال إنشاء باقة:</strong></p>
+<pre><code>POST /admin/courses
+{
+  "name_ar": "باقة متابعة أسبوعية عامة",
+  "price": 49.99,
+  "kind": "package"
+}</code></pre>
+
+<h3>3.2 <code>GET /admin/subscriptions</code> و <code>POST /admin/subscriptions</code></h3>
+<ul>
+  <li><code>subscription_type</code> بقى ليه قيمة جديدة ممكنة: <code>"package"</code> (بجانب course/subject/teacher/custom الموجودين من قبل).</li>
+  <li>القيمة دي <strong>بتتحدد من السيرفر تلقائيًا</strong>، مش حاجة الأدمن يبعتها — لو كل الكورسات المرتبطة بمنحة
+    الاشتراك (grant) كلها <code>kind = package</code>، الرد هيرجع <code>subscription_type: "package"</code>.</li>
+  <li>ده بيأثر على: <code>GET /admin/subscriptions?subscription_type=package</code> (فلترة جديدة) ورد
+    <code>POST /admin/subscriptions</code> (نفس شكل الـ request القديم، بس الرد بيرجع النوع الصح).</li>
+</ul>
+
+<h3>3.3 <code>GET /admin/notifications/inbox</code></h3>
+<p>إشعار "اشتراك جديد" (اللي بيوصل للأدمن لما طالب يشترك/يفعّل كود) بقى نصه يقول <strong>"باقة"</strong> بدل
+<strong>"كورس"</strong> لو الكورس المشترك فيه <code>kind = package</code> — بما فيها الصيغة النحوية الصح (مثلًا
+"باقتك" مش "كورسك"). مفيش تغيير في شكل الـ response نفسه، بس محتوى النص (title/body) اتغير.
+<br><strong>نفس التغيير بالظبط بيوصل لإشعار المعلم</strong> (الـ push notification اللي بيوصله لما حد يشترك في كورس/باقة بتاعته).</p>
+
+<h3>3.4 <code>GET /admin/exams</code></h3>
+<p>الكورس المُضمَّن جوه كل صف امتحان (لما يكون الامتحان مرتبط بكورس) بقى فيه <code>kind</code> كمان — تعديل بسيط،
+مفيش حاجة تانية اتغيرت.</p>
+
+<h3>3.5 <code>POST /admin/consultations/recurring</code> (إندبوينت جديد بالكامل)</h3>
+<p>شوف قسم "الاستشارات المتكررة" تحت — نفس تفاصيل نسخة المعلم بالظبط، بس بحقل إضافي <code>teacher_id</code> عشان
+الأدمن يقدر ينشئ نيابةً عن أي معلم.</p>
+
+<hr>
+
+<h1>4) المعلم (Teacher)</h1>
+
+<h3>4.1 <code>GET /teacher/courses</code>, <code>POST /teacher/courses</code>, <code>PUT /teacher/courses</code></h3>
+<ul>
+  <li>نفس بالظبط منطق <code>/admin/courses</code> (فعليًا الـ backend بيستخدم نفس الدوال تحت الغطاء، مقيّدة على كورسات المعلم بس).</li>
+  <li><code>GET</code>: فلتر <code>kind</code> زي الأدمن بالظبط.</li>
+  <li><code>POST</code>: يتطلب <code>subject_id</code> (لازم يكون معيّن للمعلم ده)، وبقى فيه <code>kind</code> اختياري (افتراضي normal).</li>
+  <li><code>PUT</code>: بيقدر يغيّر <code>kind</code> لكورساته بس (فيه تحقق ملكية قبل كده).</li>
+</ul>
+
+<h3>4.2 <code>GET /teacher/sessions</code></h3>
+<p>الكورس المُضمَّن جوه كل حصة بقى فيه <code>kind</code> — يفيد المعلم يعرف من الليست نفسها إن الحصة دي حصة باقة
+ولا كورس عادي من غير ما يعمل call تاني.</p>
+
+<h3>4.3 <code>POST /teacher/consultations/recurring</code> (إندبوينت جديد بالكامل)</h3>
+<p>شوف القسم الجاي.</p>
+
+<hr>
+
+<h1>5) فيتشر جديد بالكامل: الاستشارات المتكررة (Recurring Consultation Slots)</h1>
+
+<p><strong>المشكلة اللي بيحلها:</strong> قبل كده، المعلم كان لازم يضيف كل موعد استشارة لوحده يدويًا. دلوقتي يقدر
+يضيف موعد <strong>متكرر</strong> بيوم/أيام معينة في الأسبوع + وقت ثابت، لحد تاريخ معين، وهيتولد له موعد فعلي
+(row في <code>consultation_slots</code>) لكل تاريخ فعلي مطابق.</p>
+
+<h3>5.1 <code>POST /teacher/consultations/recurring</code> (المعلم)</h3>
+<p>الـ Auth: توكن المعلم نفسه (مفيش <code>teacher_id</code> في الـ body، بياخده من التوكن).</p>
+
+<p><strong>Request body:</strong></p>
+<pre><code>{
+  "days": ["Saturday", "Thursday"],
+  "slot_time": "18:00",
+  "end_date": "2026-10-15",
+  "subject_id": 3,
+  "meeting_type": "video_call",
+  "type": "educational",
+  "notes": "Weekly review session"
+}</code></pre>
+
+<table>
+  <tr><th>الحقل</th><th>إلزامي؟</th><th>ملاحظات</th></tr>
+  <tr><td><code>days</code></td><td>نعم</td><td>array من Saturday..Friday (أسماء إنجليزي، أول حرف كابيتال) — يوم واحد على الأقل</td></tr>
+  <tr><td><code>slot_time</code></td><td>نعم</td><td><code>HH:MM</code>، نفس الوقت لكل الأيام المختارة</td></tr>
+  <tr><td><code>end_date</code></td><td>نعم</td><td>آخر تاريخ (شامل) يتولد لحده — أقصى حد 180 يوم من النهارده</td></tr>
+  <tr><td><code>subject_id</code></td><td>لا</td><td>سيبه فاضي لو الاستشارة نفسية مش تعليمية</td></tr>
+  <tr><td><code>meeting_type</code></td><td>نعم</td><td>video_call / chat / online / offline</td></tr>
+  <tr><td><code>type</code></td><td>نعم</td><td>educational / psychological</td></tr>
+  <tr><td><code>notes</code></td><td>لا</td><td>ملاحظات تظهر للطالب</td></tr>
+</table>
+
+<p><strong>السلوك بالتفصيل:</strong></p>
+<ol>
+  <li>لكل يوم في <code>days</code>: يبدأ من أقرب تاريخ مطابق لليوم ده (ممكن يكون النهارده نفسه لو مطابق)، وبعدين
+    يزود 7 أيام في كل مرة لحد <code>end_date</code> (شامل).</li>
+  <li>كل التواريخ الناتجة من كل الأيام بتتجمع مع بعض، وبتتشال أي تكرارات.</li>
+  <li><strong>حد أقصى للحماية:</strong> لو عدد التواريخ الناتجة أكتر من 200، الطلب بيترفض بالكامل (لازم تقسّم لأكتر من طلب).</li>
+  <li>أي تاريخ فيه أصلًا موعد مطابق (نفس المعلم + نفس الوقت + نفس التاريخ) بيتم <strong>تخطيه</strong> مش بيتكرر ولا
+    بيرجع error — الطلب بيكمل عادي والرد بيقولك كام اتعمل وكام اتخطى.</li>
+  <li><strong>إشعار واحد بس</strong> بيتبعت للمعلم عن كل العملية دي (مش إشعار لكل موعد لوحده).</li>
+</ol>
+
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "status": "success",
+  "message": "...",
+  "data": {
+    "created_count": 8,
+    "skipped_count": 1,
+    "slots": [ /* الصفوف الجديدة اللي اتعملت */ ]
+  }
+}</code></pre>
+
+<p><strong>Errors محتملة (400):</strong> مفيش يوم متختار / الوقت أو end_date ناقصين / end_date في الماضي أو أبعد
+من 180 يوم / أكتر من 200 موعد هيتولدوا.</p>
+
+<h3>5.2 <code>POST /admin/consultations/recurring</code> (الأدمن)</h3>
+<p><strong>نفس المنطق تمامًا حرفيًا</strong> (نفس دالة السيرفر تحت الغطاء، فمستحيل يحصل فرق سلوك بين النسختين
+مع الوقت). الفرق الوحيد: بيتطلب حقل إضافي <strong>teacher_id</strong> في الـ body (بما إن الأدمن بينشئ نيابةً عن
+معلم يختاره هو مش عن نفسه). لو الـ <code>teacher_id</code> مش موجود في قاعدة البيانات، بيرجع error.</p>
+
+<pre><code>{
+  "teacher_id": 12,
+  "days": ["Saturday", "Thursday"],
+  "slot_time": "18:00",
+  "end_date": "2026-10-15",
+  "meeting_type": "video_call",
+  "type": "educational"
+}</code></pre>
+
+<h3>5.3 من ناحية الطالب</h3>
+<p><strong>مفيش أي تغيير مطلوب في تطبيق الطالب.</strong> أي موعد اتعمل (سواء من المعلم أو الأدمن) بيظهر تلقائيًا
+في نفس قائمة "المواعيد المتاحة" الموجودة بالفعل (<code>GET /student/consultations/slots</code>) ويتحجز بنفس
+الطريقة العادية.</p>
+
+<hr>
+
+<h1>6) جدول مرجعي سريع</h1>
+
+<table>
+  <tr><th>Method</th><th>Path</th><th>الدور</th><th>نوع التغيير</th></tr>
+  <tr><td>GET</td><td><code>/courses</code>, <code>/student/courses</code></td><td>طالب</td><td>فلتر/حقل kind + إصلاح باج</td></tr>
+  <tr><td>GET</td><td><code>/courses/show</code>, <code>/student/courses/show</code></td><td>طالب</td><td>حقل kind</td></tr>
+  <tr><td>GET</td><td><code>/student/my-courses-progress</code></td><td>طالب</td><td>توثيق جديد + إصلاح باج (kind + teachers[])</td></tr>
+  <tr><td>GET</td><td><code>/student/sessions/today</code></td><td>طالب</td><td>معاينة جدول الباقة + إخفاء meeting_link أمنيًا</td></tr>
+  <tr><td>POST</td><td><code>/student/subscriptions/redeem-code</code></td><td>طالب</td><td>subscription_type يدعم package</td></tr>
+  <tr><td>GET/POST/PUT</td><td><code>/admin/courses</code>, GET <code>/admin/courses/show</code></td><td>أدمن</td><td>فلتر/حقل kind (توثيق جديد)</td></tr>
+  <tr><td>GET/POST</td><td><code>/admin/subscriptions</code></td><td>أدمن</td><td>subscription_type يدعم package</td></tr>
+  <tr><td>GET</td><td><code>/admin/notifications/inbox</code></td><td>أدمن + معلم</td><td>صياغة الإشعار (باقة/كورس)</td></tr>
+  <tr><td>GET</td><td><code>/admin/exams</code></td><td>أدمن</td><td>حقل kind داخل الكورس المُضمَّن</td></tr>
+  <tr><td>POST</td><td><code>/admin/consultations/recurring</code></td><td>أدمن</td><td><strong>إندبوينت جديد بالكامل</strong></td></tr>
+  <tr><td>GET/POST/PUT</td><td><code>/teacher/courses</code></td><td>معلم</td><td>فلتر/حقل kind (توثيق جديد)</td></tr>
+  <tr><td>GET</td><td><code>/teacher/sessions</code></td><td>معلم</td><td>حقل kind داخل الكورس المُضمَّن</td></tr>
+  <tr><td>POST</td><td><code>/teacher/consultations/recurring</code></td><td>معلم</td><td><strong>إندبوينت جديد بالكامل</strong></td></tr>
+</table>
+
+<div class="footer-note">
+  <strong>ملاحظات ختامية للموبايل ديفيلوبر:</strong>
+  <ul style="margin:8px 0 0;">
+    <li>كل حاجة فوق <strong>متوافقة للخلف (backward-compatible)</strong> — مفيش endpoint اتشال، ومفيش حقل قديم اتغيّر شكله أو اتشال.</li>
+    <li>الحقل الوحيد اللي لازم تتأكد إنك بتتعامل معاه في كل مكان بيرجع كورس: <code>kind</code> (قيمته دايمًا normal أو package، وموجود دايمًا — مش nullable).</li>
+    <li>لو محتاج تفاصيل تقنية أدق (JSON schema كامل، أمثلة request/response كاملة لكل endpoint)، كل ده موجود جوه <code>najeh_api_openapi.json</code> تحت كل مسار مذكور فوق، ودور على أي وصف فيه كلمة <code>update-2</code>.</li>
+  </ul>
+</div>
+
+</body>
+</html>
