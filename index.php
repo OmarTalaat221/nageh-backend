@@ -3592,6 +3592,17 @@ $routes = [
                 return adminDeleteConsultationSlot($con);
             },
         ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/consultations/recurring",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/consultations/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminCreateRecurringConsultationSlots($con);
+            },
+        ],
 
         [
             "method" => "GET",

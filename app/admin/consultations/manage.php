@@ -217,3 +217,22 @@ if (!function_exists('adminDeleteConsultationSlot')) {
         return ['status' => 'success', 'message' => trans('consultation_deleted_success')];
     }
 }
+
+if (!function_exists('adminCreateRecurringConsultationSlots')) {
+    function adminCreateRecurringConsultationSlots($con) {
+        $body = read_json_body();
+        $teacherId = (int)($body['teacher_id'] ?? 0);
+        if ($teacherId <= 0) {
+            return ['status' => 'error', 'message' => trans('teacher_id_required')];
+        }
+
+        $checkStmt = mysqli_prepare($con, "SELECT id FROM teachers WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($checkStmt, "i", $teacherId);
+        mysqli_stmt_execute($checkStmt);
+        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+            return ['status' => 'error', 'message' => trans('teacher_not_found')];
+        }
+
+        return create_recurring_consultation_slots_core($con, $teacherId, $body);
+    }
+}

@@ -246,11 +246,11 @@ if (!function_exists('teacherCreateConsultationSlot')) {
     }
 }
 
-if (!function_exists('teacherCreateRecurringConsultationSlots')) {
-    function teacherCreateRecurringConsultationSlots($con, $teacherData) {
-        $teacherId = (int)($teacherData['id'] ?? 0);
-        $body = read_json_body();
-
+if (!function_exists('create_recurring_consultation_slots_core')) {
+    // Shared by both the teacher route (teacher creates for themselves) and the admin
+    // route (admin creates on behalf of a chosen teacher) — kept in ONE place so the two
+    // never drift out of sync with each other.
+    function create_recurring_consultation_slots_core($con, int $teacherId, array $body) {
         ensure_consultation_slots_type_column($con);
 
         $allowedDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -376,6 +376,15 @@ if (!function_exists('teacherCreateRecurringConsultationSlots')) {
                 'slots' => $createdSlots,
             ],
         ];
+    }
+}
+
+if (!function_exists('teacherCreateRecurringConsultationSlots')) {
+    function teacherCreateRecurringConsultationSlots($con, $teacherData) {
+        $teacherId = (int)($teacherData['id'] ?? 0);
+        $body = read_json_body();
+
+        return create_recurring_consultation_slots_core($con, $teacherId, $body);
     }
 }
 
