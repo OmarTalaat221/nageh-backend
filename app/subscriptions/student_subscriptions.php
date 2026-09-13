@@ -576,6 +576,75 @@ if (!function_exists('get_student_accessible_entities')) {
     }
 }
 
+if (!function_exists('get_student_frozen_course_ids')) {
+    // `student_subscriptions.is_active` is only ever set to 0 by the attendance-policy auto-freeze
+    // (helpers/attendance_core.php::record_student_auto_absence) — there is no other code path that
+    // deactivates a subscription this way. So any frozen row here unambiguously means "the student
+    // exceeded their unauthorized-absence limit", used to tell that apart from "never subscribed" in
+    // the course access response.
+    function get_student_frozen_course_ids($con, int $studentId): array {
+        if ($studentId <= 0) {
+            return [];
+        }
+
+        $frozenSubIds = [];
+        $subRes = mysqli_query($con, "SELECT id FROM student_subscriptions WHERE student_id = {$studentId} AND is_active = 0");
+        if ($subRes) {
+            while ($row = mysqli_fetch_assoc($subRes)) {
+                $frozenSubIds[] = (int)$row['id'];
+            }
+        }
+        if (empty($frozenSubIds)) {
+            return [];
+        }
+        $subListStr = implode(',', $frozenSubIds);
+
+        $courseIds = [];
+        $cRes = mysqli_query($con, "SELECT DISTINCT course_id FROM student_subscription_courses WHERE student_subscription_id IN ({$subListStr})");
+        if ($cRes) {
+            while ($row = mysqli_fetch_assoc($cRes)) {
+                $courseIds[] = (int)$row['course_id'];
+            }
+        }
+
+        $subjectIds = [];
+        $sRes = mysqli_query($con, "SELECT DISTINCT subject_id FROM student_subscription_subjects WHERE student_subscription_id IN ({$subListStr})");
+        if ($sRes) {
+            while ($row = mysqli_fetch_assoc($sRes)) {
+                $subjectIds[] = (int)$row['subject_id'];
+            }
+        }
+        if (!empty($subjectIds)) {
+            $sListStr = implode(',', array_unique($subjectIds));
+            $scRes = mysqli_query($con, "SELECT id FROM courses WHERE subject_id IN ({$sListStr})");
+            if ($scRes) {
+                while ($row = mysqli_fetch_assoc($scRes)) {
+                    $courseIds[] = (int)$row['id'];
+                }
+            }
+        }
+
+        $teacherIds = [];
+        $tRes = mysqli_query($con, "SELECT DISTINCT teacher_id FROM student_subscription_teachers WHERE student_subscription_id IN ({$subListStr})");
+        if ($tRes) {
+            while ($row = mysqli_fetch_assoc($tRes)) {
+                $teacherIds[] = (int)$row['teacher_id'];
+            }
+        }
+        if (!empty($teacherIds)) {
+            $tListStr = implode(',', array_unique($teacherIds));
+            $tcRes = mysqli_query($con, "SELECT id FROM courses WHERE teacher_id IN ({$tListStr}) OR (created_by_type = 'teacher' AND created_by_id IN ({$tListStr}))");
+            if ($tcRes) {
+                while ($row = mysqli_fetch_assoc($tcRes)) {
+                    $courseIds[] = (int)$row['id'];
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($courseIds)));
+    }
+}
+
 if (!function_exists('studentGetMySubscribedCourses')) {
     function studentGetMySubscribedCourses($con, $studentData = null) {
         $stId = 0;

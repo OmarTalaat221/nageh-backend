@@ -244,6 +244,8 @@ if (!function_exists('studentGetCourseDetails')) {
         $cId = (int)$cRow['id'];
         $accessible = get_student_accessible_entities($con, $stId);
         $isSubscribed = in_array($cId, $accessible['course_ids']);
+        $isFrozen = !$isSubscribed && $stId > 0 && function_exists('get_student_frozen_course_ids')
+            && in_array($cId, get_student_frozen_course_ids($con, $stId));
 
         $price = (float)$cRow['price'];
         $originalPrice = $price;
@@ -471,6 +473,8 @@ if (!function_exists('studentGetCourseDetails')) {
             'access_type' => 'وصول كامل',
             'own' => $isSubscribed,
             'is_subscribed' => $isSubscribed,
+            'is_frozen' => $isFrozen,
+            'freeze_reason' => $isFrozen ? trans('student_subscription_frozen_reason') : null,
             'progress_percentage' => $progressPct,
             'completed_lessons_count' => $completedLessons,
             'teacher' => $teacherData,
