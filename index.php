@@ -51,6 +51,25 @@ if (!function_exists('handleTokenRefresh')) {
             json_response(['status' => 'error', 'message' => trans('invalid_refresh_token')], 401);
         }
 
+        $tablesByRole = [
+            'teacher' => 'teachers',
+            'student' => 'students',
+            'parent' => 'parents',
+            'admin' => 'admins',
+        ];
+        $table = $tablesByRole[$role] ?? null;
+        if ($table && !empty($decoded['id'])) {
+            global $con;
+            $stmt = mysqli_prepare($con, "SELECT is_active FROM {$table} WHERE id = ? LIMIT 1");
+            $entityId = (int)$decoded['id'];
+            mysqli_stmt_bind_param($stmt, "i", $entityId);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            if (!$row || (int)$row['is_active'] === 0) {
+                json_response(['status' => 'error', 'message' => trans('account_inactive')], 403);
+            }
+        }
+
         unset($decoded['token_type'], $decoded['iat'], $decoded['exp'], $decoded['role']);
 
         $newTokens = generateTokens($decoded, $role);

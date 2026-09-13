@@ -12,6 +12,22 @@ if (!function_exists('studentAuthMiddleware')) {
             $decoded = verifyStudentAccessToken($token);
 
             if ($decoded) {
+                global $con;
+                $studentId = is_array($decoded) ? ($decoded['id'] ?? null) : null;
+                if ($studentId && $con) {
+                    $stmt = mysqli_prepare($con, "SELECT is_active FROM students WHERE id = ? LIMIT 1");
+                    mysqli_stmt_bind_param($stmt, "i", $studentId);
+                    mysqli_stmt_execute($stmt);
+                    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+
+                    if (!$row || (int)$row['is_active'] === 0) {
+                        json_response([
+                            'status' => 'error',
+                            'message' => trans('account_inactive')
+                        ], 401);
+                    }
+                }
+
                 return $decoded;
             }
         }
