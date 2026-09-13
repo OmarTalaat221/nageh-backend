@@ -625,7 +625,8 @@ if (!function_exists('teacherRequestReschedule')) {
         }
 
         $requestId = (int)mysqli_insert_id($con);
-        notify_admins($con, 'طلب تأجيل حصة جديد', 'معلم أرسل طلب تأجيل لإحدى حصصه.', ['type' => 'reschedule_request_created', 'request_id' => $requestId]);
+        $teacherName = attendance_notify_get_teacher_name($con, $teacherId);
+        notify_admins($con, 'طلب تأجيل حصة جديد', "المعلم {$teacherName} أرسل طلب تأجيل لإحدى حصصه.", ['type' => 'reschedule_request_created', 'request_id' => $requestId]);
 
         return ['status' => 'success', 'message' => 'Reschedule request sent to admin', 'data' => get_reschedule_request_details($con, $requestId)];
     }
@@ -693,7 +694,8 @@ if (!function_exists('studentRequestReschedule')) {
         }
 
         $requestId = (int)mysqli_insert_id($con);
-        send_notification_to_users($con, 'teacher', [(int)$session['teacher_id']], 'طلب تأجيل حصة من طالب', 'أحد الطلاب أرسل طلب تأجيل لحصة يحضرها.', ['type' => 'reschedule_request_created', 'request_id' => $requestId], 'system', null, ['push']);
+        $studentName = admin_notify_get_student_name($con, $studentId);
+        send_notification_to_users($con, 'teacher', [(int)$session['teacher_id']], 'طلب تأجيل حصة من طالب', "الطالب {$studentName} أرسل طلب تأجيل لحصة يحضرها.", ['type' => 'reschedule_request_created', 'request_id' => $requestId], 'system', null, ['push']);
 
         return ['status' => 'success', 'message' => 'Reschedule request sent to the teacher', 'data' => get_reschedule_request_details($con, $requestId)];
     }
@@ -778,7 +780,8 @@ if (!function_exists('teacherReviewRescheduleRequest')) {
         $requesterId = (int)($reqRow['requested_by_id'] ?? 0);
         if ($requesterId > 0) {
             $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه' : 'تم رفضه';
-            send_notification_to_users($con, 'student', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسلته {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'teacher', $teacherId, ['push']);
+            $requesterName = admin_notify_get_student_name($con, $requesterId);
+            send_notification_to_users($con, 'student', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسله {$requesterName} {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'teacher', $teacherId, ['push']);
         }
 
         return ['status' => 'success', 'message' => 'Reschedule request ' . $decision, 'data' => get_reschedule_request_details($con, $id)];
@@ -900,7 +903,8 @@ if (!function_exists('adminReviewRescheduleRequest')) {
         $requesterId = (int)($reqRow['requested_by_id'] ?? 0);
         if ($requesterId > 0) {
             $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه' : 'تم رفضه';
-            send_notification_to_users($con, 'teacher', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسلته {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'system', null, ['push']);
+            $requesterName = attendance_notify_get_teacher_name($con, $requesterId);
+            send_notification_to_users($con, 'teacher', [$requesterId], 'الرد على طلب تأجيل الحصة', "طلب تأجيل الحصة الذي أرسله {$requesterName} {$decisionLabel}.", ['type' => 'reschedule_request_reviewed', 'request_id' => $id, 'decision' => $decision], 'system', null, ['push']);
         }
 
         return ['status' => 'success', 'message' => 'Reschedule request ' . $decision, 'data' => get_reschedule_request_details($con, $id)];

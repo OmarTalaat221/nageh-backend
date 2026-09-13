@@ -34,6 +34,10 @@ if (!function_exists('record_teacher_session_checkin')) {
         ");
         mysqli_stmt_bind_param($stmt, "iisssii", $sessionId, $teacherId, $occurrenceDate, $status, $checkInTime, $minutesLate, $isExcused);
         mysqli_stmt_execute($stmt);
+        $wasFirstCheckIn = mysqli_stmt_affected_rows($stmt) === 1; // 1 = fresh insert, 2 = update-on-duplicate
+        if (!$wasFirstCheckIn) {
+            return; // already recorded on a previous call — never re-fine or re-notify for the same check-in
+        }
 
         if ($status === 'late' && $isExcused === 0 && $policy['teacher_late_fine_per_minute'] > 0) {
             $fineAmount = round($policy['teacher_late_fine_per_minute'] * $minutesLate, 2);
@@ -50,7 +54,7 @@ if (!function_exists('record_teacher_session_checkin')) {
 
 if (!function_exists('record_teacher_session_checkout')) {
     function record_teacher_session_checkout($con, int $sessionId, int $teacherId, string $occurrenceDate, string $startTime, string $endTime): void {
-        $rowStmt = mysqli_prepare($con, "SELECT check_in_time, status FROM teacher_session_attendance WHERE session_id = ? AND occurrence_date = ? LIMIT 1");
+        $rowStmt = mysqli_prepare($con, "SELECT check_in_time, check_out_time, status FROM teacher_session_attendance WHERE session_id = ? AND occurrence_date = ? LIMIT 1");
         mysqli_stmt_bind_param($rowStmt, "is", $sessionId, $occurrenceDate);
         mysqli_stmt_execute($rowStmt);
         $row = mysqli_fetch_assoc(mysqli_stmt_get_result($rowStmt));
@@ -58,6 +62,12 @@ if (!function_exists('record_teacher_session_checkout')) {
         // No check-in row at all means the teacher ended the session without ever "starting" it
         // (or the auto-absence cron already ran first) — nothing to earn, nothing to check out.
         if (!$row || $row['status'] === 'absent') {
+            return;
+        }
+
+        // Already checked out once (e.g. a retried/duplicate "end session" call) — never pay twice
+        // for the same occurrence.
+        if (!empty($row['check_out_time'])) {
             return;
         }
 
