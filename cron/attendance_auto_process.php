@@ -1,8 +1,9 @@
 <?php
 // Section 10: runs every minute (same crontab entry style as session_start_notifications.php).
-// For every class_sessions occurrence whose grace period has just elapsed, auto-detects an
+// For every class_sessions occurrence ending right now with nobody checked in, auto-detects an
 // unexcused no-show (teacher or student) and applies the configured consequence, unless an
-// approved absence_permission request already covers that exact occurrence.
+// approved absence_permission request already covers that exact occurrence. Lateness up to that
+// point is handled separately at check-in time (helpers/attendance_core.php), against grace_minutes.
 
 require_once __DIR__ . '/../config/connection.php';
 require_once __DIR__ . '/../helpers/functions.php';
@@ -62,18 +63,23 @@ if (!function_exists('cron_record_excused_student_absence')) {
 $now = get_request_now();
 $today = $now->format('l');
 $todayDate = $now->format('Y-m-d');
-$policy = get_hr_policy_settings($con);
 
-$teacherCheckTime = (clone $now)->modify("-{$policy['teacher_grace_minutes']} minutes")->format('H:i:00');
-$studentCheckTime = (clone $now)->modify("-{$policy['student_grace_minutes']} minutes")->format('H:i:00');
+// A no-show is only decided at the session's *end* time, not "start + grace" — grace_minutes is
+// solely the late-vs-present threshold used at check-in (helpers/attendance_core.php). Matching
+// absence to "start + grace" instead would race the check-in flow: the instant a teacher's actual
+// delay exceeds grace_minutes (the only way to legitimately earn a late fine instead of a no-show),
+// that same instant is when this cron used to already mark them fully absent, one tick earlier —
+// making the "late, unauthorized" outcome unreachable. Anyone who checks in at any point up to the
+// scheduled end is "late" (handled at check-in); only never checking in by the end is "absent".
+$currentMinute = $now->format('H:i:00');
 
 $teacherAbsences = 0;
 $studentAbsences = 0;
 
-// --- Teacher side: one no-show check per session whose teacher-grace window just elapsed. ---
+// --- Teacher side: one no-show check per session ending right now. ---
 $teacherRes = mysqli_query($con, "
     SELECT id, teacher_id, course_id, subject_id FROM class_sessions
-    WHERE is_active = 1 AND day_of_week = '{$today}' AND start_time = '{$teacherCheckTime}'
+    WHERE is_active = 1 AND day_of_week = '{$today}' AND end_time = '{$currentMinute}'
 ");
 if ($teacherRes) {
     while ($session = mysqli_fetch_assoc($teacherRes)) {
@@ -94,10 +100,10 @@ if ($teacherRes) {
     }
 }
 
-// --- Student side: one no-show check per subscribed student whose student-grace window just elapsed. ---
+// --- Student side: one no-show check per subscribed student, for each session ending right now. ---
 $studentRes = mysqli_query($con, "
     SELECT id, teacher_id, course_id, subject_id FROM class_sessions
-    WHERE is_active = 1 AND day_of_week = '{$today}' AND start_time = '{$studentCheckTime}'
+    WHERE is_active = 1 AND day_of_week = '{$today}' AND end_time = '{$currentMinute}'
 ");
 if ($studentRes) {
     while ($session = mysqli_fetch_assoc($studentRes)) {
