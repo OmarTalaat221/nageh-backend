@@ -27,6 +27,7 @@ if (!function_exists('get_student_attendance')) {
                     sa.student_id               AS student_id,
                     sa.session_date             AS session_date,
                     sa.status                   AS attendance_status,
+                    sa.is_excused               AS is_excused,
                     sa.marked_by_teacher_id     AS marked_by_teacher_id,
                     sa.marked_at                AS marked_at,
 
@@ -88,7 +89,13 @@ if (!function_exists('get_student_attendance')) {
             $courseId     = (int)$row['course_id'];
             $sessionId    = (int)$row['session_id'];
             $attendanceId = (int)$row['attendance_id'];
-            $status       = $row['attendance_status'];
+            $rawStatus    = $row['attendance_status'];
+            $isExcused    = (int)($row['is_excused'] ?? 0) === 1;
+            // `session_attendance.status` is only ever 'present'/'absent'/'late' — an excused
+            // absence is stored as status='absent' with the separate `is_excused` flag set, not as
+            // its own enum value. Fold that flag in here so it lands in its own "excused" bucket
+            // instead of silently being counted as a plain unexcused absence.
+            $status       = $isExcused ? 'excused' : $rawStatus;
 
             // ---- global counters ----
             if ($status === 'present') {
@@ -151,6 +158,7 @@ if (!function_exists('get_student_attendance')) {
                 'session_grade'        => $row['session_grade'],
                 'status'               => $status,
                 'status_label'         => $statusLabel,
+                'is_excused'           => $isExcused,
                 'marked_by_teacher_id' => $row['marked_by_teacher_id'] ? (int)$row['marked_by_teacher_id'] : null,
                 'teacher_name'         => $row['teacher_name'],
                 'teacher_image'        => $row['teacher_image'],
