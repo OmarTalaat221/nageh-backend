@@ -7,7 +7,7 @@ if (!function_exists('teacherProfile')) {
         ensure_teachers_schema($con);
         $teacherId = (int)($teacherData['id'] ?? 0);
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, city_id, whatsapp, specialization, experience, biography, qualifications, rating, video, image, description, is_email_verified, is_active, can_view_profile, created_at FROM teachers WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, city_id, whatsapp, specialization, experience, biography, qualifications, rating, video, image, description, is_email_verified, is_active, is_attendance_suspended, can_view_profile, created_at FROM teachers WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $teacherId);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -25,7 +25,8 @@ if (!function_exists('teacherProfile')) {
         $teacher['can_view_profile'] = (int)($teacher['can_view_profile'] ?? 1) === 1;
         $teacher['is_email_verified'] = (int)$teacher['is_email_verified'];
         $teacher['is_active'] = (int)$teacher['is_active'];
-        if ($teacher['is_active'] !== 1) {
+        $teacher['is_attendance_suspended'] = (int)$teacher['is_attendance_suspended'];
+        if ($teacher['is_attendance_suspended'] === 1) {
             $teacher['suspension_reason'] = trans('teacher_suspension_reason');
         }
 

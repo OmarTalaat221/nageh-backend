@@ -51,10 +51,8 @@ if (!function_exists('handleTokenRefresh')) {
             json_response(['status' => 'error', 'message' => trans('invalid_refresh_token')], 401);
         }
 
-        // 'teacher' is intentionally excluded: a suspended teacher is still allowed to refresh
-        // and use the dashboard, restricted client-side to the support chat only (see
-        // middlewares/teacherauthmiddleware.php).
         $tablesByRole = [
+            'teacher' => 'teachers',
             'student' => 'students',
             'parent' => 'parents',
             'admin' => 'admins',
@@ -3772,6 +3770,17 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
                 return adminAdjustTeacherWallet($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/teacher-wallets/lift-suspension",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/attendance/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminLiftTeacherAttendanceSuspension($con);
             },
         ],
         [

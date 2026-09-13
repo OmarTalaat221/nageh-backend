@@ -139,7 +139,7 @@ if (!function_exists('adminListTeacherWallets')) {
         mysqli_stmt_execute($countStmt);
         $totalRecords = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($countStmt))['total'] ?? 0);
 
-        $sql = "SELECT id, name, email, image, is_active, wallet_balance FROM teachers {$where} ORDER BY wallet_balance DESC LIMIT ? OFFSET ?";
+        $sql = "SELECT id, name, email, image, is_active, is_attendance_suspended, wallet_balance FROM teachers {$where} ORDER BY wallet_balance DESC LIMIT ? OFFSET ?";
         $stmt = mysqli_prepare($con, $sql);
         $bindTypes = $types . "ii";
         $bindParams = array_merge($params, [$limit, $offset]);
@@ -151,6 +151,7 @@ if (!function_exists('adminListTeacherWallets')) {
         while ($row = mysqli_fetch_assoc($res)) {
             $row['id'] = (int)$row['id'];
             $row['is_active'] = (int)$row['is_active'];
+            $row['is_attendance_suspended'] = (int)$row['is_attendance_suspended'];
             $row['wallet_balance'] = (float)$row['wallet_balance'];
             $row['pay_rate'] = get_teacher_pay_rate($con, $row['id']);
             $items[] = format_response_images($row);
@@ -197,6 +198,30 @@ if (!function_exists('adminGetTeacherWalletLedger')) {
         $response = build_paginated_response($items, $page, $limit, $totalRecords);
         $response['wallet_balance'] = $balance;
         return $response;
+    }
+}
+
+if (!function_exists('adminLiftTeacherAttendanceSuspension')) {
+    function adminLiftTeacherAttendanceSuspension($con) {
+        $body = read_json_body();
+        $teacherId = (int)($body['teacher_id'] ?? 0);
+
+        if ($teacherId <= 0) {
+            return ['status' => 'error', 'message' => trans('teacher_id_required')];
+        }
+
+        $checkStmt = mysqli_prepare($con, "SELECT id FROM teachers WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($checkStmt, "i", $teacherId);
+        mysqli_stmt_execute($checkStmt);
+        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+            return ['status' => 'error', 'message' => trans('teacher_not_found')];
+        }
+
+        $stmt = mysqli_prepare($con, "UPDATE teachers SET is_attendance_suspended = 0 WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $teacherId);
+        mysqli_stmt_execute($stmt);
+
+        return ['status' => 'success', 'message' => trans('attendance_suspension_lifted_success')];
     }
 }
 

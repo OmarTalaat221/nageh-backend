@@ -99,7 +99,9 @@ if (!function_exists('record_teacher_auto_absence')) {
 
         $absenceCount = count_unexcused_absences_this_month($con, 'teacher_session_attendance', 'teacher_id', $teacherId);
         if ($absenceCount >= $policy['teacher_max_absence_without_permission']) {
-            $stmt2 = mysqli_prepare($con, "UPDATE teachers SET is_active = 0 WHERE id = ? AND is_active = 1");
+            // A dedicated flag, separate from `is_active` (the admin's own enable/disable switch):
+            // this restriction only limits the teacher to the support chat, it never blocks login.
+            $stmt2 = mysqli_prepare($con, "UPDATE teachers SET is_attendance_suspended = 1 WHERE id = ? AND is_attendance_suspended = 0");
             mysqli_stmt_bind_param($stmt2, "i", $teacherId);
             mysqli_stmt_execute($stmt2);
             if (mysqli_stmt_affected_rows($stmt2) > 0) {

@@ -12,7 +12,7 @@ if (!function_exists('teacherLogin')) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, password, city_id, whatsapp, specialization, image, is_email_verified, is_active FROM teachers WHERE email = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, password, city_id, whatsapp, specialization, image, is_email_verified, is_active, is_attendance_suspended FROM teachers WHERE email = ? LIMIT 1");
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Database query preparation failed: ' . mysqli_error($con)];
         }
@@ -39,6 +39,10 @@ if (!function_exists('teacherLogin')) {
             ];
         }
 
+        if ((int)$teacher['is_active'] !== 1) {
+            return ['status' => 'error', 'message' => trans('account_inactive')];
+        }
+
         $payload = [
             'id' => (int)$teacher['id'],
             'name' => $teacher['name'],
@@ -56,7 +60,8 @@ if (!function_exists('teacherLogin')) {
         $teacher['id'] = $teacherId;
         $teacher['is_email_verified'] = (int)$teacher['is_email_verified'];
         $teacher['is_active'] = (int)$teacher['is_active'];
-        if ($teacher['is_active'] !== 1) {
+        $teacher['is_attendance_suspended'] = (int)$teacher['is_attendance_suspended'];
+        if ($teacher['is_attendance_suspended'] === 1) {
             $teacher['suspension_reason'] = trans('teacher_suspension_reason');
         }
         $teacher['subjects'] = get_teacher_subjects_details($con, $teacherId);
