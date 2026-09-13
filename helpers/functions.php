@@ -70,7 +70,19 @@ if (!function_exists('read_json_body_raw_safe')) {
 if (!function_exists('get_request_now')) {
     function get_request_now(): DateTime {
         try {
-            return new DateTime('now', new DateTimeZone(get_request_timezone()));
+            $tz = get_request_timezone();
+            if ($tz === 'Africa/Cairo' && function_exists('cairo_utc_offset_seconds')) {
+                // The server's bundled Africa/Cairo tzdata does not know about Egypt's reintroduced
+                // DST, so PHP's own timezone database silently stays on standard time (UTC+2)
+                // year-round. cairo_utc_offset_seconds() (config/connection.php) computes the
+                // correct offset from the actual DST calendar instead of trusting that database —
+                // use the same source of truth here so app-level "now" and the DB connection's
+                // clock (set from the same function) never drift apart again.
+                $utcNow = new DateTime('now', new DateTimeZone('UTC'));
+                $utcNow->modify(sprintf('+%d seconds', cairo_utc_offset_seconds()));
+                return $utcNow;
+            }
+            return new DateTime('now', new DateTimeZone($tz));
         } catch (Exception $e) {
             return new DateTime('now', new DateTimeZone('Africa/Cairo'));
         }
