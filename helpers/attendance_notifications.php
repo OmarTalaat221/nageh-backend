@@ -36,10 +36,16 @@ if (!function_exists('notify_of_attendance_exception_request_created')) {
 if (!function_exists('notify_of_attendance_exception_request_reviewed')) {
     function notify_of_attendance_exception_request_reviewed($con, string $requestedByType, int $requestedById, string $requestType, string $decision, int $requestId): void {
         try {
+            // The message is addressed to the requester directly ("your request..."), but the same
+            // row also appears in the admin's global notifications log — where "your" is meaningless
+            // without a name. Name the requester explicitly so that view is self-explanatory too.
+            $requesterName = $requestedByType === 'teacher'
+                ? attendance_notify_get_teacher_name($con, $requestedById)
+                : admin_notify_get_student_name($con, $requestedById);
             $typeLabel = $requestType === 'late_notice' ? 'إبلاغ التأخير' : 'طلب الغياب بإذن';
             $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه' : 'تم رفضه';
             $title = 'الرد على ' . $typeLabel;
-            $body = "{$typeLabel} الخاص بك {$decisionLabel} من قبل الإدارة.";
+            $body = "{$typeLabel} الخاص بـ {$requesterName} {$decisionLabel} من قبل الإدارة.";
             send_notification_to_users(
                 $con,
                 $requestedByType,
@@ -87,12 +93,13 @@ if (!function_exists('notify_of_teacher_deduction')) {
     function notify_of_teacher_deduction($con, int $teacherId, float $amount, string $reason): void {
         try {
             $absAmount = number_format(abs($amount), 2);
+            $teacherName = attendance_notify_get_teacher_name($con, $teacherId);
             send_notification_to_users(
                 $con,
                 'teacher',
                 [$teacherId],
                 'تم تطبيق خصم على محفظتك',
-                "تم خصم {$absAmount} من رصيدك بسبب: {$reason}.",
+                "تم خصم {$absAmount} من رصيد {$teacherName} بسبب: {$reason}.",
                 ['type' => 'wallet_deduction', 'amount' => $amount],
                 'system',
                 null,
@@ -149,12 +156,13 @@ if (!function_exists('notify_of_deduction_appeal_reviewed')) {
     function notify_of_deduction_appeal_reviewed($con, int $teacherId, string $decision): void {
         try {
             $decisionLabel = $decision === 'approved' ? 'تمت الموافقة عليه وتم إرجاع المبلغ إلى محفظتك' : 'تم رفضه';
+            $teacherName = attendance_notify_get_teacher_name($con, $teacherId);
             send_notification_to_users(
                 $con,
                 'teacher',
                 [$teacherId],
                 'الرد على اعتراضك',
-                "اعتراضك على الخصم {$decisionLabel}.",
+                "اعتراض {$teacherName} على الخصم {$decisionLabel}.",
                 ['type' => 'deduction_appeal_reviewed', 'decision' => $decision],
                 'system',
                 null,
