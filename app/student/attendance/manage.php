@@ -45,17 +45,21 @@ if (!function_exists('studentCheckInSession')) {
             $isExcused = 1;
         }
         $status = $minutesLate > $policy['student_grace_minutes'] ? 'late' : 'present';
+        // Use the app's timezone-adjusted clock, not SQL NOW() — see the same fix in
+        // record_teacher_session_checkin (helpers/attendance_core.php) for why mixing the two
+        // silently corrupts any later duration/lateness calculation based on this timestamp.
+        $checkInTime = $now->format('Y-m-d H:i:s');
 
         $stmt = mysqli_prepare($con, "
             INSERT INTO session_attendance (session_id, student_id, session_date, status, check_in_time, minutes_late, is_excused, marked_by_teacher_id)
-            VALUES (?, ?, ?, ?, NOW(), ?, ?, NULL)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
             ON DUPLICATE KEY UPDATE
                 check_in_time = COALESCE(check_in_time, VALUES(check_in_time)),
                 status = VALUES(status),
                 minutes_late = VALUES(minutes_late),
                 is_excused = VALUES(is_excused)
         ");
-        mysqli_stmt_bind_param($stmt, "iissii", $sessionId, $studentId, $occurrenceDate, $status, $minutesLate, $isExcused);
+        mysqli_stmt_bind_param($stmt, "iisssii", $sessionId, $studentId, $occurrenceDate, $status, $checkInTime, $minutesLate, $isExcused);
         mysqli_stmt_execute($stmt);
 
         $wasFirstCheckIn = mysqli_stmt_affected_rows($stmt) === 1; // 1 = fresh insert, 2 = update-on-duplicate

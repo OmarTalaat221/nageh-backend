@@ -18,17 +18,21 @@ if (!function_exists('record_teacher_session_checkin')) {
             $isExcused = 1;
         }
         $status = $minutesLate > $policy['teacher_grace_minutes'] ? 'late' : 'present';
+        // Must use the app's timezone-adjusted clock here, not SQL NOW() — mixing the two
+        // (e.g. NOW() on a UTC DB server vs get_request_now() on Africa/Cairo) silently inflates
+        // the duration computed at checkout by the timezone offset between them.
+        $checkInTime = $now->format('Y-m-d H:i:s');
 
         $stmt = mysqli_prepare($con, "
             INSERT INTO teacher_session_attendance (session_id, teacher_id, occurrence_date, status, check_in_time, minutes_late, is_excused, recorded_by)
-            VALUES (?, ?, ?, ?, NOW(), ?, ?, 'teacher')
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'teacher')
             ON DUPLICATE KEY UPDATE
                 check_in_time = COALESCE(check_in_time, VALUES(check_in_time)),
                 status = VALUES(status),
                 minutes_late = VALUES(minutes_late),
                 is_excused = VALUES(is_excused)
         ");
-        mysqli_stmt_bind_param($stmt, "iissii", $sessionId, $teacherId, $occurrenceDate, $status, $minutesLate, $isExcused);
+        mysqli_stmt_bind_param($stmt, "iisssii", $sessionId, $teacherId, $occurrenceDate, $status, $checkInTime, $minutesLate, $isExcused);
         mysqli_stmt_execute($stmt);
 
         if ($status === 'late' && $isExcused === 0 && $policy['teacher_late_fine_per_minute'] > 0) {
