@@ -27,10 +27,15 @@ if (!function_exists('get_attendance_exception_request_details')) {
             mysqli_stmt_execute($sStmt);
             $row['requester'] = mysqli_fetch_assoc(mysqli_stmt_get_result($sStmt)) ?: null;
         } else {
-            $tStmt = mysqli_prepare($con, "SELECT id, name, email, image FROM teachers WHERE id = ? LIMIT 1");
+            $tStmt = mysqli_prepare($con, "SELECT id, name, email, image, is_active, is_attendance_suspended FROM teachers WHERE id = ? LIMIT 1");
             mysqli_stmt_bind_param($tStmt, "i", $row['requested_by_id']);
             mysqli_stmt_execute($tStmt);
-            $row['requester'] = mysqli_fetch_assoc(mysqli_stmt_get_result($tStmt)) ?: null;
+            $requester = mysqli_fetch_assoc(mysqli_stmt_get_result($tStmt)) ?: null;
+            if ($requester) {
+                $requester['is_active'] = (int)$requester['is_active'];
+                $requester['is_attendance_suspended'] = (int)$requester['is_attendance_suspended'];
+            }
+            $row['requester'] = $requester;
         }
 
         return $row;
