@@ -12,23 +12,10 @@ if (!function_exists('teacherAuthMiddleware')) {
             $decoded = verifyTeacherAccessToken($token);
 
             if ($decoded) {
-                global $con;
-                $teacherId = is_array($decoded) ? ($decoded['id'] ?? null) : ($decoded->id ?? null);
-                if ($teacherId && $con) {
-                    $stmt = mysqli_prepare($con, "SELECT is_active FROM teachers WHERE id = ? LIMIT 1");
-                    mysqli_stmt_bind_param($stmt, "i", $teacherId);
-                    mysqli_stmt_execute($stmt);
-                    $result = mysqli_stmt_get_result($stmt);
-                    $row = $result ? mysqli_fetch_assoc($result) : null;
-
-                    if (!$row || (int)$row['is_active'] === 0) {
-                        json_response([
-                            'status' => 'error',
-                            'message' => trans('account_inactive')
-                        ], 401);
-                    }
-                }
-
+                // Unlike other roles, a suspended teacher (is_active = 0) is intentionally still
+                // allowed to authenticate here: the frontend keeps them logged in but restricts
+                // the UI to a single "contact support" chat entry showing the suspension reason,
+                // instead of forcing a hard logout.
                 return $decoded;
             }
         }

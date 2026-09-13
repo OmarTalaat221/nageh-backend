@@ -25,6 +25,9 @@ if (!function_exists('teacherProfile')) {
         $teacher['can_view_profile'] = (int)($teacher['can_view_profile'] ?? 1) === 1;
         $teacher['is_email_verified'] = (int)$teacher['is_email_verified'];
         $teacher['is_active'] = (int)$teacher['is_active'];
+        if ($teacher['is_active'] !== 1) {
+            $teacher['suspension_reason'] = trans('teacher_suspension_reason');
+        }
 
         $teacher['phone'] = !empty($teacher['whatsapp']) ? $teacher['whatsapp'] : '';
         $teacher['whatsapp'] = $teacher['phone'];

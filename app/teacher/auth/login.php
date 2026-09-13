@@ -39,10 +39,6 @@ if (!function_exists('teacherLogin')) {
             ];
         }
 
-        if ((int)$teacher['is_active'] !== 1) {
-            return ['status' => 'error', 'message' => trans('account_inactive')];
-        }
-
         $payload = [
             'id' => (int)$teacher['id'],
             'name' => $teacher['name'],
@@ -60,6 +56,9 @@ if (!function_exists('teacherLogin')) {
         $teacher['id'] = $teacherId;
         $teacher['is_email_verified'] = (int)$teacher['is_email_verified'];
         $teacher['is_active'] = (int)$teacher['is_active'];
+        if ($teacher['is_active'] !== 1) {
+            $teacher['suspension_reason'] = trans('teacher_suspension_reason');
+        }
         $teacher['subjects'] = get_teacher_subjects_details($con, $teacherId);
         $teacher['city'] = get_city_details($con, $cityId);
 

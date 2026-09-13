@@ -51,8 +51,10 @@ if (!function_exists('handleTokenRefresh')) {
             json_response(['status' => 'error', 'message' => trans('invalid_refresh_token')], 401);
         }
 
+        // 'teacher' is intentionally excluded: a suspended teacher is still allowed to refresh
+        // and use the dashboard, restricted client-side to the support chat only (see
+        // middlewares/teacherauthmiddleware.php).
         $tablesByRole = [
-            'teacher' => 'teachers',
             'student' => 'students',
             'parent' => 'parents',
             'admin' => 'admins',
