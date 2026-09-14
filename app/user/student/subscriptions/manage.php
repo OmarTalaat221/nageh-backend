@@ -737,7 +737,12 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
         }
 
         $accessible = get_student_accessible_entities($con, $stId);
-        $courseIds = $accessible['course_ids'];
+        $activeCourseIds = $accessible['course_ids'];
+        // Same rule as studentGetMySubscribedCourses: a course whose only grant is a frozen
+        // subscription must still be listed (flagged), not silently dropped as if never bought.
+        require_once __DIR__ . '/../../../subscriptions/student_subscriptions.php';
+        $frozenCourseIds = get_student_frozen_course_ids($con, $stId);
+        $courseIds = array_values(array_unique(array_merge($activeCourseIds, $frozenCourseIds)));
         if (empty($courseIds)) {
             return build_admin_paginated_response([], 1, 10, 0, ['total_count' => 0]);
         }
@@ -790,7 +795,11 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
                 $row['type'] = $row['type'] ?? 'recorded';
                 $row['kind'] = $row['kind'] ?? 'normal';
                 $row['price'] = (float)$row['price'];
-                $row['is_subscribed'] = true;
+                $isFrozen = !in_array($cId, $activeCourseIds, true) && in_array($cId, $frozenCourseIds, true);
+                $row['own'] = !$isFrozen;
+                $row['is_subscribed'] = !$isFrozen;
+                $row['is_frozen'] = $isFrozen;
+                $row['freeze_reason'] = $isFrozen ? trans('student_subscription_frozen_reason') : null;
                 $row['teachers'] = get_course_teachers_details($con, $cId);
 
                 $stats = get_student_course_progress_stats($con, $stId, $cId);
