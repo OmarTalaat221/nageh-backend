@@ -675,14 +675,29 @@ if (!function_exists('studentGetMySubscribedCourses')) {
         }
 
         $accessible = get_student_accessible_entities($con, $stId);
-        $courseIds = $accessible['course_ids'];
+        $activeCourseIds = $accessible['course_ids'];
+        $frozenCourseIds = get_student_frozen_course_ids($con, $stId);
+        $courseIds = array_values(array_unique(array_merge($activeCourseIds, $frozenCourseIds)));
         if (empty($courseIds)) {
             return build_admin_paginated_response([], 1, 10, 0, ['total_count' => 0]);
         }
 
         $_GET['course_ids'] = $courseIds;
         require_once __DIR__ . '/../admin/courses/manage.php';
-        return adminListCourses($con);
+        $response = adminListCourses($con);
+
+        if (is_array($response['data'] ?? null)) {
+            $activeSet = array_flip($activeCourseIds);
+            foreach ($response['data'] as &$course) {
+                $cid = (int)($course['id'] ?? 0);
+                $isFrozen = !isset($activeSet[$cid]) && in_array($cid, $frozenCourseIds, true);
+                $course['is_frozen'] = $isFrozen;
+                $course['freeze_reason'] = $isFrozen ? trans('student_subscription_frozen_reason') : null;
+            }
+            unset($course);
+        }
+
+        return $response;
     }
 }
 
