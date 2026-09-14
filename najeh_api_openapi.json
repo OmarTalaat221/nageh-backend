@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Najeh Backend - Session Changelog API",
-    "version": "1.0.0",
-    "description": "OpenAPI spec covering every endpoint ADDED or CHANGED across this project's uncommitted work (vs base commit). Import into Apidog via Import > OpenAPI/Swagger. Auth: each role has its own Bearer JWT (Admin/Teacher/Student/Parent security schemes below); AnyAuth accepts a JWT from any one of the 4 roles."
+    "title": "Najeh Backend - Session Changelog API (update-3)",
+    "version": "3.0.0",
+    "description": "OpenAPI spec covering every endpoint ADDED or CHANGED across this project's work, cumulative across update-1, update-2 and update-3. Import into Apidog via Import > OpenAPI/Swagger. Auth: each role has its own Bearer JWT (Admin/Teacher/Student/Parent security schemes below); AnyAuth accepts a JWT from any one of the 4 roles.\n\n=== WHAT IS NEW IN update-3 ===\nupdate-3 documents Section 10 of the product spec - the Attendance / Delay / Salaries / Deductions system - plus every behavioral change made after update-2. Search this file for the string 'update-3' to find every affected operation.\n\nupdate-3 introduces 21 brand-new endpoints (teacher wallet + attendance exceptions, student check-in + attendance exceptions, admin HR policy settings, pay rates, exception review, teacher wallets ledger, and deduction appeals), and changes the behavior of several existing ones. It also ships 3 DB migrations (060, 061, 062).\n\n--- GLOBAL BEHAVIOR CHANGES (update-3, apply to EVERY endpoint, not just new ones) ---\n\n1) ACCOUNT DEACTIVATION IS NOW ENFORCED ON EVERY REQUEST. All four auth middlewares (admin/teacher/student/parent) now re-read the caller's own `is_active` column from the DB on each authenticated request. If the row is missing or `is_active = 0`, the request is rejected with HTTP 401 and message `account_inactive` ('الحساب غير مفعل، يرجى التواصل مع الدعم الفني'). Previously a token issued before deactivation kept working until it expired. CLIENT ACTION: treat a 401 carrying that message as a hard logout, not as a 'refresh the token' signal.\n\n2) TOKEN REFRESH IS ALSO GATED. POST /{role}/auth/refresh-token now performs the same `is_active` check before minting new tokens and returns HTTP 403 + `account_inactive` for a deactivated account, so a deactivated user cannot silently renew a session.\n\n3) IMPORTANT DISTINCTION - `is_active` vs `is_attendance_suspended` (teachers only). `teachers.is_active` is the ADMIN's manual enable/disable switch and is the ONLY thing that blocks login/API access (see 1 and 2 above). The NEW column `teachers.is_attendance_suspended` (migration 061) is set automatically by the attendance policy when a teacher exceeds the allowed number of unauthorized absences. It NEVER blocks login and NEVER blocks any API call - it is a pure UI signal telling the teacher app to restrict the teacher to the support chat until an admin lifts it via POST /admin/teacher-wallets/lift-suspension. Do not conflate the two.\n\n4) SERVER CLOCK / TIMEZONE FIX. The default request timezone changed from UTC to Africa/Cairo, and Egypt's reintroduced daylight saving time (forward on the last Friday of April, back on the last Thursday of October) is now computed explicitly instead of trusting the server's stale tzdata. Every time-sensitive value in the API (session start/end matching, check-in lateness, `created_at`, cron no-show detection) is now consistently Cairo local time, UTC+2 in winter and UTC+3 in summer. The `?_timezone=` query parameter still overrides it per request.\n\n5) PAGINATION SCHEMA CORRECTION. The `PaginatedResponse` component in earlier revisions of this file described a `meta {page, limit, total}` envelope that the backend never actually returned. It now documents the real envelope: `pagination {current_page, per_page, total_records, total_pages, has_next_page, has_prev_page}`, plus the optional `statistics` object. No server code changed - the spec was wrong, not the API.\n\n--- HOW THE ATTENDANCE / SALARY SYSTEM FITS TOGETHER (read this before the endpoints) ---\n\n* One global, admin-editable policy row drives everything: GET/PUT /admin/hr-settings (table `hr_policy_settings`, always id = 1). It holds the monthly absence/reschedule limits and the grace period for BOTH roles, the teacher fine amounts, and the default pay model + rate. Changes apply only to sessions evaluated from that moment on - nothing is recalculated retroactively.\n\n* Teacher pay: default comes from the policy row; a per-teacher override can be set with POST /admin/teachers/pay-rate and removed with DELETE /admin/teachers/pay-rate. Three models: `hourly` (rate x minutes/60), `per_session` (flat rate), `per_minute` (rate x minutes).\n\n* Teacher check-in = the EXISTING POST /teacher/sessions/start. Teacher check-out = the EXISTING POST /teacher/sessions/end. There is no separate teacher check-in endpoint. Starting records attendance and may fine lateness; ending computes the session's earning and credits the wallet.\n\n* Student check-in = the NEW POST /student/attendance/check-in, which the app should call right before opening the meeting link.\n\n* Never showing up at all is detected by a cron script (cron/attendance_auto_process.php, runs every minute) at the session's scheduled END time - not at start+grace. Anyone who checks in at any point before the end is 'late'; only a total no-show is 'absent'.\n\n* Excused vs unexcused: an approved absence_permission / late_notice request (POST /teacher|/student/attendance/exceptions, reviewed by admin at PUT /admin/attendance/exceptions) marks that occurrence `is_excused = 1`, which exempts it from fines AND from the monthly unauthorized-absence counter.\n\n* Consequences of crossing the unauthorized-absence limit: a TEACHER gets `is_attendance_suspended = 1` (UI restriction only, see 3 above); a STUDENT gets their subscription frozen (`student_subscriptions.is_active = 0`), which every student-facing endpoint now surfaces as `is_frozen` + `freeze_reason` rather than as a plain 'inactive'/'not subscribed' state.\n\n* Money is an append-only ledger (`teacher_wallet_transactions`) with a cached balance on `teachers.wallet_balance`. Positive amount = credit (earning/refund/positive adjustment), negative = debit (fine/negative adjustment). A teacher may appeal ONLY `fine` rows, once each, via POST /teacher/wallet/appeals; an approved appeal writes a compensating `refund` row.\n"
   },
   "servers": [
     {
@@ -75,6 +75,7 @@
       },
       "PaginatedResponse": {
         "type": "object",
+        "description": "update-3 (CORRECTION): the real pagination envelope returned by the backend. Earlier revisions of this file wrongly documented a `meta {page, limit, total}` object that no endpoint has ever returned.",
         "properties": {
           "status": {
             "type": "string",
@@ -86,19 +87,377 @@
             "type": "array",
             "items": {}
           },
-          "meta": {
+          "pagination": {
             "type": "object",
             "properties": {
-              "page": {
+              "current_page": {
                 "type": "integer"
               },
-              "limit": {
+              "per_page": {
                 "type": "integer"
               },
-              "total": {
+              "total_records": {
                 "type": "integer"
+              },
+              "total_pages": {
+                "type": "integer"
+              },
+              "has_next_page": {
+                "type": "boolean"
+              },
+              "has_prev_page": {
+                "type": "boolean"
               }
             }
+          },
+          "statistics": {
+            "type": "object",
+            "nullable": true,
+            "description": "Only present on endpoints that compute aggregate counters; omitted otherwise."
+          }
+        }
+      },
+      "HrPolicySettings": {
+        "type": "object",
+        "description": "update-3 (NEW): the single global HR/attendance policy row (`hr_policy_settings`, always id = 1). Every limit, fine and default pay value in the system is read fresh from here at the moment a decision is made, so edits never apply retroactively.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "enum": [
+              1
+            ],
+            "description": "Always 1 - this table holds exactly one row by design (enforced by a CHECK constraint)."
+          },
+          "teacher_max_absence_with_permission_per_month": {
+            "type": "integer",
+            "description": "How many EXCUSED absences a teacher may take per calendar month. Informational/reporting limit - excused absences are already exempt from fines and from the suspension counter."
+          },
+          "teacher_max_absence_without_permission": {
+            "type": "integer",
+            "description": "Unexcused absences per calendar month before the teacher is auto-flagged `is_attendance_suspended = 1`. Counted from the 1st of the current month."
+          },
+          "teacher_max_reschedule_per_month": {
+            "type": "integer",
+            "description": "Reschedule requests a teacher may submit per calendar month; the (N+1)th POST /teacher/sessions/reschedule-request is rejected."
+          },
+          "teacher_grace_minutes": {
+            "type": "integer",
+            "description": "Minutes after the scheduled start within which a teacher check-in still counts as `present`. Beyond it the occurrence becomes `late` and (if not excused) is fined per minute."
+          },
+          "teacher_late_fine_per_minute": {
+            "type": "number",
+            "format": "float",
+            "description": "Charged as minutes_late x this value when a teacher checks in late without an approved late_notice. Set to 0 to disable late fines entirely."
+          },
+          "teacher_absence_fine_amount": {
+            "type": "number",
+            "format": "float",
+            "description": "Flat fine applied by the cron for a full unexcused no-show. Set to 0 to disable absence fines entirely."
+          },
+          "student_max_absence_with_permission_per_month": {
+            "type": "integer",
+            "description": "Student mirror of the teacher field. Students are never fined - only counted."
+          },
+          "student_max_absence_without_permission": {
+            "type": "integer",
+            "description": "Unexcused absences per calendar month before the student's subscription is auto-frozen (`student_subscriptions.is_active = 0`)."
+          },
+          "student_max_reschedule_per_month": {
+            "type": "integer",
+            "description": "Reschedule requests a student may submit per calendar month; the (N+1)th POST /student/sessions/reschedule-request is rejected."
+          },
+          "student_grace_minutes": {
+            "type": "integer",
+            "description": "Minutes after the scheduled start within which a student check-in still counts as `present`."
+          },
+          "default_pay_model": {
+            "type": "string",
+            "enum": [
+              "hourly",
+              "per_session",
+              "per_minute"
+            ],
+            "description": "Used for any teacher with no row in `teacher_pay_rates`."
+          },
+          "default_pay_rate": {
+            "type": "number",
+            "format": "float",
+            "description": "The amount that goes with default_pay_model."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TeacherPayRate": {
+        "type": "object",
+        "description": "update-3 (NEW): the effective pay rate for one teacher. This object ALWAYS resolves to something - if the teacher has no personal override row, the values fall back to the global defaults from HrPolicySettings, so the client never has to merge them itself.",
+        "properties": {
+          "pay_model": {
+            "type": "string",
+            "enum": [
+              "hourly",
+              "per_session",
+              "per_minute"
+            ]
+          },
+          "rate_amount": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "TeacherWalletTransaction": {
+        "type": "object",
+        "description": "update-3 (NEW): one immutable row of the teacher wallet ledger (`teacher_wallet_transactions`). Rows are never edited or deleted - a reversal is a new compensating row - so the ledger is a complete audit trail and the sum of `amount` always equals `teachers.wallet_balance`.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "teacher_id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "earning",
+              "fine",
+              "refund",
+              "admin_adjustment"
+            ],
+            "description": "`earning` = pay credited at session check-out. `fine` = automatic deduction (lateness or unexcused absence). `refund` = money returned after an approved appeal. `admin_adjustment` = manual admin correction, either direction."
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "description": "SIGNED. Positive = credit (earning / refund / positive adjustment). Negative = debit (fine / negative adjustment). Display the absolute value with a +/- indicator derived from this sign, do not assume fines are positive."
+          },
+          "reference_type": {
+            "type": "string",
+            "enum": [
+              "session",
+              "appeal",
+              "manual"
+            ],
+            "description": "What `reference_id` points at."
+          },
+          "reference_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "class_sessions.id for `session`, teacher_deduction_appeals.id for `appeal`, null for `manual`."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "Human-readable Arabic reason, e.g. 'خصم تأخير 12 دقيقة' or 'أجر حصة'. For admin_adjustment this is the mandatory note the admin typed."
+          },
+          "created_by_type": {
+            "type": "string",
+            "enum": [
+              "system",
+              "admin"
+            ]
+          },
+          "created_by_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The admin id when created_by_type = 'admin'; null when the system wrote the row."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "can_appeal": {
+            "type": "boolean",
+            "description": "update-3: convenience flag present ONLY on the teacher-facing GET /teacher/wallet/transactions. True exactly when type = 'fine'. Use it to decide whether to render the 'Appeal' button; the server still re-validates, and also rejects a second appeal on the same transaction."
+          }
+        }
+      },
+      "AttendanceExceptionRequest": {
+        "type": "object",
+        "description": "update-3 (NEW): one absence-with-permission or late-notice request (`attendance_exception_requests`). The exact same object shape is returned to the teacher, the student and the admin - only the `requester` sub-object differs by role.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "session_id": {
+            "type": "integer"
+          },
+          "occurrence_date": {
+            "type": "string",
+            "format": "date",
+            "description": "The specific calendar date this request covers. class_sessions rows are WEEKLY RECURRING templates (one row per weekday/time), so a request is always pinned to one occurrence, never to the whole series."
+          },
+          "requested_by_type": {
+            "type": "string",
+            "enum": [
+              "teacher",
+              "student"
+            ]
+          },
+          "requested_by_id": {
+            "type": "integer"
+          },
+          "request_type": {
+            "type": "string",
+            "enum": [
+              "absence_permission",
+              "late_notice"
+            ],
+            "description": "`absence_permission` = 'I will miss this occurrence entirely'. `late_notice` = 'I will attend but arrive late'."
+          },
+          "reason": {
+            "type": "string"
+          },
+          "expected_minutes_late": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Required and > 0 for late_notice; null for absence_permission."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "reviewed_by_admin_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "admin_note": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "session": {
+            "type": "object",
+            "nullable": true,
+            "description": "The fully resolved class session object (same shape used across the sessions endpoints), embedded so no second call is needed to render the row."
+          },
+          "requester": {
+            "type": "object",
+            "nullable": true,
+            "description": "The person who filed it. For a student: {id, name, email, image}. For a teacher the same plus {is_active, is_attendance_suspended} - so the admin review screen can see at a glance whether this teacher is already attendance-suspended."
+          }
+        }
+      },
+      "TeacherDeductionAppeal": {
+        "type": "object",
+        "description": "update-3 (NEW): a teacher's objection to one `fine` wallet transaction (`teacher_deduction_appeals`). At most one appeal per transaction, ever.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "wallet_transaction_id": {
+            "type": "integer"
+          },
+          "teacher_id": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "admin_note": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewed_by_admin_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "teacher": {
+            "type": "object",
+            "nullable": true,
+            "description": "{id, name, email, image} of the appealing teacher."
+          },
+          "wallet_transaction": {
+            "$ref": "#/components/schemas/TeacherWalletTransaction"
+          }
+        }
+      },
+      "TeacherWalletRow": {
+        "type": "object",
+        "description": "update-3 (NEW): one teacher as shown on the admin 'teacher wallets' screen - identity, both status flags, cached balance and effective pay rate in a single row, so that screen needs no per-teacher follow-up calls.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "description": "The ADMIN's manual enable/disable switch. 0 here means the teacher genuinely cannot log in."
+          },
+          "is_attendance_suspended": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "description": "update-3 (NEW column, migration 061): set automatically by the attendance policy. Does NOT block login - render it as a separate 'attendance-suspended' badge, never as 'Inactive'. Clear it with POST /admin/teacher-wallets/lift-suspension."
+          },
+          "wallet_balance": {
+            "type": "number",
+            "format": "float",
+            "description": "Cached sum of every ledger row for this teacher."
+          },
+          "pay_rate": {
+            "$ref": "#/components/schemas/TeacherPayRate"
+          }
+        }
+      },
+      "FrozenStateFlags": {
+        "type": "object",
+        "description": "update-3 (NEW, added to several student-facing objects): tells 'frozen because of the attendance policy' apart from 'expired' and from 'never subscribed'. A subscription's is_active is ONLY ever set to 0 by the attendance auto-freeze, so is_frozen is unambiguous. Render it as 'مجمد' (Frozen), NOT as 'غير فعال' (Inactive), and offer a contact-support action.",
+        "properties": {
+          "is_frozen": {
+            "type": "boolean",
+            "description": "true when the subscription/course access exists but is currently frozen for excessive unauthorized absence (is_active = 0 AND not expired)."
+          },
+          "freeze_reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Localized, ready-to-display explanation when is_frozen is true; null otherwise. Arabic: 'تم تجميد اشتراكك تلقائيًا لتجاوزك الحد المسموح به من الغياب بدون إذن...'."
           }
         }
       }
@@ -2025,7 +2384,7 @@
         "tags": [
           "Admin / Books"
         ],
-        "summary": "List book purchase requests (now includes book_price, book_allow_download)",
+        "summary": "List book purchase requests (now includes book_price, book_allow_download) [update-3: + subject_id filter]",
         "security": [
           {
             "AdminAuth": []
@@ -2052,6 +2411,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "update-3 (NEW): only return requests whose book belongs to this subject/category. Alias: `category_id`. Omit or send 0 for all subjects."
           }
         ],
         "responses": {
@@ -2065,7 +2433,8 @@
               }
             }
           }
-        }
+        },
+        "description": "update-3 (CHANGED): book purchase requests can now be FILTERED BY SUBJECT (the 'category' in the UI). New optional query parameter `subject_id` (alias `category_id`) filters on the requested book's `course_books.subject_id`; omitting it - or sending 0 - returns every request exactly as before, so the change is fully backward compatible. Each returned row additionally carries `subject_id` (int|null) and `subject_name` (string|null, resolved in the request's language), so the list can show and group by subject without extra lookups. The free-text `search` parameter now also matches the subject name."
       }
     },
     "/admin/units": {
@@ -2570,7 +2939,7 @@
           "Admin / Sessions"
         ],
         "summary": "Review a reschedule request (NEW: teacher reassignment + time override on approval)",
-        "description": "CASE (decision=rejected): only id/decision/admin_note matter, everything else below is ignored.\nCASE (decision=approved, 3 sub-scenarios):\n1) Default (no keep_original_schedule, no new_day/time overrides) -> applies the teacher's own originally-requested new_day/new_start_time/new_end_time as-is.\n2) new_day/new_start_time/new_end_time sent -> OVERRIDES the teacher's requested time with the admin's own choice instead.\n3) keep_original_schedule=true -> ignores any new day/time entirely, keeps the session at its CURRENT day/time, and instead REASSIGNS it to new_teacher_id (which becomes REQUIRED in this case and is validated against that teacher's course/subject+grade assignment).",
+        "description": "CASE (decision=rejected): only id/decision/admin_note matter, everything else below is ignored.\nCASE (decision=approved, 3 sub-scenarios):\n1) Default (no keep_original_schedule, no new_day/time overrides) -> applies the teacher's own originally-requested new_day/new_start_time/new_end_time as-is.\n2) new_day/new_start_time/new_end_time sent -> OVERRIDES the teacher's requested time with the admin's own choice instead.\n3) keep_original_schedule=true -> ignores any new day/time entirely, keeps the session at its CURRENT day/time, and instead REASSIGNS it to new_teacher_id (which becomes REQUIRED in this case and is validated against that teacher's course/subject+grade assignment).\n\nupdate-3 (CHANGED): the decision logic is unchanged, but the requesting TEACHER is now notified of the outcome (previously no notification was sent at all on this route, so teachers never learned their request had been answered). The notification body names the teacher explicitly, because the same record also surfaces in the admin's global notification log where an unnamed 'your request' carries no information.",
         "security": [
           {
             "AdminAuth": []
@@ -2644,7 +3013,7 @@
         "tags": [
           "Teacher / Sessions"
         ],
-        "summary": "NEW: explicitly end a live session",
+        "summary": "NEW: explicitly end a live session [update-3: also check-out + salary]",
         "security": [
           {
             "TeacherAuth": []
@@ -2678,7 +3047,8 @@
               }
             }
           }
-        }
+        },
+        "description": "update-3 (CHANGED - Section 10): ending a session is now ALSO the teacher's check-out and the moment their pay is calculated. On the FIRST end-call for that date the server: (1) looks up the teacher_session_attendance row for this occurrence - if there is none, or its status is 'absent', nothing is paid (you cannot earn for a session you never started); (2) computes duration = check_out_time minus check_in_time in minutes, floored at 1 - this is ACTUAL elapsed time, not the scheduled length; (3) applies the teacher's effective pay model (hourly = rate x minutes/60, per_session = flat rate, per_minute = rate x minutes); (4) writes an `earning` ledger row for that amount and increases teachers.wallet_balance. IDEMPOTENT: a row that already has a check_out_time is never paid a second time, so retried/duplicate end-calls are safe. Note that lateness fines are charged at START, not here."
       }
     },
     "/teacher/sessions": {
@@ -2825,7 +3195,11 @@
                 "subject_id": 1,
                 "course_id": 1,
                 "academic_year_id": 1,
-                "days": ["Saturday", "Monday", "Wednesday"],
+                "days": [
+                  "Saturday",
+                  "Monday",
+                  "Wednesday"
+                ],
                 "start_time": "string",
                 "end_time": "string",
                 "room": "string",
@@ -3286,7 +3660,7 @@
         "tags": [
           "Teacher / Profile"
         ],
-        "summary": "Teacher's own profile (now includes subject_assignments)",
+        "summary": "Teacher's own profile (now includes subject_assignments) [update-3: + is_attendance_suspended]",
         "security": [
           {
             "TeacherAuth": []
@@ -3339,7 +3713,8 @@
               }
             }
           }
-        }
+        },
+        "description": "update-3 (CHANGED): the response now includes `is_attendance_suspended` (0|1) and, when it is 1, a ready-to-display `suspension_reason` string. This is the SEPARATE automatic attendance restriction introduced by migration 061 - it is NOT `is_active` and it does NOT block login or any API call. The teacher app should use it to restrict the UI to the support chat and show the reason banner; only an admin can clear it (POST /admin/teacher-wallets/lift-suspension). The same two fields were added to the teacher LOGIN response as well."
       }
     },
     "/teacher/academic-years": {
@@ -5703,7 +6078,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1: List student subscriptions (grants)",
-        "description": "update-1: paginated list of student_subscriptions rows, each with resolved subjects/teachers/courses and student summary. update-2 (Admin): subscription_type now also resolves to 'package' when every course linked to the grant has courses.kind='package' (previously it could only be 'course'/'subject'/'teacher'/'custom', so a package-only grant was mislabeled as 'course'). This is derived server-side from courses.kind, not a value the admin sends.",
+        "description": "update-1: paginated list of student_subscriptions rows, each with resolved subjects/teachers/courses and student summary. update-2 (Admin): subscription_type now also resolves to 'package' when every course linked to the grant has courses.kind='package' (previously it could only be 'course'/'subject'/'teacher'/'custom', so a package-only grant was mislabeled as 'course'). This is derived server-side from courses.kind, not a value the admin sends.\n\nupdate-3 (CHANGED): every subscription row now also carries `is_frozen` (true when is_active = 0 and not merely expired) and `freeze_reason`. Because the attendance auto-freeze is the ONLY code path that sets is_active = 0, a frozen row unambiguously means 'the student exceeded their unauthorized-absence limit', not 'expired' and not 'admin disabled it'. The admin UI should label it 'مجمد' (Frozen) rather than 'غير فعال' (Inactive).",
         "security": [
           {
             "AdminAuth": []
@@ -7542,7 +7917,7 @@
           "Student / Courses (update-2)"
         ],
         "summary": "update-2: Course/package details page (now includes kind)",
-        "description": "update-2 (Student, works with or without a token — StudentAuth optional): the only new field is `kind` ('normal' | 'package'). Everything else in this response (curriculum/units, teacher, subject, academic_year, price/discount) is pre-existing, unchanged. CASE (mobile integration guidance, not a schema change): when `kind` is 'package', expect `units`/curriculum to be empty by convention — instead fetch that package's weekly schedule from GET /student/sessions/today?course_id={id}&day=all (works pre-subscription as a read-only preview, see update-2 note on that endpoint) and its downloadable files from the existing course-files endpoints. Alias: GET /student/courses/show is the exact same handler, accepts the same `id`/`slug` query params.",
+        "description": "update-2 (Student, works with or without a token — StudentAuth optional): the only new field is `kind` ('normal' | 'package'). Everything else in this response (curriculum/units, teacher, subject, academic_year, price/discount) is pre-existing, unchanged. CASE (mobile integration guidance, not a schema change): when `kind` is 'package', expect `units`/curriculum to be empty by convention — instead fetch that package's weekly schedule from GET /student/sessions/today?course_id={id}&day=all (works pre-subscription as a read-only preview, see update-2 note on that endpoint) and its downloadable files from the existing course-files endpoints. Alias: GET /student/courses/show is the exact same handler, accepts the same `id`/`slug` query params.\n\nupdate-3 (CHANGED): the response now also carries `is_frozen` (boolean) and `freeze_reason` (string|null). `is_frozen` is true when the student is NOT currently subscribed to this course but the only reason is that a subscription which used to grant it has been frozen by the attendance policy. Use it to show a 'مجمد' (Frozen) banner plus a contact-support action instead of the normal 'subscribe' call to action - the student already paid, they are not a new prospect.\n\nupdate-3 (SECURITY FIX, same area): redeemed subscription CODES used to grant access forever. The access resolver read `code_redemptions_log` without ever joining back to the subscription that the redemption created, so a student whose subscription was later frozen or expired still passed the access check for every course, exam and homework that code covered. The log query is now joined to `student_subscriptions` and filtered on its `is_active` / `end_date`. CONSEQUENCE: a frozen or expired code-based student now correctly loses content access - if a client previously relied on that leak to keep showing content, it will now correctly get the locked/preview state.",
         "security": [],
         "parameters": [
           {
@@ -7601,7 +7976,7 @@
           "Student / Courses (update-2)"
         ],
         "summary": "update-2: Alias of GET /courses/show (identical handler, params and response)",
-        "description": "update-2: kept as a separate path only because both existed already; not a different implementation. See GET /courses/show for the full description of the kind field and package integration guidance.",
+        "description": "update-2: kept as a separate path only because both existed already; not a different implementation. See GET /courses/show for the full description of the kind field and package integration guidance.\n\nupdate-3 (CHANGED): the response now also carries `is_frozen` (boolean) and `freeze_reason` (string|null). `is_frozen` is true when the student is NOT currently subscribed to this course but the only reason is that a subscription which used to grant it has been frozen by the attendance policy. Use it to show a 'مجمد' (Frozen) banner plus a contact-support action instead of the normal 'subscribe' call to action - the student already paid, they are not a new prospect.\n\nupdate-3 (SECURITY FIX, same area): redeemed subscription CODES used to grant access forever. The access resolver read `code_redemptions_log` without ever joining back to the subscription that the redemption created, so a student whose subscription was later frozen or expired still passed the access check for every course, exam and homework that code covered. The log query is now joined to `student_subscriptions` and filtered on its `is_active` / `end_date`. CONSEQUENCE: a frozen or expired code-based student now correctly loses content access - if a client previously relied on that leak to keep showing content, it will now correctly get the locked/preview state.",
         "security": [
           {
             "StudentAuth": []
@@ -7630,6 +8005,1882 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/attendance/exceptions": {
+      "post": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher files an absence-with-permission or late-notice request for one session occurrence",
+        "description": "update-3 (NEW, Section 10). The teacher's way to avoid being fined for a class they already know they will miss or be late to. The request always goes to the ADMIN for review (PUT /admin/attendance/exceptions) - never to another teacher.\n\nWHY IT MATTERS: once approved, that occurrence is marked `is_excused = 1`, which (a) suppresses the automatic fine and (b) keeps it out of the monthly unauthorized-absence counter that would otherwise eventually set `is_attendance_suspended = 1`. A rejected or never-filed request means the normal automatic consequences apply.\n\nVALIDATION, in the order the server checks it:\n1. session_id > 0 and a parseable occurrence_date, else `session_id_and_date_required`.\n2. request_type must be exactly 'absence_permission' or 'late_notice', else `request_type_required`.\n3. reason must be non-empty, else `reason_required`.\n4. for 'late_notice', expected_minutes_late must be present and > 0, else `expected_minutes_late_required`.\n5. the session must exist AND belong to this teacher, else `session_not_found_or_not_owned`.\n6. there must be no OTHER still-pending request from this same teacher for this same (session_id, occurrence_date), else `request_already_pending`. Note this only blocks duplicates while one is pending - after a rejection the teacher may file again.\n\nSIDE EFFECT: all admins get a push/in-app notification naming the teacher and the request type.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id",
+                  "occurrence_date",
+                  "request_type",
+                  "reason"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer",
+                    "description": "class_sessions.id. Must be a session the caller owns (teacher) or is subscribed to (student), otherwise the request is rejected."
+                  },
+                  "occurrence_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "The single date this applies to, e.g. '2026-09-20'. Alias `date` is also accepted. Sessions are weekly templates, so this is what pins the request to one specific class."
+                  },
+                  "request_type": {
+                    "type": "string",
+                    "enum": [
+                      "absence_permission",
+                      "late_notice"
+                    ],
+                    "description": "absence_permission = will miss it entirely. late_notice = will attend but arrive late."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Free text, required and non-empty."
+                  },
+                  "expected_minutes_late": {
+                    "type": "integer",
+                    "description": "REQUIRED and must be > 0 when request_type = 'late_notice'. Ignored for absence_permission."
+                  }
+                }
+              },
+              "example": "// CASE absence_permission: expected_minutes_late is not used.\n// CASE late_notice: expected_minutes_late is REQUIRED and must be > 0.\n\n{\n  \"session_id\": 130,\n  \"occurrence_date\": \"2026-09-20\",\n  \"request_type\": \"late_notice\",\n  \"reason\": \"ظرف طارئ في الطريق\",\n  \"expected_minutes_late\": 15\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created. `data` is the full AttendanceExceptionRequest (status = 'pending'), with the resolved session and requester embedded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher lists their own attendance exception requests",
+        "description": "update-3 (NEW, Section 10). Every request this teacher has ever filed, newest first, with its current review status. NOT paginated and takes no filters - the volume is inherently small (bounded by the monthly policy limits). `data` is a plain array, not a pagination envelope.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = array of AttendanceExceptionRequest, ordered by id DESC.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/wallet": {
+      "get": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher's wallet balance and the pay rate actually being applied to them",
+        "description": "update-3 (NEW, Section 10). The header of the teacher's wallet screen.\n\n`wallet_balance` is the cached running total of every ledger row (earnings minus fines, plus refunds and admin adjustments) - a single number, already net. `pay_rate` is the rate that will actually be used to pay this teacher's next session: their personal override if an admin set one, otherwise the global default. The client never needs to know which of the two it got, nor to merge them.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "wallet_balance": {
+                          "type": "number",
+                          "format": "float"
+                        },
+                        "pay_rate": {
+                          "$ref": "#/components/schemas/TeacherPayRate"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the teacher's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/wallet/transactions": {
+      "get": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher's own wallet ledger (paginated)",
+        "description": "update-3 (NEW, Section 10). The full audit trail behind the balance, newest first. Each row carries the extra boolean `can_appeal` (true only for `type = 'fine'`) so the UI can decide whether to show the appeal action without duplicating the rule client-side.\n\nRemember `amount` is SIGNED: fines and negative adjustments arrive as negative numbers. Sum of all rows = the `wallet_balance` returned by GET /teacher/wallet.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            },
+            "description": "Capped server-side at 100."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Standard pagination envelope; `data` = array of TeacherWalletTransaction (with `can_appeal`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the teacher's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/wallet/appeals": {
+      "post": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher appeals one fine transaction",
+        "description": "update-3 (NEW, Section 10). Contests a single automatic deduction. Only the admin can decide it (PUT /admin/deduction-appeals); an approved appeal writes a NEW compensating `refund` row for the absolute value of the fine - the original fine row is never edited or deleted, so the ledger stays a true audit trail.\n\nVALIDATION, in order:\n1. wallet_transaction_id > 0, else `wallet_transaction_id_required`.\n2. reason non-empty, else `reason_required`.\n3. the transaction must exist AND belong to the calling teacher, else `wallet_transaction_not_found` (a teacher can never see or appeal another teacher's row).\n4. its type must be exactly 'fine', else `only_fines_can_be_appealed` - earnings, refunds and admin adjustments are not appealable.\n5. no appeal may already exist for that transaction, else `appeal_already_exists`. This is a hard once-per-transaction rule and it applies even if the previous appeal was REJECTED, so the UI should hide the button once any appeal exists rather than only when one is pending.\n\nSIDE EFFECT: all admins get a notification.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "wallet_transaction_id",
+                  "reason"
+                ],
+                "properties": {
+                  "wallet_transaction_id": {
+                    "type": "integer",
+                    "description": "Id of a `fine` row from GET /teacher/wallet/transactions (one whose can_appeal = true)."
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "{\n  \"wallet_transaction_id\": 4412,\n  \"reason\": \"كان هناك عطل في المنصة منعني من الدخول في الوقت\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created. `data` = TeacherDeductionAppeal (status = 'pending') with the teacher and the disputed transaction embedded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Teacher / Attendance & Wallet (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Teacher lists their own appeals",
+        "description": "update-3 (NEW, Section 10). All appeals this teacher filed, newest first, each with the disputed transaction embedded so the list is self-contained. Not paginated, no filters - `data` is a plain array.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = array of TeacherDeductionAppeal, ordered by id DESC.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/attendance/check-in": {
+      "post": {
+        "tags": [
+          "Student / Attendance (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Student check-in, called right before opening the meeting link",
+        "description": "update-3 (NEW, Section 10). The student-side counterpart of the teacher's POST /teacher/sessions/start. Call it the moment the student taps 'Join', then open `meeting_link` regardless of the outcome - treat it as best-effort telemetry, never as a gate on the UI.\n\nWHAT IT DOES: writes today's row in `session_attendance` for this (session, student). Lateness = now minus the session's scheduled start_time, in minutes, floored at 0. Status is `present` while that stays within `student_grace_minutes` from the policy, and `late` beyond it. If the student already has an APPROVED late_notice for this exact occurrence, the row is additionally marked `is_excused = 1`, which keeps it out of the monthly unauthorized-absence counter. Students are never fined money for lateness.\n\nIDEMPOTENT: repeated calls update status/lateness but never overwrite the original `check_in_time` and never re-fire the notification. Only the FIRST check-in of the day notifies the teacher ('a student has already joined, please do not be late').\n\nACCESS CHECK: the student must currently have access to the session's course, subject or teacher. A student whose subscription is FROZEN fails this check with `not_subscribed_to_session` - which is intended: a frozen student cannot join classes, they can only see them.\n\nNOT calling this endpoint is exactly how a no-show is detected: at the session's scheduled END time the cron marks every subscribed student with no row as absent.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": "{\n  \"session_id\": 130\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = {status: 'present'|'late', minutes_late: int}. Useful for a small 'you joined N minutes late' hint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "present",
+                            "late"
+                          ]
+                        },
+                        "minutes_late": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`session_id_required`, `session_not_found`, or `not_subscribed_to_session` (includes the frozen-subscription case).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the student's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/attendance/exceptions": {
+      "post": {
+        "tags": [
+          "Student / Attendance (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Student files an absence-with-permission or late-notice request",
+        "description": "update-3 (NEW, Section 10). Identical body, validation and response shape to the teacher version (POST /teacher/attendance/exceptions) - the only differences are (a) ownership is replaced by a SUBSCRIPTION check (the student must have access to the session's course/subject/teacher, else `not_subscribed_to_session`) and (b) approval carries no money, only the excused flag.\n\nWHY A STUDENT WOULD CARE: an approved request keeps that absence out of the monthly unauthorized-absence counter, and it is that counter which - once it crosses `student_max_absence_without_permission` - automatically FREEZES the student's subscription. So this is the student's only way to miss a class safely.\n\nReviewed by the ADMIN at PUT /admin/attendance/exceptions (never by the teacher). All admins are notified on creation.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id",
+                  "occurrence_date",
+                  "request_type",
+                  "reason"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer",
+                    "description": "class_sessions.id. Must be a session the caller owns (teacher) or is subscribed to (student), otherwise the request is rejected."
+                  },
+                  "occurrence_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "The single date this applies to, e.g. '2026-09-20'. Alias `date` is also accepted. Sessions are weekly templates, so this is what pins the request to one specific class."
+                  },
+                  "request_type": {
+                    "type": "string",
+                    "enum": [
+                      "absence_permission",
+                      "late_notice"
+                    ],
+                    "description": "absence_permission = will miss it entirely. late_notice = will attend but arrive late."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Free text, required and non-empty."
+                  },
+                  "expected_minutes_late": {
+                    "type": "integer",
+                    "description": "REQUIRED and must be > 0 when request_type = 'late_notice'. Ignored for absence_permission."
+                  }
+                }
+              },
+              "example": "{\n  \"session_id\": 130,\n  \"occurrence_date\": \"2026-09-20\",\n  \"request_type\": \"absence_permission\",\n  \"reason\": \"ظرف عائلي\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created. `data` = AttendanceExceptionRequest with status = 'pending'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Student / Attendance (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Student lists their own attendance exception requests",
+        "description": "update-3 (NEW, Section 10). All requests this student filed, newest first. Not paginated, no filters - `data` is a plain array of AttendanceExceptionRequest.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = array of AttendanceExceptionRequest, ordered by id DESC.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/hr-settings": {
+      "get": {
+        "tags": [
+          "Admin / HR Policy & Pay Rates (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Read the global attendance/salary policy",
+        "description": "update-3 (NEW, Section 10). Returns the single `hr_policy_settings` row that governs the whole system. If the row somehow does not exist yet it is created on the fly with the schema defaults, so this endpoint never returns empty.\n\nRequires the `manage_teachers` permission (same permission gate as the rest of the Section 10 admin routes).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = HrPolicySettings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/HrPolicySettings"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the admin's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin lacks the `manage_teachers` permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / HR Policy & Pay Rates (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Update the global attendance/salary policy (partial update)",
+        "description": "update-3 (NEW, Section 10). PARTIAL BY DESIGN: send only the fields you want to change; anything omitted keeps its current value. Sending an empty/unknown-only body is an error (`no_fields_to_update`) rather than a silent no-op.\n\nSANITISATION: all integer fields are clamped to >= 0, all decimal fields to >= 0, and `default_pay_model` is only accepted from the enum - an invalid value is silently ignored rather than saved. The response re-reads the row from the DB, so what you get back is exactly what is now stored.\n\nTIMING SEMANTICS (important, and matches the product spec): changes are NEVER retroactive. Fines already charged, absences already counted and earnings already credited stay as they were; the new numbers only affect sessions and requests evaluated from this moment on, because every consumer reads this row fresh at decision time.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Every property is optional. At least one recognised property must be present.",
+                "properties": {
+                  "teacher_max_absence_with_permission_per_month": {
+                    "type": "integer",
+                    "description": "How many EXCUSED absences a teacher may take per calendar month. Informational/reporting limit - excused absences are already exempt from fines and from the suspension counter."
+                  },
+                  "teacher_max_absence_without_permission": {
+                    "type": "integer",
+                    "description": "Unexcused absences per calendar month before the teacher is auto-flagged `is_attendance_suspended = 1`. Counted from the 1st of the current month."
+                  },
+                  "teacher_max_reschedule_per_month": {
+                    "type": "integer",
+                    "description": "Reschedule requests a teacher may submit per calendar month; the (N+1)th POST /teacher/sessions/reschedule-request is rejected."
+                  },
+                  "teacher_grace_minutes": {
+                    "type": "integer",
+                    "description": "Minutes after the scheduled start within which a teacher check-in still counts as `present`. Beyond it the occurrence becomes `late` and (if not excused) is fined per minute."
+                  },
+                  "teacher_late_fine_per_minute": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Charged as minutes_late x this value when a teacher checks in late without an approved late_notice. Set to 0 to disable late fines entirely."
+                  },
+                  "teacher_absence_fine_amount": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Flat fine applied by the cron for a full unexcused no-show. Set to 0 to disable absence fines entirely."
+                  },
+                  "student_max_absence_with_permission_per_month": {
+                    "type": "integer",
+                    "description": "Student mirror of the teacher field. Students are never fined - only counted."
+                  },
+                  "student_max_absence_without_permission": {
+                    "type": "integer",
+                    "description": "Unexcused absences per calendar month before the student's subscription is auto-frozen (`student_subscriptions.is_active = 0`)."
+                  },
+                  "student_max_reschedule_per_month": {
+                    "type": "integer",
+                    "description": "Reschedule requests a student may submit per calendar month; the (N+1)th POST /student/sessions/reschedule-request is rejected."
+                  },
+                  "student_grace_minutes": {
+                    "type": "integer",
+                    "description": "Minutes after the scheduled start within which a student check-in still counts as `present`."
+                  },
+                  "default_pay_model": {
+                    "type": "string",
+                    "enum": [
+                      "hourly",
+                      "per_session",
+                      "per_minute"
+                    ],
+                    "description": "Used for any teacher with no row in `teacher_pay_rates`."
+                  },
+                  "default_pay_rate": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "The amount that goes with default_pay_model."
+                  }
+                }
+              },
+              "example": "// Partial: only the two fields below change, everything else keeps its stored value.\n\n{\n  \"teacher_grace_minutes\": 5,\n  \"teacher_late_fine_per_minute\": 2.5\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the freshly re-read HrPolicySettings row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/HrPolicySettings"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`no_fields_to_update` - the body contained no recognised, settable field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the admin's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teachers/pay-rate": {
+      "post": {
+        "tags": [
+          "Admin / HR Policy & Pay Rates (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Set a per-teacher pay-rate override (upsert)",
+        "description": "update-3 (NEW, Section 10). Pins one teacher to their own pay model/rate, overriding `default_pay_model` / `default_pay_rate` from the policy row. UPSERT: calling it again for the same teacher replaces the existing override rather than erroring or creating a duplicate.\n\nThe three models and how the earning is computed at check-out:\n- `hourly`      -> rate_amount x (actual minutes / 60), rounded to 2 decimals. Pays for real time spent.\n- `per_session` -> flat rate_amount regardless of duration.\n- `per_minute`  -> rate_amount x actual minutes.\n'Actual minutes' means check_out_time minus check_in_time (floored at 1 minute), NOT the scheduled length - a session that runs long pays more on the time-based models.\n\nTakes effect on the teacher's NEXT check-out; already-credited earnings are untouched.\n\nValidation: teacher_id must reference a real teacher (`teacher_not_found`), pay_model must be in the enum (`pay_model_required`), rate_amount must be present and >= 0 (`rate_amount_required`).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "pay_model",
+                  "rate_amount"
+                ],
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "pay_model": {
+                    "type": "string",
+                    "enum": [
+                      "hourly",
+                      "per_session",
+                      "per_minute"
+                    ]
+                  },
+                  "rate_amount": {
+                    "type": "number",
+                    "format": "float",
+                    "minimum": 0
+                  }
+                }
+              },
+              "example": "// Pay this specific teacher a flat 77 per session, whatever the global default is.\n\n{\n  \"teacher_id\": 201,\n  \"pay_model\": \"per_session\",\n  \"rate_amount\": 77\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = TeacherPayRate, i.e. the override that is now in effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeacherPayRate"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`teacher_id_required` / `teacher_not_found` / `pay_model_required` / `rate_amount_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin / HR Policy & Pay Rates (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Remove a teacher's pay-rate override (revert to the global default)",
+        "description": "update-3 (NEW, Section 10). Deletes the teacher's row from `teacher_pay_rates`, so from the next check-out onwards they are paid using the global `default_pay_model` / `default_pay_rate` again.\n\nIdempotent: deleting a non-existent override still returns success. Note the returned `data` is the EFFECTIVE rate after the delete - i.e. the global default - not an empty object, so the admin UI can render the new state directly.\n\n`teacher_id` may be passed as a query parameter or in a JSON body; the query parameter is the documented form.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = TeacherPayRate - the global default that now applies.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeacherPayRate"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`teacher_id_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/attendance/exceptions": {
+      "get": {
+        "tags": [
+          "Admin / Attendance Exceptions (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Admin inbox of absence/late requests from BOTH teachers and students",
+        "description": "update-3 (NEW, Section 10). One unified, paginated queue for every attendance exception request in the system, newest first. Teachers and students share the same table and the same review action - filter by `requested_by_type` if the UI wants separate tabs.\n\nEach row already embeds the resolved `session` and the `requester`, so the review screen needs no follow-up calls. For a teacher requester the embedded object also carries `is_active` and `is_attendance_suspended`, letting the admin see immediately whether this teacher is already attendance-suspended before deciding.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            },
+            "description": "Omit for all. An unrecognised value is ignored rather than erroring."
+          },
+          {
+            "name": "requested_by_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "teacher",
+                "student"
+              ]
+            },
+            "description": "Omit to get both roles in one list."
+          },
+          {
+            "name": "request_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "absence_permission",
+                "late_notice"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagination envelope; `data` = array of AttendanceExceptionRequest.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Attendance Exceptions (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Approve or reject one attendance exception request",
+        "description": "update-3 (NEW, Section 10). The single decision point for both roles.\n\nWHAT APPROVAL ACTUALLY BUYS THE REQUESTER: it does NOT write an attendance row by itself. It records the approval, and the later automatic machinery consults it:\n- an approved `absence_permission` makes the no-show cron record that occurrence as absent-but-EXCUSED, with NO fine for a teacher and NO increment of the monthly unauthorized-absence counter for either role;\n- an approved `late_notice` makes the check-in flow mark the late arrival as excused, so a late teacher is not fined per minute.\nThis is why approving retroactively, after the cron has already run for that occurrence, will not undo a fine - use POST /admin/teacher-wallets/adjust or the appeal flow for that.\n\nOnly a request still in `pending` can be decided; anything else returns `request_not_found_or_reviewed`, which also makes the endpoint safe against double-submits.\n\nFIELD ALIASES: `decision` may also be sent as `status`, and `note` as `admin_note` - both spellings are accepted for each.\n\nSIDE EFFECT: the requester gets a push/in-app notification naming them explicitly and stating the decision.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "decision"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "attendance_exception_requests.id"
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ],
+                    "description": "Alias: `status`."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Optional admin note shown to the requester. Alias: `admin_note`."
+                  }
+                }
+              },
+              "example": "{\n  \"id\": 17,\n  \"decision\": \"approved\",\n  \"note\": \"تم قبول العذر\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the updated AttendanceExceptionRequest.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets": {
+      "get": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): List all teachers with balance, pay rate and both status flags",
+        "description": "update-3 (NEW, Section 10). The admin's financial overview of the teaching staff, ordered by `wallet_balance` DESC (highest owed first). Every row already includes the effective `pay_rate`, so no per-teacher lookups are needed.\n\nCRITICAL FOR THE UI: this endpoint returns BOTH `is_active` (the admin's own manual switch - 0 means the teacher truly cannot log in) and `is_attendance_suspended` (the automatic attendance restriction - the teacher CAN still log in). They must be rendered as two different badges. Conflating them was the exact bug migration 061 was created to fix.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Matches teacher name or email (LIKE). Alias: `q`."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagination envelope; `data` = array of TeacherWalletRow.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets/ledger": {
+      "get": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Full wallet ledger of one teacher, as seen by the admin",
+        "description": "update-3 (NEW, Section 10). Same rows the teacher sees at GET /teacher/wallet/transactions, but for an arbitrary teacher chosen by the admin, and WITHOUT the `can_appeal` convenience flag (appealing is a teacher action). In exchange the response carries the teacher's current `wallet_balance` as a TOP-LEVEL key alongside `data` and `pagination` - so the admin screen can show the header and the ledger from one call.\n\n`teacher_id` is required; omitting it returns `teacher_id_required`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagination envelope PLUS a top-level `wallet_balance` number; `data` = array of TeacherWalletTransaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/PaginatedResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "wallet_balance": {
+                          "type": "number",
+                          "format": "float",
+                          "description": "update-3: top-level, NOT inside `data` - the teacher's current cached balance."
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`teacher_id_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets/adjust": {
+      "post": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Manually credit or debit a teacher's wallet",
+        "description": "update-3 (NEW, Section 10). The escape hatch for anything the automatic rules cannot express: a bonus, a correction, a fine the admin wants to apply by hand, or refunding something the appeal flow does not cover.\n\n`amount` is SIGNED - send a positive number to credit the teacher and a NEGATIVE number to debit them. Zero is rejected (`amount_required`).\n\n`note` is MANDATORY (`note_required`), because the resulting ledger row is permanent and the teacher will see this text as the explanation for the movement. The row is written with `type = 'admin_adjustment'`, `reference_type = 'manual'` and `created_by_type = 'admin'` with the acting admin's id, so manual money is always distinguishable from automatic money in the audit trail.\n\nNote that a manual `admin_adjustment` is NOT appealable by the teacher (only `fine` rows are).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "amount",
+                  "note"
+                ],
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "SIGNED and non-zero. Positive credits the teacher, negative debits them."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Required. Shown to the teacher in their ledger."
+                  }
+                }
+              },
+              "example": "// Debit example - note the minus sign.\n\n{\n  \"teacher_id\": 201,\n  \"amount\": -50,\n  \"note\": \"خصم يدوي متفق عليه\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = {wallet_balance: number} - the teacher's balance AFTER the adjustment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "wallet_balance": {
+                          "type": "number",
+                          "format": "float"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`teacher_id_required` / `teacher_not_found` / `amount_required` (missing or zero) / `note_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets/lift-suspension": {
+      "post": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Clear a teacher's automatic attendance suspension",
+        "description": "update-3 (NEW, Section 10). Sets `teachers.is_attendance_suspended` back to 0 - the ONLY way out of the automatic suspension, which the system never lifts by itself.\n\nThis deliberately does NOT touch `is_active` (the admin's manual switch), does NOT refund any fine, and does NOT reset the monthly absence counter: if the teacher is already over the limit, the very next unexcused absence will suspend them again. To also forgive the money, use POST /admin/teacher-wallets/adjust or approve the teacher's appeal.\n\nIdempotent - lifting an already-unsuspended teacher succeeds and changes nothing. Returns `teacher_not_found` for an unknown teacher_id.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id"
+                ],
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": "{\n  \"teacher_id\": 201\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success message only; re-fetch GET /admin/teacher-wallets to see the cleared flag.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/deduction-appeals": {
+      "get": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): List teacher appeals against deductions",
+        "description": "update-3 (NEW, Section 10). Paginated queue of every appeal, newest first, each with the appealing teacher and the disputed transaction embedded so the admin can judge it without extra calls. Filter with `status` to get just the pending queue.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagination envelope; `data` = array of TeacherDeductionAppeal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Teacher Wallets & Appeals (NEW - update-3)"
+        ],
+        "summary": "update-3 (NEW): Approve or reject an appeal (approval auto-refunds the fine)",
+        "description": "update-3 (NEW, Section 10). On `approved` the server automatically writes a NEW ledger row of type `refund` for the ABSOLUTE value of the original fine, with `reference_type = 'appeal'` pointing at this appeal, and the teacher's `wallet_balance` goes up by that amount immediately. The original `fine` row is deliberately left untouched so the history still shows what happened and why it was reversed. On `rejected` no money moves.\n\nOnly a `pending` appeal can be decided, else `appeal_not_found_or_reviewed` - which also makes double-submits safe (a retried approval cannot refund twice).\n\nFIELD ALIASES: `decision` may be sent as `status`, `note` as `admin_note`.\n\nSIDE EFFECT: the teacher is notified, and on approval the message explicitly says the amount was returned to their wallet.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "decision"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "teacher_deduction_appeals.id"
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ],
+                    "description": "Alias: `status`."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Alias: `admin_note`."
+                  }
+                }
+              },
+              "example": "{\n  \"id\": 5,\n  \"decision\": \"approved\",\n  \"note\": \"تم قبول الاعتراض وإرجاع المبلغ\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the updated TeacherDeductionAppeal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions/start": {
+      "post": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "update-3 (CHANGED): Start a live session - now also the teacher's attendance check-in, and blocked earlier than 5 minutes before the start time",
+        "description": "update-3: this pre-existing endpoint gained TWO behaviors. It is documented here for the first time because both are breaking-ish for clients.\n\n1) NEW HARD TIME GATE. The call is REJECTED with `session_start_too_early` if it arrives more than 5 minutes before the session's scheduled `start_time`. In other words the allowed window opens at start_time minus 5 minutes and never closes (starting late is permitted - and is exactly what produces a 'late' record). The 5 minutes is a fixed constant, NOT the configurable `teacher_grace_minutes` (which governs the opposite side: how late is still 'present').\nCLIENT ACTION: the teacher app must surface this message as an alert and keep the Start button disabled until the window opens. And because this error is returned with HTTP 200 and `status: 'error'` in the body, any client that shows a success toast purely on a 2xx will show the error text inside a green toast - branch on the body's `status`.\n\n2) IT IS NOW THE TEACHER'S CHECK-IN. On the FIRST successful call for a given date the server records `teacher_session_attendance` for that occurrence: lateness = now minus start_time in minutes (floored at 0); status = `present` while within `teacher_grace_minutes`, `late` beyond it. If the teacher is `late`, has NO approved late_notice for that occurrence, and `teacher_late_fine_per_minute` > 0, a `fine` ledger row of minutes_late x rate is written immediately and the teacher is notified of the deduction. The subscribed students are also notified that the teacher has joined.\nIDEMPOTENT: repeat calls the same day do not re-record, re-fine or re-notify.\n\nThere is intentionally no separate teacher check-in endpoint - this is it.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": "{\n  \"session_id\": 130\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "EITHER success, OR (HTTP 200 with status='error') `session_start_too_early` / `session_not_found_or_not_owned`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the teacher's own is_active = 0. NOTE: `is_attendance_suspended` does NOT block this call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions/reschedule-request": {
+      "post": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "update-3 (CHANGED): Teacher asks the admin to reschedule a session - now capped per month, and the new time is genuinely optional",
+        "description": "update-3: two changes to this pre-existing endpoint.\n\n1) MONTHLY CAP. Before inserting, the server counts this teacher's reschedule requests created since the 1st of the current month. If that count already reaches `teacher_max_reschedule_per_month` from the HR policy, the request is refused with `max_reschedule_requests_reached` ('تم الوصول للحد الأقصى من طلبات التأجيل المسموح بها هذا الشهر'). Note the counter is on requests SUBMITTED, not requests approved - a rejected request still consumes one slot.\n\n2) BUGFIX - `new_start_time` / `new_end_time` are truly optional now. The code always treated them as optional (a reschedule may move only the DAY and keep the same time), but the DB columns were NOT NULL, so omitting them crashed with a raw SQL error \"Column 'new_start_time' cannot be null\". Migration 062 makes both columns nullable. Omitting them now correctly means 'keep the original time'.\n\n3) NOTIFICATION. All admins are now notified on creation, and the message NAMES the teacher (previously such messages were anonymous, which made the admin's notification log unreadable).",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer"
+                  },
+                  "new_day": {
+                    "type": "string",
+                    "enum": [
+                      "Saturday",
+                      "Sunday",
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday"
+                    ],
+                    "nullable": true
+                  },
+                  "new_start_time": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "update-3: optional (migration 062). Omit to keep the current time."
+                  },
+                  "new_end_time": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "update-3: optional (migration 062)."
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "// Day-only move: new_start_time/new_end_time omitted on purpose - this used to be a 500-level SQL error before migration 062.\n\n{\n  \"session_id\": 130,\n  \"new_day\": \"Tuesday\",\n  \"reason\": \"ظرف طارئ\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the created reschedule request. Error case to expect: `max_reschedule_requests_reached`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/sessions/reschedule-request": {
+      "post": {
+        "tags": [
+          "Student / Sessions"
+        ],
+        "summary": "update-3 (CHANGED): Student asks their TEACHER to reschedule - now capped per month, new time optional",
+        "description": "update-3: same two changes as the teacher-facing route, with the student's own limit.\n\n1) MONTHLY CAP against `student_max_reschedule_per_month`; exceeding it returns `max_reschedule_requests_reached`. Submitted requests count, not approved ones.\n2) `new_start_time` / `new_end_time` are now genuinely optional (migration 062) - omit them to move only the day.\n3) The session's TEACHER (not the admin) is now notified on creation, and the message names the student.\n\nRouting is unchanged and deliberate: a student's reschedule request is reviewed by the teacher (PUT /teacher/sessions/reschedule-requests/review), while a teacher's request is reviewed by the admin (PUT /admin/reschedule-requests).",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_id"
+                ],
+                "properties": {
+                  "session_id": {
+                    "type": "integer"
+                  },
+                  "new_day": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "new_start_time": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "new_end_time": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "{\n  \"session_id\": 130,\n  \"new_day\": \"Thursday\",\n  \"reason\": \"تعارض مع موعد آخر\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the created reschedule request. Error case to expect: `max_reschedule_requests_reached` or `not_subscribed_to_session`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/sessions/reschedule-requests/review": {
+      "put": {
+        "tags": [
+          "Teacher / Sessions"
+        ],
+        "summary": "update-3 (CHANGED): Teacher decides a STUDENT's reschedule request - the student is now actually notified",
+        "description": "update-3: the decision logic is unchanged, but this route previously sent NO notification at all, so a student never learned their request had been answered. It now pushes a notification to the requesting student stating the decision, and the body names the student explicitly (the same row also appears in the admin's global notification log, where an unnamed 'your request' would be meaningless).",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "decision"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "admin_note": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "{\n  \"id\": 22,\n  \"decision\": \"approved\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = the updated reschedule request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (see the description for the exact cases). NOTE: the transport status is still HTTP 200 on many of these paths - always branch on the body's own `status` field, never on the HTTP code alone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, OR the caller's own account row has is_active = 0 (every authenticated route now re-checks this on each request - see the spec description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/parent/attendance/student_activity": {
+      "post": {
+        "tags": [
+          "Parent / Attendance"
+        ],
+        "summary": "update-3 (CHANGED): Child's attendance report now separates EXCUSED absences from unexcused ones",
+        "description": "update-3: `session_attendance.status` only ever holds 'present' / 'absent' / 'late'; an authorised absence is stored as status='absent' PLUS the separate `is_excused` flag (added by migration 060). This endpoint previously ignored that flag, so an absence the admin had explicitly approved was reported to the parent as a plain absence.\n\nNow the flag is folded into the reported status: an excused row is emitted with `status = 'excused'` (its own bucket in the counters and its own label), and every row additionally carries the raw boolean `is_excused`.\n\nCLIENT ACTION: the parent app must handle a FOURTH status value, `excused`, in addition to present/absent/late. Counters shift accordingly - previously-inflated 'absent' totals will drop.",
+        "security": [
+          {
+            "ParentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` rows now include `is_excused` (boolean) and may carry `status = 'excused'`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "update-3 (GLOBAL): missing/invalid token, or the parent's own is_active = 0.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/subscriptions/my-subscriptions": {
+      "get": {
+        "tags": [
+          "Student / Subscriptions"
+        ],
+        "summary": "update-3 (CHANGED): Student's subscriptions now expose is_frozen / freeze_reason",
+        "description": "update-3: every subscription object returned anywhere in the API (student, admin list, admin details - all three copies of the resolver were updated) now carries two new fields:\n- `is_frozen` (boolean): true when `is_active = 0` AND the subscription has NOT merely expired.\n- `freeze_reason` (string|null): a ready-to-display localized explanation when frozen, null otherwise.\n\nThis is unambiguous because `student_subscriptions.is_active` is set to 0 by exactly ONE code path in the entire backend - the attendance auto-freeze. Expiry is tracked separately via `end_date`, and admins do not toggle this column by hand.\n\nCLIENT ACTION: where the UI used to print 'غير فعال' (Inactive) for is_active = 0, print 'مجمد' (Frozen) instead when is_frozen is true, show `freeze_reason`, and offer a contact-support action. 'Inactive' is now reserved for genuinely expired/ended subscriptions.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Each subscription object gains the FrozenStateFlags fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccess"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/FrozenStateFlags"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/my-subscribed-courses": {
+      "get": {
+        "tags": [
+          "Student / Courses"
+        ],
+        "summary": "update-3 (CHANGED): 'My Courses' now KEEPS frozen courses in the list, flagged instead of hidden",
+        "description": "update-3: previously, when a student's subscription was frozen, the courses it granted simply vanished from this list - indistinguishable from never having subscribed, which was confusing and made the student think their purchase was lost.\n\nNow the list is the UNION of (a) courses the student can currently access and (b) courses whose only grant is a frozen subscription. Every returned course object gains:\n- `is_frozen` (boolean): true ONLY for courses in group (b) - i.e. it is false for a course the student can still reach through some other active grant, even if a different frozen subscription also covered it.\n- `freeze_reason` (string|null).\n\nCLIENT ACTION: render frozen courses with a clear 'مجمد' (Frozen) badge, HIDE the 'Continue course' action (the student genuinely cannot open its content), and replace it with a contact-support action. Actual content access is enforced server-side independently - see the access-control fix noted on GET /courses/show.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagination envelope of courses; each course object gains `is_frozen` and `freeze_reason`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
                 }
               }
             }
