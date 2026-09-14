@@ -452,7 +452,16 @@ if (!function_exists('get_student_accessible_entities')) {
             }
         }
 
-        $logRes = @mysqli_query($con, "SELECT DISTINCT subscription_code_id FROM code_redemptions_log WHERE student_id = {$studentId}");
+        // Joined to the subscription each redemption actually created (student_subscription_id is
+        // NOT NULL from day one — every redemption row has one) so a code stops granting access
+        // once its subscription is frozen/expired, instead of the log entry granting access
+        // forever regardless of the subscription's later state.
+        $logRes = @mysqli_query($con, "
+            SELECT DISTINCT crl.subscription_code_id FROM code_redemptions_log crl
+            JOIN student_subscriptions ss ON crl.student_subscription_id = ss.id
+            WHERE crl.student_id = {$studentId} AND (ss.is_active = 1 OR ss.is_active IS NULL)
+            AND (ss.end_date IS NULL OR ss.end_date = '0000-00-00 00:00:00' OR ss.end_date = '0000-00-00' OR ss.end_date >= '{$now}')
+        ");
         if ($logRes) {
             while ($row = mysqli_fetch_assoc($logRes)) {
                 if (!empty($row['subscription_code_id'])) {
