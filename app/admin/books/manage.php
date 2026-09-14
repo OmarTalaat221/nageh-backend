@@ -422,6 +422,7 @@ if (!function_exists('adminListBookPurchaseRequests')) {
 
         $studentId = (int)($_GET['student_id'] ?? 0);
         $bookId = (int)($_GET['book_id'] ?? 0);
+        $subjectId = (int)($_GET['subject_id'] ?? $_GET['category_id'] ?? 0);
         $status = trim($_GET['status'] ?? '');
         $reviewedByType = trim($_GET['reviewed_by_type'] ?? '');
         $search = trim($_GET['search'] ?? $_GET['q'] ?? '');
@@ -437,6 +438,10 @@ if (!function_exists('adminListBookPurchaseRequests')) {
 
         if ($bookId > 0) {
             $whereClause .= " AND sbpr.book_id = {$bookId}";
+        }
+
+        if ($subjectId > 0) {
+            $whereClause .= " AND cb.subject_id = {$subjectId}";
         }
 
         if ($status !== '') {
@@ -461,6 +466,7 @@ if (!function_exists('adminListBookPurchaseRequests')) {
                     OR cbt.title LIKE '{$searchLike}'
                     OR sbpr.status LIKE '{$searchLike}'
                     OR sbpr.notes LIKE '{$searchLike}'
+                    OR subt.name LIKE '{$searchLike}'
                 )
             ";
         }
@@ -475,6 +481,11 @@ if (!function_exists('adminListBookPurchaseRequests')) {
             LEFT JOIN course_books_translations cbt
                 ON cb.id = cbt.book_id
                 AND cbt.language_id = {$langId}
+            LEFT JOIN subjects sub
+                ON cb.subject_id = sub.id
+            LEFT JOIN subjects_translations subt
+                ON sub.id = subt.subject_id
+                AND subt.language_id = {$langId}
             {$whereClause}
         ";
 
@@ -513,7 +524,9 @@ if (!function_exists('adminListBookPurchaseRequests')) {
                 cb.file_path AS book_file_path,
                 cb.link AS book_cover_image,
                 cb.price AS book_price,
-                cb.allow_download AS book_allow_download
+                cb.allow_download AS book_allow_download,
+                cb.subject_id AS subject_id,
+                subt.name AS subject_name
 
             FROM student_book_purchase_requests sbpr
 
@@ -526,6 +539,13 @@ if (!function_exists('adminListBookPurchaseRequests')) {
             LEFT JOIN course_books_translations cbt
                 ON cb.id = cbt.book_id
                 AND cbt.language_id = {$langId}
+
+            LEFT JOIN subjects sub
+                ON cb.subject_id = sub.id
+
+            LEFT JOIN subjects_translations subt
+                ON sub.id = subt.subject_id
+                AND subt.language_id = {$langId}
 
             {$whereClause}
 
@@ -563,6 +583,8 @@ if (!function_exists('adminListBookPurchaseRequests')) {
 
                 $row['book_price'] = (float)($row['book_price'] ?? 0.00);
                 $row['book_allow_download'] = (int)($row['book_allow_download'] ?? 1);
+                $row['subject_id'] = !empty($row['subject_id']) ? (int)$row['subject_id'] : null;
+                $row['subject_name'] = $row['subject_name'] ?? null;
 
                 $items[] = $row;
             }
