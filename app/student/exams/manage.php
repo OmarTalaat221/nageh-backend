@@ -18,6 +18,26 @@ if (!function_exists('get_exam_summary')) {
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
         $row['is_active'] = (int)$row['is_active'];
         $row['questions_count'] = (int)(mysqli_fetch_assoc(mysqli_query($con, "SELECT COUNT(*) AS total FROM questions WHERE exam_id = {$examId}"))['total'] ?? 0);
+
+        // Embed lightweight {id, name} relations so a client can label/group exams (e.g. by unit)
+        // without a second lookup per row - a unit-scoped exam always carries its parent course_id
+        // too (set by the admin/teacher UI when the exam is created), so filtering /student/exams
+        // by course_id already returns both whole-course exams AND every unit exam under it mixed
+        // together; `unit` is what lets the client tell them apart and group them back by unit.
+        $row['unit'] = null;
+        if (!empty($row['unit_id'])) {
+            $uRow = mysqli_fetch_assoc(mysqli_query($con, "
+                SELECT u.id, COALESCE(ut.name, u.code) AS name
+                FROM units u
+                LEFT JOIN units_translations ut ON u.id = ut.unit_id AND ut.language_id = 1
+                WHERE u.id = {$row['unit_id']} LIMIT 1
+            "));
+            $row['unit'] = $uRow ? ['id' => (int)$uRow['id'], 'name' => $uRow['name']] : null;
+        }
+
+        $row['course'] = !empty($row['course_id']) ? get_course_details($con, $row['course_id']) : null;
+        $row['subject'] = !empty($row['subject_id']) ? get_subject_details($con, $row['subject_id']) : null;
+
         return $row;
     }
 }
@@ -96,6 +116,18 @@ if (!function_exists('studentListAvailableExams')) {
         $unitId = isset($_GET['unit_id']) ? (int)$_GET['unit_id'] : 0;
         $reqCourseId = isset($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
         $reqSubjectId = isset($_GET['subject_id']) ? (int)$_GET['subject_id'] : 0;
+        // Every exam always carries a course_id (set at creation time, whether it's a whole-course
+        // exam or a unit exam - a unit exam just also has unit_id set on top of it). So course_id
+        // alone must default to WHOLE-COURSE exams only (unit_id IS NULL) - otherwise every request
+        // for "this course's exams" would silently also return every one of its unit exams too.
+        // `include_unit_exams` (alias `with_unit_exams`) then has 3 states, checked as a string
+        // rather than a strict boolean so "only" is a real third option, not just another truthy value:
+        //   unset / "0" / "false" (default) -> whole-course exams only (unit_id IS NULL)
+        //   "1" / "true"                    -> combined: whole-course exam(s) + every unit exam
+        //   "only"                          -> unit exams only, excluding the whole-course exam(s)
+        $unitExamsParam = strtolower(trim((string)($_GET['include_unit_exams'] ?? $_GET['with_unit_exams'] ?? '0')));
+        $onlyUnitExams = in_array($unitExamsParam, ['only', 'unit_only', 'units_only'], true);
+        $includeUnitExams = $onlyUnitExams || in_array($unitExamsParam, ['1', 'true', 'yes'], true);
 
         if (empty($subjectIds) && empty($courseIds)) {
             return ['status' => 'success', 'data' => []];
@@ -125,6 +157,17 @@ if (!function_exists('studentListAvailableExams')) {
             $extraConditions[] = "course_id = ?";
             $params[] = $reqCourseId;
             $types .= "i";
+
+            // unit_id in the request already scopes to one specific unit below, so none of this
+            // applies then; otherwise pick one of the 3 states described above.
+            if ($unitId <= 0) {
+                if ($onlyUnitExams) {
+                    $extraConditions[] = "unit_id IS NOT NULL";
+                } elseif (!$includeUnitExams) {
+                    $extraConditions[] = "unit_id IS NULL";
+                }
+                // else ($includeUnitExams && !$onlyUnitExams): combined - no extra restriction.
+            }
         }
         if ($reqSubjectId > 0) {
             $extraConditions[] = "subject_id = ?";
