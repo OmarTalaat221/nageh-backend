@@ -415,7 +415,13 @@ if (!function_exists('teacherStartSession')) {
             return ['status' => 'error', 'message' => trans('session_not_found_or_not_owned')];
         }
 
-        $today = get_request_now()->format('Y-m-d');
+        $now = get_request_now();
+        $minutesUntilStart = (int)floor((strtotime($session['start_time']) - strtotime($now->format('H:i:s'))) / 60);
+        if ($minutesUntilStart > 5) {
+            return ['status' => 'error', 'message' => trans('session_start_too_early')];
+        }
+
+        $today = $now->format('Y-m-d');
         $alreadyNotified = !mark_session_notification_once($con, $sessionId, 'started', $today);
 
         if (!$alreadyNotified) {

@@ -499,6 +499,8 @@ if (!function_exists('get_student_subscription_details')) {
         $now = date('Y-m-d H:i:s');
         $row['is_expired'] = ($row['end_date'] !== null && $row['end_date'] < $now);
         $row['is_currently_valid'] = ($row['is_active'] === 1 && !$row['is_expired']);
+        $row['is_frozen'] = ($row['is_active'] === 0 && !$row['is_expired']);
+        $row['freeze_reason'] = $row['is_frozen'] ? trans('student_subscription_frozen_reason') : null;
 
         $stStmt = mysqli_prepare($con, "SELECT id, name, email, phone, is_active FROM students WHERE id = ? LIMIT 1");
         if ($stStmt) {
