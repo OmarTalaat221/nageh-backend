@@ -17,6 +17,10 @@ if (!function_exists('get_exam_summary')) {
         $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
         $row['is_active'] = (int)$row['is_active'];
+        // Same "show exam to students" toggle as the admin/teacher side (adminGetExamDetails) -
+        // always 1 here in practice, since this function is only ever reached for exams that
+        // already passed the `is_active = 1` filter in studentListAvailableExams().
+        $row['show_to_students'] = $row['is_active'];
         $row['questions_count'] = (int)(mysqli_fetch_assoc(mysqli_query($con, "SELECT COUNT(*) AS total FROM questions WHERE exam_id = {$examId}"))['total'] ?? 0);
 
         // Embed lightweight {id, name} relations so a client can label/group exams (e.g. by unit)
@@ -129,6 +133,12 @@ if (!function_exists('studentListAvailableExams')) {
         $onlyUnitExams = in_array($unitExamsParam, ['only', 'unit_only', 'units_only'], true);
         $includeUnitExams = $onlyUnitExams || in_array($unitExamsParam, ['1', 'true', 'yes'], true);
 
+        // Sorting: newest-first by default (previously this endpoint had NO ORDER BY at all,
+        // i.e. undefined/storage-engine-dependent order). `sort` (aliases: `sort_by`, `order`)
+        // accepts "newest" (default) or "oldest"; anything unrecognised falls back to newest.
+        $sortParam = strtolower(trim((string)($_GET['sort'] ?? $_GET['sort_by'] ?? $_GET['order'] ?? 'newest')));
+        $sortDir = in_array($sortParam, ['oldest', 'asc', 'created_at_asc', 'id_asc'], true) ? 'ASC' : 'DESC';
+
         if (empty($subjectIds) && empty($courseIds)) {
             return ['status' => 'success', 'data' => []];
         }
@@ -177,7 +187,7 @@ if (!function_exists('studentListAvailableExams')) {
 
         $extraSql = !empty($extraConditions) ? " AND " . implode(" AND ", $extraConditions) : "";
 
-        $sql = "SELECT id FROM course_exams WHERE is_active = 1 AND (" . implode(" OR ", $whereParts) . ")" . $extraSql;
+        $sql = "SELECT id FROM course_exams WHERE is_active = 1 AND (" . implode(" OR ", $whereParts) . ")" . $extraSql . " ORDER BY created_at {$sortDir}, id {$sortDir}";
         $stmt = mysqli_prepare($con, $sql);
         mysqli_stmt_bind_param($stmt, $types, ...$params);
         mysqli_stmt_execute($stmt);

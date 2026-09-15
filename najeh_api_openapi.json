@@ -496,7 +496,8 @@
             "enum": [
               0,
               1
-            ]
+            ],
+            "description": "update-3 (CLARIFIED): this IS the 'show exam to students' toggle - GET /student/exams filters on is_active = 1, so an admin/teacher setting this to 0 (via PUT /admin/exams or PUT /teacher/exams) immediately hides the exam from every student, with no other side effect. See also the explicit alias `show_to_students` below."
           },
           "title": {
             "type": "string"
@@ -535,6 +536,14 @@
             "type": "object",
             "nullable": true,
             "description": "The calling student's own attempt at this exam, if any: {id, status, total_score, max_score}. null if they have never started it."
+          },
+          "show_to_students": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "description": "update-3 (NEW): explicit alias of `is_active` for this exam, added so the show/hide-to-students semantics don't have to be inferred from a generically-named `is_active` field. Always equal to `is_active`."
           }
         }
       },
@@ -4401,7 +4410,7 @@
         "tags": [
           "Content / Exams"
         ],
-        "summary": "Update exam",
+        "summary": "update-3 (CLARIFIED): Update exam - includes the show/hide-to-students toggle",
         "security": [
           {
             "AdminAuth": []
@@ -4412,14 +4421,59 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "id"
+                ],
                 "properties": {
                   "id": {
                     "type": "integer"
+                  },
+                  "is_active": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "description": "update-3: THE show/hide-to-students toggle. 0 = hidden from GET /student/exams, 1 = shown there again."
+                  },
+                  "duration_minutes": {
+                    "type": "integer"
+                  },
+                  "total_marks": {
+                    "type": "integer"
+                  },
+                  "pass_marks": {
+                    "type": "integer"
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "title_ar": {
+                    "type": "string"
+                  },
+                  "title_en": {
+                    "type": "string"
+                  },
+                  "description_ar": {
+                    "type": "string"
+                  },
+                  "description_en": {
+                    "type": "string"
                   }
                 }
               },
               "example": {
-                "id": 1
+                "id": 41,
+                "is_active": 0
               }
             }
           }
@@ -4435,7 +4489,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Partial update - send only the fields you want to change. NOTE: this exact path item is also reused, unchanged, for PUT /teacher/exams (a teacher may edit any exam this way, not only their own - there is no ownership check on this specific operation).\n\nupdate-3: `is_active` (alias in the response: `show_to_students`) is THE show/hide-to-students toggle for an exam. Setting it to 0 makes the exam disappear from GET /student/exams immediately and unconditionally; setting it back to 1 makes it reappear there, sorted normally. This has no other effect - existing exam_attempts, questions and translations are untouched either way, so hiding an exam a student is mid-attempt on does not invalidate that attempt.\n\nOther fields accepted in the body (all optional, only applied when present): `duration_minutes`, `total_marks`, `pass_marks`, `subject_id`, `course_id`, `unit_id` (send `null` on any of the three scope fields to clear it), and `title_ar`/`title_en`/`description_ar`/`description_en` (upserted into course_exams_translations)."
       },
       "delete": {
         "tags": [
@@ -10326,7 +10381,7 @@
           "Student / Exams"
         ],
         "summary": "update-3: List exams available to the student - defaults to WHOLE-COURSE exams only when filtering by course_id; unit exams are opt-in",
-        "description": "Every exam in the system always has a non-null `course_id` (the creation UI requires picking a course first, whether the exam is a whole-course exam or a unit exam - `unit_id` is only set for the latter, on top of the same course_id). Because of that, this endpoint treats `course_id` requests differently depending on `include_unit_exams` - READ THIS BEFORE CALLING IT WITH course_id:\n\n1) `course_id` ALONE (default, `include_unit_exams` unset/`0`/`false`) -> returns ONLY whole-course exams for that course (`unit_id IS NULL`). Unit exams belonging to that course are DELIBERATELY excluded - this is the default precisely so a course-details screen doesn't unexpectedly show unit exams mixed in with the course's own exam.\n2) `course_id` + `unit_id` -> returns exams for that ONE specific unit only (existing, unchanged behavior) - `include_unit_exams` is ignored in this case.\n3) `course_id` + `include_unit_exams=1` (alias: `with_unit_exams=1`) -> returns the COMBINED list: the whole-course exam(s) AND every unit exam under that course, mixed together in one array. Use this for an aggregated 'all exams in this course' screen/tab - each item still carries its own `unit_id`/`unit` object (null for the whole-course ones) so the client can group or label them.\n4) `course_id` + `include_unit_exams=only` -> returns UNIT EXAMS ONLY for that course (`unit_id IS NOT NULL`), EXCLUDING the whole-course exam(s) entirely. Use this for a screen that lists only per-unit exams, with no whole-course exam mixed in.\n\n`unit_id` alone (no course_id) and `subject_id` alone keep their original, unrelated behavior - filtering directly on that column, unaffected by any of the above.\n\nAccess control (unrelated to the scoping above): an exam is only returned if the student is subscribed to its subject or its course - a student with no subscriptions at all gets an empty list immediately, before any of the filters run.",
+        "description": "Every exam in the system always has a non-null `course_id` (the creation UI requires picking a course first, whether the exam is a whole-course exam or a unit exam - `unit_id` is only set for the latter, on top of the same course_id). Because of that, this endpoint treats `course_id` requests differently depending on `include_unit_exams` - READ THIS BEFORE CALLING IT WITH course_id:\n\n1) `course_id` ALONE (default, `include_unit_exams` unset/`0`/`false`) -> returns ONLY whole-course exams for that course (`unit_id IS NULL`). Unit exams belonging to that course are DELIBERATELY excluded - this is the default precisely so a course-details screen doesn't unexpectedly show unit exams mixed in with the course's own exam.\n2) `course_id` + `unit_id` -> returns exams for that ONE specific unit only (existing, unchanged behavior) - `include_unit_exams` is ignored in this case.\n3) `course_id` + `include_unit_exams=1` (alias: `with_unit_exams=1`) -> returns the COMBINED list: the whole-course exam(s) AND every unit exam under that course, mixed together in one array. Use this for an aggregated 'all exams in this course' screen/tab - each item still carries its own `unit_id`/`unit` object (null for the whole-course ones) so the client can group or label them.\n4) `course_id` + `include_unit_exams=only` -> returns UNIT EXAMS ONLY for that course (`unit_id IS NOT NULL`), EXCLUDING the whole-course exam(s) entirely. Use this for a screen that lists only per-unit exams, with no whole-course exam mixed in.\n\n`unit_id` alone (no course_id) and `subject_id` alone keep their original, unrelated behavior - filtering directly on that column, unaffected by any of the above.\n\nAccess control (unrelated to the scoping above): an exam is only returned if the student is subscribed to its subject or its course - a student with no subscriptions at all gets an empty list immediately, before any of the filters run.\n\nupdate-3 (SORTING): results are now explicitly ordered - previously this endpoint had NO ORDER BY at all, so the order was undefined (effectively storage-engine dependent) and could silently change between calls. The default is now NEWEST FIRST (by `created_at` then `id`, descending). Use the `sort` parameter to reverse it.\n\nupdate-3 (VISIBILITY): only exams with `is_active` (= `show_to_students`) equal to 1 are ever returned here - an exam an admin or teacher has hidden via PUT /admin/exams or PUT /teacher/exams (`is_active: 0`) disappears from this list immediately and unconditionally, regardless of any other filter in this request.",
         "security": [
           {
             "StudentAuth": []
@@ -10370,6 +10425,19 @@
               "type": "integer"
             },
             "description": "Filter to exams scoped directly to this subject (rare - unrelated to course_id/unit_id filtering)."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest"
+              ],
+              "default": "newest"
+            },
+            "description": "update-3 (NEW): `newest` (default) sorts by creation date/id descending; `oldest` reverses it. Aliases: `sort_by`, `order` (accepted with the same two values). Any unrecognised value falls back to `newest`."
           }
         ],
         "responses": {

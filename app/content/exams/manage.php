@@ -25,6 +25,10 @@ if (!function_exists('adminGetExamDetails')) {
         $row['total_marks'] = (int)$row['total_marks'];
         $row['pass_marks'] = (int)$row['pass_marks'];
         $row['is_active'] = (int)$row['is_active'];
+        // Explicit alias for `is_active` on this specific table: this IS the "show exam to
+        // students" toggle - GET /student/exams filters on is_active = 1, so flipping it off
+        // here hides the exam from every student immediately, without touching anything else.
+        $row['show_to_students'] = $row['is_active'];
         $row['created_by_id'] = $row['created_by_id'] ? (int)$row['created_by_id'] : null;
 
         $titleAr = null;
