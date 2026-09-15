@@ -537,6 +537,201 @@
             "description": "The calling student's own attempt at this exam, if any: {id, status, total_score, max_score}. null if they have never started it."
           }
         }
+      },
+      "TeacherHomeResponse": {
+        "type": "object",
+        "description": "update-3 (REWRITE): the teacher dashboard home screen. Every field is computed live from the DB - the previous version of this endpoint returned hardcoded demo data (fake KPI numbers, a fixed 7-month chart, 3 made-up 'recent activity' rows) whenever the real query came back empty; none of that placeholder behavior remains.",
+        "properties": {
+          "greeting": {
+            "type": "string"
+          },
+          "teacher": {
+            "type": "object",
+            "description": "Core profile snapshot for the header. NOTE: this is a lighter object than GET /teacher/auth/profile (no city/experience/qualifications/metrics) - fetch that endpoint separately for the full profile screen.",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string",
+                "nullable": true
+              },
+              "specialization": {
+                "type": "string",
+                "nullable": true
+              },
+              "bio": {
+                "type": "string",
+                "nullable": true,
+                "description": "Resolved from `biography`, falling back to `description`."
+              },
+              "rating": {
+                "type": "number",
+                "format": "float",
+                "description": "Real average from `teachers.rating`, which is recomputed on every new approved student rating - not a placeholder."
+              },
+              "reviews_count": {
+                "type": "integer",
+                "description": "COUNT of approved rows in `teacher_ratings` for this teacher."
+              },
+              "is_active": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ],
+                "description": "Admin's manual enable/disable switch."
+              },
+              "is_attendance_suspended": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ],
+                "description": "Section 10 automatic attendance restriction - separate from is_active, never blocks login (see the account-suspension notes on other endpoints)."
+              },
+              "suspension_reason": {
+                "type": "string",
+                "nullable": true
+              },
+              "subjects": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "description": "Every subject this teacher is assigned to, from get_teacher_subjects_details()."
+              }
+            }
+          },
+          "kpis": {
+            "type": "object",
+            "description": "Single-number summary cards for the top of the dashboard - every value also appears in more detail further down in the response (wallet, today, pending_actions).",
+            "properties": {
+              "total_students": {
+                "type": "integer",
+                "description": "Distinct students subscribed to this teacher directly, or to any course/subject they teach."
+              },
+              "total_courses": {
+                "type": "integer",
+                "description": "Courses/packages this teacher owns or is linked to (course_teachers), active only."
+              },
+              "total_subjects": {
+                "type": "integer"
+              },
+              "total_active_sessions": {
+                "type": "integer",
+                "description": "Count of this teacher's active weekly class_sessions rows (their whole recurring schedule, not just today)."
+              },
+              "wallet_balance": {
+                "type": "number",
+                "format": "float"
+              },
+              "unread_notifications_count": {
+                "type": "integer"
+              },
+              "pending_actions_count": {
+                "type": "integer",
+                "description": "Sum of every counter in `pending_actions` - use this for a single badge/notification-dot."
+              }
+            }
+          },
+          "wallet": {
+            "type": "object",
+            "description": "Section 10 (attendance/salary system) snapshot - same numbers as GET /teacher/wallet, embedded here to save the home screen a second call.",
+            "properties": {
+              "wallet_balance": {
+                "type": "number",
+                "format": "float"
+              },
+              "pay_rate": {
+                "$ref": "#/components/schemas/TeacherPayRate"
+              }
+            }
+          },
+          "today": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "day_of_week": {
+                "type": "string"
+              },
+              "sessions_count": {
+                "type": "integer"
+              },
+              "sessions": {
+                "type": "array",
+                "description": "Full session detail objects for every one of the teacher's active class_sessions scheduled today - same shape and same status/is_available_now/meeting_link logic as GET /teacher/sessions, so a client already rendering that screen can reuse its card component here unchanged.",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "pending_actions": {
+            "type": "object",
+            "description": "Everything currently waiting on this teacher, broken out so the UI can deep-link each count to its own screen.",
+            "properties": {
+              "pending_homework_grading_count": {
+                "type": "integer",
+                "description": "homework_submissions with status='submitted' for homework this teacher created."
+              },
+              "pending_exam_grading_count": {
+                "type": "integer",
+                "description": "exam_attempts with status='submitted' (i.e. containing at least one written question awaiting manual grading) for exams this teacher owns - same ownership rule as teacher_owns_exam()."
+              },
+              "incoming_reschedule_requests_count": {
+                "type": "integer",
+                "description": "Pending session_reschedule_requests filed BY a student, addressed to this teacher (see PUT /teacher/sessions/reschedule-requests/review)."
+              },
+              "my_attendance_exception_requests_pending_count": {
+                "type": "integer",
+                "description": "This teacher's OWN absence/late-notice requests still awaiting admin review (Section 10)."
+              },
+              "my_deduction_appeals_pending_count": {
+                "type": "integer",
+                "description": "This teacher's OWN wallet-deduction appeals still awaiting admin review (Section 10)."
+              },
+              "consultation_requests_pending_count": {
+                "type": "integer",
+                "description": "consultation_slots booked by a student but not yet approved/rejected by this teacher."
+              },
+              "total_count": {
+                "type": "integer",
+                "description": "Sum of all six counters above - identical to kpis.pending_actions_count."
+              }
+            }
+          },
+          "my_courses": {
+            "type": "array",
+            "description": "Up to 6 of this teacher's courses/packages (same objects as GET /teacher/courses), each additionally carrying `students_count` (real count of active subscriptions covering that specific course).",
+            "items": {
+              "type": "object"
+            }
+          },
+          "upcoming_consultations": {
+            "type": "array",
+            "description": "Up to 5 upcoming consultation slots that are booked AND approved (status='approved'), from today onward, ordered by date/time. A slot merely requested (status='pending') shows up in pending_actions.consultation_requests_pending_count instead, not here.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "recent_notifications": {
+            "type": "array",
+            "description": "The 5 most recent notifications for this teacher (newest first) - a preview; use GET /teacher/notifications for the full paginated inbox.",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
       }
     }
   },
@@ -10217,6 +10412,106 @@
                       "my_attempt": null
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/home": {
+      "get": {
+        "tags": [
+          "Teacher / Home"
+        ],
+        "summary": "update-3 (REWRITE): Teacher dashboard home - fully real, wired to every teacher-relevant system",
+        "description": "Complete rewrite of this endpoint. The previous implementation was demo/placeholder code: every KPI had a hardcoded fallback number (e.g. a fake '24512 students' / '$84254 revenue') that was returned whenever the real query came back empty or zero, a 7-month chart with fixed fake numbers, and 3 hardcoded 'recent activity' rows naming students who don't exist in this database. NONE of that remains - every field below is a live, real query against this teacher's own data, and a genuinely empty result now correctly reads as zero/empty rather than being papered over with a fake number.\n\nThis is the single aggregate call for a teacher app's home/dashboard screen, pulling together:\n- Profile snapshot + real rating/reviews (`teacher`).\n- Top-line KPI cards (`kpis`).\n- Section 10 wallet balance and effective pay rate (`wallet`) - same numbers as GET /teacher/wallet.\n- Today's full schedule with live status per session (`today`) - same session objects as GET /teacher/sessions.\n- Every action currently awaiting this teacher, broken out per source, so the UI can deep-link each one (`pending_actions`): ungraded homework submissions, ungraded exam attempts, incoming student reschedule requests, this teacher's own pending Section 10 exception requests and deduction appeals, and pending consultation bookings.\n- A preview of up to 6 owned courses/packages with real student counts (`my_courses`).\n- The next 5 approved+booked consultations (`upcoming_consultations`).\n- The 5 most recent notifications (`recent_notifications`).\n\nBoth GET /teacher/home and GET /teacher/content/home hit the exact same handler (`teacherHome`) - they are not two different implementations, just two paths that existed already.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = TeacherHomeResponse.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeacherHomeResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token, or the teacher's own is_active = 0 (see the global account-deactivation notes on other endpoints).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/content/home": {
+      "get": {
+        "tags": [
+          "Teacher / Home"
+        ],
+        "summary": "update-3 (NEW to this spec): Alias of GET /teacher/home (identical handler `teacherHome`, identical response)",
+        "description": "Kept as a separate path only because both existed already in index.php (same `teacherHome` handler, same middleware) - not a different implementation. See GET /teacher/home for the full description.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = TeacherHomeResponse.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeacherHomeResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token, or the teacher's own is_active = 0 (see the global account-deactivation notes on other endpoints).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
