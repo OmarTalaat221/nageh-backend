@@ -885,7 +885,7 @@
       },
       "DashboardActivityItem": {
         "type": "object",
-        "description": "One platform event. There is no audit-log table in this project - the feed is assembled on the fly from the newest rows of the tables that represent real events, merged and sorted by time.",
+        "description": "One platform event. There is no audit-log table in this project - the feed is assembled on the fly from the newest rows of the tables that represent real events, merged and sorted by time. Every label comes in both languages so nothing has to be translated client-side, and DB enum values never reach the screen untranslated.",
         "properties": {
           "type": {
             "type": "string",
@@ -901,14 +901,6 @@
               "consultation_booked",
               "attendance_exception_request"
             ]
-          },
-          "title": {
-            "type": "string",
-            "description": "Ready-to-display Arabic label for the event."
-          },
-          "description": {
-            "type": "string",
-            "description": "Who/what the event is about (person name, amount, status)."
           },
           "amount": {
             "type": "number",
@@ -926,6 +918,27 @@
           "link": {
             "type": "string",
             "description": "Admin-dashboard route to open when the activity is clicked."
+          },
+          "title_ar": {
+            "type": "string",
+            "description": "Ready-to-display Arabic label for the event."
+          },
+          "title_en": {
+            "type": "string",
+            "description": "The same label in English - pick whichever matches the UI language."
+          },
+          "description_ar": {
+            "type": "string",
+            "description": "Who/what the event is about (person name, amount, translated status), in Arabic."
+          },
+          "description_en": {
+            "type": "string",
+            "description": "The same detail line in English."
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raw DB status of the underlying request (`pending` | `approved` | `rejected` | ...), present only on request-type events (`book_purchase_request`, `reschedule_request`, `attendance_exception_request`). It is already translated inside `description_ar`/`description_en`; this field is for filtering or colouring, not for display."
           }
         }
       }

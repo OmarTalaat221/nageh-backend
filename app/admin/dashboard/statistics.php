@@ -326,10 +326,26 @@ if (!function_exists('dashboard_course_sales')) {
     }
 }
 
+if (!function_exists('dashboard_status_labels')) {
+    function dashboard_status_labels($status): array {
+        $map = [
+            'pending' => ['ar' => 'قيد المراجعة', 'en' => 'Pending'],
+            'approved' => ['ar' => 'مقبول', 'en' => 'Approved'],
+            'rejected' => ['ar' => 'مرفوض', 'en' => 'Rejected'],
+            'cancelled' => ['ar' => 'ملغي', 'en' => 'Cancelled'],
+            'completed' => ['ar' => 'مكتمل', 'en' => 'Completed'],
+        ];
+        $key = strtolower(trim((string)$status));
+        if ($key === '') return ['ar' => '', 'en' => ''];
+        return $map[$key] ?? ['ar' => $key, 'en' => $key];
+    }
+}
+
 /**
  * There is no audit-log table in this project, so the feed is assembled on the fly from the
  * newest rows of the tables that represent real platform events. Each entry carries a `link`
- * that points at the admin page where that event can be acted on.
+ * that points at the admin page where that event can be acted on, and both an Arabic and an
+ * English label so the dashboard can follow its own language instead of showing raw enum values.
  */
 if (!function_exists('dashboard_recent_activity')) {
     function dashboard_recent_activity($con, int $limit = 15): array {
@@ -349,8 +365,10 @@ if (!function_exists('dashboard_recent_activity')) {
             SELECT id, name, created_at FROM students ORDER BY created_at DESC, id DESC LIMIT {$perSource}
         "), 'student_registered', function ($r) {
             return [
-                'title' => 'طالب جديد سجّل في المنصة',
-                'description' => $r['name'] ?? '',
+                'title_ar' => 'طالب جديد سجّل في المنصة',
+                'title_en' => 'New student registered',
+                'description_ar' => $r['name'] ?? '',
+                'description_en' => $r['name'] ?? '',
                 'created_at' => $r['created_at'],
                 'link' => '/users',
                 'entity_id' => (int)$r['id'],
@@ -361,8 +379,10 @@ if (!function_exists('dashboard_recent_activity')) {
             SELECT id, name, created_at FROM teachers ORDER BY created_at DESC, id DESC LIMIT {$perSource}
         "), 'teacher_registered', function ($r) {
             return [
-                'title' => 'معلم جديد انضم للمنصة',
-                'description' => $r['name'] ?? '',
+                'title_ar' => 'معلم جديد انضم للمنصة',
+                'title_en' => 'New teacher joined',
+                'description_ar' => $r['name'] ?? '',
+                'description_en' => $r['name'] ?? '',
                 'created_at' => $r['created_at'],
                 'link' => '/teachers',
                 'entity_id' => (int)$r['id'],
@@ -373,8 +393,10 @@ if (!function_exists('dashboard_recent_activity')) {
             SELECT id, name, created_at FROM parents ORDER BY created_at DESC, id DESC LIMIT {$perSource}
         "), 'parent_registered', function ($r) {
             return [
-                'title' => 'ولي أمر جديد سجّل في المنصة',
-                'description' => $r['name'] ?? '',
+                'title_ar' => 'ولي أمر جديد سجّل في المنصة',
+                'title_en' => 'New parent registered',
+                'description_ar' => $r['name'] ?? '',
+                'description_en' => $r['name'] ?? '',
                 'created_at' => $r['created_at'],
                 'link' => '/parents',
                 'entity_id' => (int)$r['id'],
@@ -391,9 +413,13 @@ if (!function_exists('dashboard_recent_activity')) {
             LIMIT {$perSource}
         "), 'payment', function ($r) {
             $isBook = ($r['item_type'] ?? '') === 'book';
+            $money = (float)$r['amount'] . ' ' . ($r['currency'] ?? 'EGP');
+            $who = $r['student_name'] ?? '';
             return [
-                'title' => 'عملية شراء ' . ($isBook ? 'كتاب' : 'كورس') . ' جديدة',
-                'description' => trim(($r['student_name'] ?? '') . ' - ' . (float)$r['amount'] . ' ' . ($r['currency'] ?? 'EGP')),
+                'title_ar' => $isBook ? 'عملية شراء كتاب جديدة' : 'عملية شراء كورس جديدة',
+                'title_en' => $isBook ? 'New book purchase' : 'New course purchase',
+                'description_ar' => trim($who . ' - ' . $money),
+                'description_en' => trim($who . ' - ' . $money),
                 'amount' => (float)$r['amount'],
                 'created_at' => $r['created_at'],
                 'link' => $isBook ? '/books' : ('/courses/' . (int)$r['item_id']),
@@ -409,9 +435,12 @@ if (!function_exists('dashboard_recent_activity')) {
             ORDER BY r.redeemed_at DESC, r.id DESC
             LIMIT {$perSource}
         "), 'code_redeemed', function ($r) {
+            $what = trim(($r['student_name'] ?? '') . ' - ' . ($r['title'] ?? $r['code'] ?? ''));
             return [
-                'title' => 'تفعيل كود اشتراك',
-                'description' => trim(($r['student_name'] ?? '') . ' - ' . ($r['title'] ?? $r['code'] ?? '')),
+                'title_ar' => 'تفعيل كود اشتراك',
+                'title_en' => 'Subscription code redeemed',
+                'description_ar' => $what,
+                'description_en' => $what,
                 'amount' => (float)($r['price'] ?? 0),
                 'created_at' => $r['created_at'],
                 'link' => '/codes',
@@ -429,8 +458,10 @@ if (!function_exists('dashboard_recent_activity')) {
             LIMIT {$perSource}
         "), 'course_created', function ($r) {
             return [
-                'title' => 'تم إنشاء كورس جديد',
-                'description' => $r['name'] ?? '',
+                'title_ar' => 'تم إنشاء كورس جديد',
+                'title_en' => 'New course created',
+                'description_ar' => $r['name'] ?? '',
+                'description_en' => $r['name'] ?? '',
                 'created_at' => $r['created_at'],
                 'link' => '/courses/' . (int)$r['id'],
                 'entity_id' => (int)$r['id'],
@@ -444,9 +475,14 @@ if (!function_exists('dashboard_recent_activity')) {
             ORDER BY br.created_at DESC, br.id DESC
             LIMIT {$perSource}
         "), 'book_purchase_request', function ($r) {
+            $status = dashboard_status_labels($r['status'] ?? '');
+            $who = $r['student_name'] ?? '';
             return [
-                'title' => 'طلب شراء كتاب',
-                'description' => trim(($r['student_name'] ?? '') . ' - ' . ($r['status'] ?? '')),
+                'title_ar' => 'طلب شراء كتاب',
+                'title_en' => 'Book purchase request',
+                'description_ar' => trim($who . ' - ' . $status['ar']),
+                'description_en' => trim($who . ' - ' . $status['en']),
+                'status' => $r['status'] ?? null,
                 'created_at' => $r['created_at'],
                 'link' => '/book-purchase-requests',
                 'entity_id' => (int)$r['id'],
@@ -459,9 +495,13 @@ if (!function_exists('dashboard_recent_activity')) {
             ORDER BY rr.created_at DESC, rr.id DESC
             LIMIT {$perSource}
         "), 'reschedule_request', function ($r) {
+            $status = dashboard_status_labels($r['status'] ?? '');
             return [
-                'title' => 'طلب تأجيل حصة',
-                'description' => $r['status'] ?? '',
+                'title_ar' => 'طلب تأجيل حصة',
+                'title_en' => 'Session reschedule request',
+                'description_ar' => $status['ar'],
+                'description_en' => $status['en'],
+                'status' => $r['status'] ?? null,
                 'created_at' => $r['created_at'],
                 'link' => '/reschedule-requests',
                 'entity_id' => (int)$r['id'],
@@ -477,9 +517,13 @@ if (!function_exists('dashboard_recent_activity')) {
             ORDER BY cs.booked_at DESC, cs.id DESC
             LIMIT {$perSource}
         "), 'consultation_booked', function ($r) {
+            $student = $r['student_name'] ?? '';
+            $teacher = $r['teacher_name'] ?? '';
             return [
-                'title' => 'حجز استشارة',
-                'description' => trim(($r['student_name'] ?? '') . ' مع ' . ($r['teacher_name'] ?? '')),
+                'title_ar' => 'حجز استشارة',
+                'title_en' => 'Consultation booked',
+                'description_ar' => trim($student . ' مع ' . $teacher),
+                'description_en' => trim($student . ' with ' . $teacher),
                 'created_at' => $r['created_at'],
                 'link' => '/consultations',
                 'entity_id' => (int)$r['id'],
@@ -492,9 +536,14 @@ if (!function_exists('dashboard_recent_activity')) {
             ORDER BY er.created_at DESC, er.id DESC
             LIMIT {$perSource}
         "), 'attendance_exception_request', function ($r) {
+            $isLate = ($r['request_type'] ?? '') === 'late_notice';
+            $status = dashboard_status_labels($r['status'] ?? '');
             return [
-                'title' => ($r['request_type'] ?? '') === 'late_notice' ? 'إبلاغ تأخير' : 'طلب غياب بإذن',
-                'description' => $r['status'] ?? '',
+                'title_ar' => $isLate ? 'إبلاغ تأخير' : 'طلب غياب بإذن',
+                'title_en' => $isLate ? 'Late notice' : 'Excused absence request',
+                'description_ar' => $status['ar'],
+                'description_en' => $status['en'],
+                'status' => $r['status'] ?? null,
                 'created_at' => $r['created_at'],
                 'link' => '/attendance-exceptions',
                 'entity_id' => (int)$r['id'],
