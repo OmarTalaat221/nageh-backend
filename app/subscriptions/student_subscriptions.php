@@ -347,7 +347,19 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
 
         $durationDays = $codeRow['duration_days'] ? (int)$codeRow['duration_days'] : null;
         $startDate = date('Y-m-d H:i:s');
-        $endDate = $durationDays ? date('Y-m-d H:i:s', strtotime("+{$durationDays} days")) : null;
+        $endDate = $durationDays ? date('Y-m-d H:i:s', strtotime("+{$durationDays} days", strtotime($startDate))) : null;
+
+        // A code that unlocks a package inherits that package's own length (courses.duration_months)
+        // when the code itself does not spell out a day count - the same rule an admin grant follows.
+        // Taken before valid_to, which is the code's validity window, not how long access should last.
+        if ($endDate === null && !empty($courses)) {
+            $courseListForDuration = implode(',', array_map('intval', $courses));
+            $pkgDurRes = mysqli_query($con, "SELECT MAX(duration_months) AS months FROM courses WHERE id IN ({$courseListForDuration}) AND kind = 'package'");
+            $pkgMonths = $pkgDurRes ? (int)(mysqli_fetch_assoc($pkgDurRes)['months'] ?? 0) : 0;
+            if ($pkgMonths > 0) {
+                $endDate = date('Y-m-d H:i:s', strtotime("+{$pkgMonths} months", strtotime($startDate)));
+            }
+        }
 
         $subStmt = mysqli_prepare($con, "INSERT INTO student_subscriptions (student_id, subscription_code_id, subscription_type, start_date, end_date, is_active) VALUES (?, ?, ?, ?, ?, 1)");
         mysqli_stmt_bind_param($subStmt, "iisss", $stId, $codeId, $subType, $startDate, $endDate);
