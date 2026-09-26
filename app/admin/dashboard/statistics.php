@@ -97,7 +97,7 @@ if (!function_exists('dashboard_revenue_sources')) {
 if (!function_exists('dashboard_sales_summary')) {
     function dashboard_sales_summary($con): array {
         $summary = [
-            'currency' => 'EGP',
+            'currency' => 'USD',
             'total' => 0.0,
             'today' => 0.0,
             'this_month' => 0.0,
@@ -413,7 +413,7 @@ if (!function_exists('dashboard_recent_activity')) {
             LIMIT {$perSource}
         "), 'payment', function ($r) {
             $isBook = ($r['item_type'] ?? '') === 'book';
-            $money = (float)$r['amount'] . ' ' . ($r['currency'] ?? 'EGP');
+            $money = (float)$r['amount'] . ' ' . ($r['currency'] ?? 'USD');
             $who = $r['student_name'] ?? '';
             return [
                 'title_ar' => $isBook ? 'عملية شراء كتاب جديدة' : 'عملية شراء كورس جديدة',
