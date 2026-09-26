@@ -894,7 +894,7 @@ if (!function_exists('get_course_details')) {
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
         $stmt = mysqli_prepare($con, "
-            SELECT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active,
+            SELECT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.duration_months, c.price, c.image, c.is_active,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
@@ -909,6 +909,7 @@ if (!function_exists('get_course_details')) {
         $row['id'] = (int)$row['id'];
         $row['type'] = $row['type'] ?? 'recorded';
         $row['kind'] = $row['kind'] ?? 'normal';
+        $row['duration_months'] = isset($row['duration_months']) && $row['duration_months'] !== null ? (int)$row['duration_months'] : null;
         $row['price'] = (float)$row['price'];
         $row['is_active'] = (int)$row['is_active'];
         return format_response_images($row);

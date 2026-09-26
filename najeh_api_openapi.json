@@ -941,6 +941,282 @@
             "description": "Raw DB status of the underlying request (`pending` | `approved` | `rejected` | ...), present only on request-type events (`book_purchase_request`, `reschedule_request`, `attendance_exception_request`). It is already translated inside `description_ar`/`description_en`; this field is for filtering or colouring, not for display."
           }
         }
+      },
+      "AvailabilityBooking": {
+        "type": "object",
+        "description": "One student attached to a dated slot.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "student_id": {
+            "type": "integer"
+          },
+          "student_name": {
+            "type": "string"
+          },
+          "student_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "student_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "student_subscription_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The subscription the booking was charged against, when one was found."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "cancelled",
+              "attended",
+              "missed"
+            ]
+          },
+          "booked_by_type": {
+            "type": "string",
+            "enum": [
+              "student",
+              "admin",
+              "teacher"
+            ],
+            "description": "Who performed the booking - a student booking themselves, or an admin/teacher doing it for them."
+          },
+          "booked_by_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AvailabilitySlot": {
+        "type": "object",
+        "description": "update-3 (NEW): one teaching appointment on a REAL calendar date. This is a separate layer from `class_sessions`, which is a weekly recurring pattern (`day_of_week` + `start_time`) with no date on it and is unchanged. A slot with `capacity` 1 is a private appointment; a higher capacity makes it a group one - both use the same `bookings` array, there is no second mechanism.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "teacher_id": {
+            "type": "integer"
+          },
+          "course_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "subject_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "slot_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-05"
+          },
+          "start_time": {
+            "type": "string",
+            "example": "18:00:00"
+          },
+          "end_time": {
+            "type": "string",
+            "example": "19:30:00"
+          },
+          "capacity": {
+            "type": "integer",
+            "description": "How many students this slot accepts. 1 = private."
+          },
+          "booked_count": {
+            "type": "integer",
+            "description": "Cached count of non-cancelled bookings, recomputed on every write."
+          },
+          "remaining_places": {
+            "type": "integer"
+          },
+          "is_bookable": {
+            "type": "boolean",
+            "description": "True when status is 'available' and there is at least one place left."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "full",
+              "cancelled",
+              "completed"
+            ],
+            "description": "'full' is derived from capacity automatically; 'cancelled' and 'completed' are set explicitly and are never overwritten by the booking count."
+          },
+          "status_label_ar": {
+            "type": "string"
+          },
+          "status_label_en": {
+            "type": "string"
+          },
+          "is_online": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "meeting_link": {
+            "type": "string",
+            "nullable": true
+          },
+          "room": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "day_of_week": {
+            "type": "string",
+            "description": "Derived from slot_date, for display only."
+          },
+          "start_datetime": {
+            "type": "string",
+            "example": "2026-10-05 18:00:00"
+          },
+          "end_datetime": {
+            "type": "string",
+            "example": "2026-10-05 19:30:00"
+          },
+          "teacher": {
+            "type": "object",
+            "nullable": true
+          },
+          "course": {
+            "type": "object",
+            "nullable": true
+          },
+          "subject": {
+            "type": "object",
+            "nullable": true
+          },
+          "bookings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilityBooking"
+            }
+          },
+          "students": {
+            "type": "array",
+            "description": "Shorthand of `bookings` for rendering avatars.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "AvailabilityPatternBody": {
+        "type": "object",
+        "required": [
+          "start_date",
+          "end_date",
+          "start_time",
+          "end_time"
+        ],
+        "description": "A recurrence turned into one row per real date. Two hard caps protect the database: the range cannot exceed 400 days and a single request cannot produce more than 300 slots. Dates the teacher already has a slot for at that exact start_time are SKIPPED rather than failing the request, so re-running an overlapping range is safe.",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ],
+            "default": "weekly"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "start_time": {
+            "type": "string",
+            "example": "18:00"
+          },
+          "end_time": {
+            "type": "string",
+            "example": "19:30"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Saturday",
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+              ]
+            },
+            "description": "Weekly pattern only - at least one weekday name."
+          },
+          "days_of_month": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 31
+            },
+            "description": "Monthly pattern only. A month too short for the given day simply gets no slot that month rather than sliding into the next one."
+          },
+          "capacity": {
+            "type": "integer",
+            "default": 1
+          },
+          "course_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "subject_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "is_online": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "meeting_link": {
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
       }
     }
   },
@@ -7904,7 +8180,7 @@
           "Admin / Courses (NEW - update-2)"
         ],
         "summary": "update-2 (NEW doc): List courses, now filterable by kind (course vs package)",
-        "description": "update-2 (Admin): this endpoint and its filters (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, min/max lessons, search, sort, pagination, etc.) already existed and are unchanged — the only genuinely NEW thing is the `kind` filter/field below, added for the packages feature. Every course row in the response now also carries `kind` ('normal' | 'package'), defaulting to 'normal' for any pre-existing row. A 'package' course is just a course row with no units/videos/exams attached — it is organized around a weekly `class_sessions` schedule (see GET /admin/sessions and GET /teacher/sessions, both course_id-filterable, update-1) plus the existing course-files feature, instead of curriculum content.",
+        "description": "update-2 (Admin): this endpoint and its filters (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, min/max lessons, search, sort, pagination, etc.) already existed and are unchanged — the only genuinely NEW thing is the `kind` filter/field below, added for the packages feature. Every course row in the response now also carries `kind` ('normal' | 'package'), defaulting to 'normal' for any pre-existing row. A 'package' course is just a course row with no units/videos/exams attached — it is organized around a weekly `class_sessions` schedule (see GET /admin/sessions and GET /teacher/sessions, both course_id-filterable, update-1) plus the existing course-files feature, instead of curriculum content.\n\nupdate-3: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
         "security": [
           {
             "AdminAuth": []
@@ -8077,6 +8353,17 @@
                     ],
                     "default": "normal",
                     "description": "update-2 (NEW): defaults to 'normal' when omitted, so every pre-update-2 integration keeps creating plain courses unless it explicitly opts into 'package'."
+                  },
+                  "duration_months": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      3,
+                      6,
+                      12
+                    ],
+                    "nullable": true,
+                    "description": "update-3 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-3 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
                   }
                 }
               },
@@ -8137,6 +8424,17 @@
                       "package"
                     ],
                     "description": "update-2 (NEW): omit to leave kind unchanged; invalid values are silently ignored (kind stays whatever it already was)."
+                  },
+                  "duration_months": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      3,
+                      6,
+                      12
+                    ],
+                    "nullable": true,
+                    "description": "update-3 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-3 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
                   }
                 }
               },
@@ -8164,7 +8462,7 @@
           "Admin / Courses (NEW - update-2)"
         ],
         "summary": "update-2 (NEW doc): Course details (now includes kind)",
-        "description": "update-2 (Admin): the only new field is `kind` ('normal' | 'package'), defaulting to 'normal'. Everything else in this response (teachers[], subject, category, academic_year, created_by) is pre-existing, unchanged.",
+        "description": "update-2 (Admin): the only new field is `kind` ('normal' | 'package'), defaulting to 'normal'. Everything else in this response (teachers[], subject, category, academic_year, created_by) is pre-existing, unchanged.\n\nupdate-3: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
         "security": [
           {
             "AdminAuth": []
@@ -10969,6 +11267,1647 @@
                           }
                         }
                       }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/availability": {
+      "get": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): List dated appointment slots",
+        "description": "Every slot matching the filters, oldest date first. An admin may filter by `teacher_id`; leaving it out returns slots across all teachers.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `from`. Inclusive."
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `to`. Inclusive. Pair it with date_from to fetch exactly one month for a calendar screen."
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "available",
+                "full",
+                "cancelled",
+                "completed"
+              ]
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only slots this student is booked into (cancelled bookings do not count)."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching slots.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AvailabilitySlot"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Create one dated slot",
+        "description": "Creates a single appointment on a specific date. A teacher can only ever have one slot starting at a given date+time; a second one is rejected rather than silently duplicated.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "slot_date",
+                  "start_time",
+                  "end_time"
+                ],
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "slot_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "example": "19:30",
+                    "description": "Must be later than start_time."
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created slot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Update a dated slot",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "description": "Partial update - only the fields present are touched. Capacity cannot be lowered below the number of students already booked.",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "slot_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "start_time": {
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "type": "string"
+                  },
+                  "capacity": {
+                    "type": "integer"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "available",
+                      "full",
+                      "cancelled",
+                      "completed"
+                    ]
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated slot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Delete a dated slot",
+        "description": "Deletes the slot and its bookings. To keep the record but stop new bookings, set `status` to 'cancelled' with PUT instead.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted."
+          }
+        }
+      }
+    },
+    "/admin/availability/generate": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Generate recurring dated slots for a teacher",
+        "description": "Expands a daily/weekly/monthly pattern into one slot per date. See the request schema for the caps and the skip-on-duplicate behaviour.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "start_date",
+                  "end_date",
+                  "start_time",
+                  "end_time"
+                ],
+                "description": "A recurrence turned into one row per real date. Two hard caps protect the database: the range cannot exceed 400 days and a single request cannot produce more than 300 slots. Dates the teacher already has a slot for at that exact start_time are SKIPPED rather than failing the request, so re-running an overlapping range is safe.",
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "pattern": {
+                    "type": "string",
+                    "enum": [
+                      "daily",
+                      "weekly",
+                      "monthly"
+                    ],
+                    "default": "weekly"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "example": "19:30"
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Saturday",
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday"
+                      ]
+                    },
+                    "description": "Weekly pattern only - at least one weekday name."
+                  },
+                  "days_of_month": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    },
+                    "description": "Monthly pattern only. A month too short for the given day simply gets no slot that month rather than sliding into the next one."
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Summary of what was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pattern": {
+                          "type": "string"
+                        },
+                        "created_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer",
+                          "description": "Dates that already had a slot at that time."
+                        },
+                        "dates": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "date"
+                          }
+                        },
+                        "created_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/availability/book": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Put a student into a dated slot",
+        "description": "Books on the student's behalf. Unlike the student's own booking route this does NOT require the student to hold a live subscription, so an admin can schedule someone whose paperwork is still being sorted out; the slot's capacity is still enforced. The student is notified.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id",
+                  "student_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  },
+                  "student_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot, including its bookings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Remove a student from a dated slot",
+        "description": "Marks the booking cancelled (the row is kept for history) and frees the place. The student is notified.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id",
+                  "student_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  },
+                  "student_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot after the place was freed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/availability/schedule-student": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Build a whole schedule for one student in a single call",
+        "description": "The 'open a subscribed student and set their dates' flow: generates the slots from the pattern AND books that student into every one of them, in one request, so a half-made schedule (dates with nobody in them) cannot be left behind.\n\nWhen `start_date`/`end_date` are omitted they default to the student's own active subscription window - which for a package is exactly what `courses.duration_months` decides. If the student has no dated subscription to infer them from, the request is rejected and asks for the dates explicitly.\n\nDates that already had a slot are reused rather than duplicated, so the response distinguishes `created_slots` from `reused_slots`, and `failures` lists any date the student could not be booked into (for example a slot that was already full).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "teacher_id",
+                  "student_id",
+                  "start_time",
+                  "end_time"
+                ],
+                "description": "A recurrence turned into one row per real date. Two hard caps protect the database: the range cannot exceed 400 days and a single request cannot produce more than 300 slots. Dates the teacher already has a slot for at that exact start_time are SKIPPED rather than failing the request, so re-running an overlapping range is safe.",
+                "properties": {
+                  "teacher_id": {
+                    "type": "integer"
+                  },
+                  "student_id": {
+                    "type": "integer"
+                  },
+                  "pattern": {
+                    "type": "string",
+                    "enum": [
+                      "daily",
+                      "weekly",
+                      "monthly"
+                    ],
+                    "default": "weekly"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Optional here: defaults to the student's subscription start."
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Optional here: defaults to the student's subscription end."
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "example": "19:30"
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Saturday",
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday"
+                      ]
+                    },
+                    "description": "Weekly pattern only - at least one weekday name."
+                  },
+                  "days_of_month": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    },
+                    "description": "Monthly pattern only. A month too short for the given day simply gets no slot that month rather than sliding into the next one."
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "What was scheduled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "student_id": {
+                          "type": "integer"
+                        },
+                        "teacher_id": {
+                          "type": "integer"
+                        },
+                        "created_slots": {
+                          "type": "integer"
+                        },
+                        "reused_slots": {
+                          "type": "integer"
+                        },
+                        "booked_count": {
+                          "type": "integer"
+                        },
+                        "dates": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "date"
+                          }
+                        },
+                        "failures": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/availability": {
+      "get": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): List my dated slots (teacher)",
+        "description": "Identical to the admin list, except the teacher is taken from the token and cannot be overridden.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `from`. Inclusive."
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `to`. Inclusive. Pair it with date_from to fetch exactly one month for a calendar screen."
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "available",
+                "full",
+                "cancelled",
+                "completed"
+              ]
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only slots this student is booked into (cancelled bookings do not count)."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The teacher's own slots.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AvailabilitySlot"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Create one dated slot (teacher)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_date",
+                  "start_time",
+                  "end_time"
+                ],
+                "properties": {
+                  "slot_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "start_time": {
+                    "type": "string",
+                    "example": "18:00"
+                  },
+                  "end_time": {
+                    "type": "string",
+                    "example": "19:30",
+                    "description": "Must be later than start_time."
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created slot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Update one of my dated slots (teacher)",
+        "description": "A slot belonging to another teacher is refused.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "description": "Partial update - only the fields present are touched. Capacity cannot be lowered below the number of students already booked.",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "slot_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "start_time": {
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "type": "string"
+                  },
+                  "capacity": {
+                    "type": "integer"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "available",
+                      "full",
+                      "cancelled",
+                      "completed"
+                    ]
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "subject_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_online": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "meeting_link": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated slot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Delete one of my dated slots (teacher)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted."
+          }
+        }
+      }
+    },
+    "/teacher/availability/generate": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Publish my availability for a period (teacher)",
+        "description": "Same generator as the admin route, for the authenticated teacher. This is how a teacher publishes a month of available times in one go.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityPatternBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Summary of what was created."
+          }
+        }
+      }
+    },
+    "/teacher/availability/book": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Put one of my students into a slot (teacher)",
+        "description": "Same as the admin booking route but restricted to the teacher's own slots; no active subscription is required, capacity still is.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id",
+                  "student_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  },
+                  "student_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot, including its bookings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Remove a student from one of my slots (teacher)",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id",
+                  "student_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  },
+                  "student_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot after the place was freed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/availability": {
+      "get": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Available slots I can book (student)",
+        "description": "Only slots that are still open: status 'available', with a free place, and dated today or later. `teacher_id` or `course_id` is required - this endpoint never returns the whole platform's calendar.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Required unless course_id is given."
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Required unless teacher_id is given."
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `from`. Inclusive."
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `to`. Inclusive. Pair it with date_from to fetch exactly one month for a calendar screen."
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "available",
+                "full",
+                "cancelled",
+                "completed"
+              ]
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only slots this student is booked into (cancelled bookings do not count)."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bookable slots.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AvailabilitySlot"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/availability/my-schedule": {
+      "get": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): My booked appointments (student)",
+        "description": "The dated slots this student is booked into. Cancelled bookings are excluded. Pair `date_from`/`date_to` to fetch one month for a calendar.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `from`. Inclusive."
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias: `to`. Inclusive. Pair it with date_from to fetch exactly one month for a calendar screen."
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "available",
+                "full",
+                "cancelled",
+                "completed"
+              ]
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only slots this student is booked into (cancelled bookings do not count)."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The student's booked slots.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AvailabilitySlot"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/availability/book": {
+      "post": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Book a slot (student)",
+        "description": "Books the authenticated student into the slot. Unlike the admin/teacher routes this REQUIRES a live subscription: the request is rejected when the student has no active subscription covering the slot's course, and when the slot's date falls after that subscription's end date - which for a package is set by `courses.duration_months`. The teacher is notified.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot after booking.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Scheduling / Dated Availability"
+        ],
+        "summary": "update-3 (NEW): Cancel my booking (student)",
+        "description": "Frees the place and notifies the teacher. The booking row is kept, marked cancelled.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot_id"
+                ],
+                "properties": {
+                  "slot_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The slot after cancelling.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AvailabilitySlot"
                     }
                   }
                 }

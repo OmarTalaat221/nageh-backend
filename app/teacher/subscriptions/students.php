@@ -68,6 +68,14 @@ if (!function_exists('teacherGetSubscribedStudents')) {
 
         $whereConditions[] = "(" . implode(" OR ", $subQueryParts) . ")";
 
+        // Narrows the list to the students of one specific course or package, which is what the
+        // "set this student's dates" screen needs - without it a teacher can only see all of
+        // their students at once.
+        $filterCourseId = (int)($_GET['course_id'] ?? 0);
+        if ($filterCourseId > 0) {
+            $whereConditions[] = "ss.id IN (SELECT student_subscription_id FROM student_subscription_courses WHERE course_id = {$filterCourseId})";
+        }
+
         if (!empty($search)) {
             $sp = '%' . mysqli_real_escape_string($con, $search) . '%';
             $whereConditions[] = "(st.name LIKE '{$sp}' OR st.email LIKE '{$sp}' OR st.phone LIKE '{$sp}')";

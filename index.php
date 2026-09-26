@@ -3896,6 +3896,207 @@ $routes = [
             },
         ],
 
+        // Admin / Teacher / Student: dated availability slots -------------
+        // Real-calendar appointments, a parallel layer to the weekly class_sessions pattern.
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListAvailabilitySlots($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminCreateAvailabilitySlot($con, $adminData);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminUpdateAvailabilitySlot($con);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminDeleteAvailabilitySlot($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/generate",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminGenerateAvailabilitySlots($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminBookStudentIntoSlot($con, $adminData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminCancelStudentBooking($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/schedule-student",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminScheduleStudent($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListAvailabilitySlots($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherCreateAvailabilitySlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/teacher/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherUpdateAvailabilitySlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/teacher/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherDeleteAvailabilitySlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability/generate",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherGenerateAvailabilitySlots($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherBookStudentIntoSlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/teacher/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherCancelStudentBooking($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/availability",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/availability/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentListAvailableSlots($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/availability/my-schedule",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/availability/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentMyScheduleSlots($con, $studentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/student/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/availability/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentBookAvailabilitySlot($con, $studentData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/student/availability/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/availability/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentCancelAvailabilityBooking($con, $studentData);
+            },
+        ],
+
         // Admin: Session Files --------------------------------
         [
             "method" => "GET",

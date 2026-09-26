@@ -764,7 +764,20 @@ if (!function_exists('adminCreateStudentSubscription')) {
 
         $durationDays = isset($body['duration_days']) && $body['duration_days'] > 0 ? (int)$body['duration_days'] : null;
         $startDate = !empty($body['start_date']) ? date('Y-m-d H:i:s', strtotime($body['start_date'])) : date('Y-m-d H:i:s');
-        $endDate = !empty($body['end_date']) ? date('Y-m-d H:i:s', strtotime($body['end_date'])) : ($durationDays ? date('Y-m-d H:i:s', strtotime("+{$durationDays} days")) : null);
+        $endDate = !empty($body['end_date']) ? date('Y-m-d H:i:s', strtotime($body['end_date'])) : ($durationDays ? date('Y-m-d H:i:s', strtotime("+{$durationDays} days", strtotime($startDate))) : null);
+
+        // A package carries its own subscription length (courses.duration_months). When the caller
+        // did not spell out an end date or a day count, the longest package in the basket decides
+        // it - otherwise a package subscription would be stored as open ended, which is what used
+        // to happen and is why package access never expired.
+        if ($endDate === null && !empty($courseIds)) {
+            $courseListStr = implode(',', array_map('intval', $courseIds));
+            $durRes = mysqli_query($con, "SELECT MAX(duration_months) AS months FROM courses WHERE id IN ({$courseListStr}) AND kind = 'package'");
+            $months = $durRes ? (int)(mysqli_fetch_assoc($durRes)['months'] ?? 0) : 0;
+            if ($months > 0) {
+                $endDate = date('Y-m-d H:i:s', strtotime("+{$months} months", strtotime($startDate)));
+            }
+        }
 
         $stmt = mysqli_prepare($con, "INSERT INTO student_subscriptions (student_id, subscription_type, start_date, end_date, is_active) VALUES (?, ?, ?, ?, 1)");
         if (!$stmt) {

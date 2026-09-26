@@ -45,8 +45,19 @@ if (!function_exists('payments_student_already_has_access')) {
 if (!function_exists('payments_grant_access')) {
     function payments_grant_access($con, int $studentId, string $itemType, int $itemId, float $price): ?int {
         if ($itemType === 'course') {
-            $stmt = mysqli_prepare($con, "INSERT INTO student_subscriptions (student_id, subscription_type, start_date, is_active) VALUES (?, 'course', NOW(), 1)");
-            mysqli_stmt_bind_param($stmt, "i", $studentId);
+            // A package sells a fixed period (courses.duration_months), so the access it grants
+            // has to expire with it; an ordinary course stays open ended as before.
+            $kindStmt = mysqli_prepare($con, "SELECT kind, duration_months FROM courses WHERE id = ? LIMIT 1");
+            mysqli_stmt_bind_param($kindStmt, "i", $itemId);
+            mysqli_stmt_execute($kindStmt);
+            $courseRow = mysqli_fetch_assoc(mysqli_stmt_get_result($kindStmt));
+
+            $subscriptionType = ($courseRow['kind'] ?? 'normal') === 'package' ? 'package' : 'course';
+            $months = (int)($courseRow['duration_months'] ?? 0);
+            $endDate = $months > 0 ? date('Y-m-d H:i:s', strtotime("+{$months} months")) : null;
+
+            $stmt = mysqli_prepare($con, "INSERT INTO student_subscriptions (student_id, subscription_type, start_date, end_date, is_active) VALUES (?, ?, NOW(), ?, 1)");
+            mysqli_stmt_bind_param($stmt, "iss", $studentId, $subscriptionType, $endDate);
             if (!mysqli_stmt_execute($stmt)) return null;
             $subId = mysqli_insert_id($con);
 
