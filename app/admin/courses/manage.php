@@ -306,7 +306,7 @@ if (!function_exists('adminListCourses')) {
         }
 
         $sql = "
-            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.duration_months, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
+            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.duration_months, c.allow_video_download, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
             FROM courses c
             {$joinCt}
             LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id
@@ -355,6 +355,7 @@ if (!function_exists('adminListCourses')) {
                 $row['type'] = $row['type'] ?? 'english';
                 $row['kind'] = $row['kind'] ?? 'normal';
                 $row['duration_months'] = isset($row['duration_months']) && $row['duration_months'] !== null ? (int)$row['duration_months'] : null;
+                $row['allow_video_download'] = (int)($row['allow_video_download'] ?? 0);
                 $row['intro_video'] = $row['video_preview_url'] ?? null;
                 $row['subject_id'] = $sId;
                 $row['category_id'] = $catId;
@@ -410,7 +411,7 @@ if (!function_exists('adminGetCourse')) {
             return ['status' => 'error', 'message' => 'Course ID is required'];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, duration_months, price, image, lessons_count, is_active, created_by_type, created_by_id, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, duration_months, allow_video_download, price, image, lessons_count, is_active, created_by_type, created_by_id, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
         if (!$stmt) {
             $stmt = mysqli_prepare($con, "SELECT id, category_id, academic_year_id, teacher_id, slug, type, kind, price, image, lessons_count, is_active, created_at, updated_at FROM courses WHERE id = ? LIMIT 1");
         }
@@ -437,6 +438,7 @@ if (!function_exists('adminGetCourse')) {
         $row['type'] = $row['type'] ?? 'recorded';
         $row['kind'] = $row['kind'] ?? 'normal';
         $row['duration_months'] = isset($row['duration_months']) && $row['duration_months'] !== null ? (int)$row['duration_months'] : null;
+        $row['allow_video_download'] = (int)($row['allow_video_download'] ?? 0);
         $row['subject_id'] = $sId;
         $row['category_id'] = $catId;
         $row['academic_year_id'] = $ayId;
@@ -497,6 +499,7 @@ if (!function_exists('adminCreateCourse')) {
         $type = isset($body['type']) && trim($body['type']) !== '' ? strtolower(trim($body['type'])) : 'recorded';
         $kind = isset($body['kind']) && strtolower(trim($body['kind'])) === 'package' ? 'package' : 'normal';
         $durationMonths = parse_package_duration_months($body['duration_months'] ?? $body['duration'] ?? null);
+        $allowVideoDownload = isset($body['allow_video_download']) ? (int)(bool)$body['allow_video_download'] : 0;
 
         if (empty($nameAr)) {
             return ['status' => 'error', 'message' => 'Course name (name_ar) is required'];
@@ -522,8 +525,8 @@ if (!function_exists('adminCreateCourse')) {
         $createdByAdminId = $adminId > 0 ? $adminId : null;
 
         $stmt = mysqli_prepare($con, "
-            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, duration_months, price, image, is_active, created_by_type, created_by_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?)
+            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, duration_months, allow_video_download, price, image, is_active, created_by_type, created_by_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?)
         ");
         if (!$stmt) {
             $stmt = mysqli_prepare($con, "
@@ -534,7 +537,7 @@ if (!function_exists('adminCreateCourse')) {
                 mysqli_stmt_bind_param($stmt, "iiissdsi", $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $price, $image, $isActive);
             }
         } else {
-            mysqli_stmt_bind_param($stmt, "iiiisssidsii", $subjectId, $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $kind, $durationMonths, $price, $image, $isActive, $createdByAdminId);
+            mysqli_stmt_bind_param($stmt, "iiiisssiidsii", $subjectId, $categoryId, $academicYearId, $primaryTeacherId, $slug, $type, $kind, $durationMonths, $allowVideoDownload, $price, $image, $isActive, $createdByAdminId);
         }
 
         if (!$stmt || !mysqli_stmt_execute($stmt)) {
@@ -644,6 +647,14 @@ if (!function_exists('adminUpdateCourse')) {
             $stmt = mysqli_prepare($con, "UPDATE courses SET kind = ? WHERE id = ?");
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, "si", $kind, $id);
+                mysqli_stmt_execute($stmt);
+            }
+        }
+        if (array_key_exists('allow_video_download', $body)) {
+            $allowVideoDownload = (int)(bool)$body['allow_video_download'];
+            $stmt = mysqli_prepare($con, "UPDATE courses SET allow_video_download = ? WHERE id = ?");
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "ii", $allowVideoDownload, $id);
                 mysqli_stmt_execute($stmt);
             }
         }

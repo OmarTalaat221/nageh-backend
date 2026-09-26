@@ -793,7 +793,8 @@
         "properties": {
           "currency": {
             "type": "string",
-            "example": "EGP"
+            "example": "USD",
+            "description": "update-3: the platform prices everything in US dollars. `payment_transactions.currency` used to default to 'EGP' because the EasyKash gateway was wired up first, but no gateway is actually in use; migration 067 switches the column default to 'USD' and relabels existing rows, so revenue totals never sum two currencies into one number."
           },
           "total": {
             "type": "number",
@@ -7028,7 +7029,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Grant a subscription directly to a student, with NO code",
-        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".",
+        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".\n\nupdate-3 (BEHAVIOUR CHANGE): when neither `end_date` nor `duration_days` is sent and the granted courses include a package, the subscription's `end_date` becomes start + the longest selected package's `courses.duration_months`. Package grants used to be stored with `end_date` NULL, i.e. access that never expired.",
         "security": [
           {
             "AdminAuth": []
@@ -7251,7 +7252,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Create subscription code(s) targeting a course, subject, or teacher",
-        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.",
+        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
         "security": [
           {
             "AdminAuth": []
@@ -7289,7 +7290,8 @@
                   },
                   "duration_days": {
                     "type": "integer",
-                    "nullable": true
+                    "nullable": true,
+                    "description": "update-3: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
                   },
                   "valid_from": {
                     "type": "string",
@@ -7356,7 +7358,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Update a subscription code, including switching its type",
-        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.",
+        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
         "security": [
           {
             "AdminAuth": []
@@ -7391,7 +7393,8 @@
                   },
                   "duration_days": {
                     "type": "integer",
-                    "nullable": true
+                    "nullable": true,
+                    "description": "update-3: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
                   },
                   "valid_from": {
                     "type": "string",
@@ -7541,8 +7544,8 @@
         "tags": [
           "Student / Subscriptions (update-1)"
         ],
-        "summary": "update-1: Redeem a subscription code as a logged-in student",
-        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone). update-2 (Student): the resulting subscription's type is now 'package' (instead of always 'course') when every course the code is linked to has kind='package'. NOTE for API consumers creating codes (see POST /admin/subscription-codes): if a code is created with NO course_ids/subject_ids/teacher_ids linked at all, redeeming it here returns success but the message is \"this activation code isn't linked to any content\" and no access is granted — always send at least one of those three arrays when creating a code.",
+        "summary": "update-3 (CHANGED): Redeem a subscription code - a package code now inherits the package's duration",
+        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone). update-2 (Student): the resulting subscription's type is now 'package' (instead of always 'course') when every course the code is linked to has kind='package'. NOTE for API consumers creating codes (see POST /admin/subscription-codes): if a code is created with NO course_ids/subject_ids/teacher_ids linked at all, redeeming it here returns success but the message is \"this activation code isn't linked to any content\" and no access is granted — always send at least one of those three arrays when creating a code.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
         "security": [
           {
             "StudentAuth": []

@@ -64,6 +64,8 @@ if (!function_exists('teacherCreateCourse')) {
         $slug = strtolower(trim($body['slug'] ?? ''));
         $type = isset($body['type']) && trim($body['type']) !== '' ? strtolower(trim($body['type'])) : 'recorded';
         $kind = isset($body['kind']) && strtolower(trim($body['kind'])) === 'package' ? 'package' : 'normal';
+        $durationMonths = parse_package_duration_months($body['duration_months'] ?? $body['duration'] ?? null);
+        $allowVideoDownload = isset($body['allow_video_download']) ? (int)(bool)$body['allow_video_download'] : 0;
 
         if ($subjectId <= 0) {
             return ['status' => 'error', 'message' => 'subject_id is required'];
@@ -89,14 +91,14 @@ if (!function_exists('teacherCreateCourse')) {
         $image = process_image_input($imageInput, 'courses', $fileImage);
 
         $stmt = mysqli_prepare($con, "
-            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, price, image, is_active, created_by_type, created_by_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'teacher', ?)
+            INSERT INTO courses (subject_id, category_id, academic_year_id, teacher_id, slug, type, kind, duration_months, allow_video_download, price, image, is_active, created_by_type, created_by_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'teacher', ?)
         ");
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Failed to prepare course insert: ' . mysqli_error($con)];
         }
 
-        mysqli_stmt_bind_param($stmt, "iiiisssdsii", $subjectId, $categoryId, $academicYearId, $teacherId, $slug, $type, $kind, $price, $image, $isActive, $teacherId);
+        mysqli_stmt_bind_param($stmt, "iiiisssiidsii", $subjectId, $categoryId, $academicYearId, $teacherId, $slug, $type, $kind, $durationMonths, $allowVideoDownload, $price, $image, $isActive, $teacherId);
 
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create course: ' . mysqli_error($con)];
