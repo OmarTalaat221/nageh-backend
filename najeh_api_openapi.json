@@ -4901,8 +4901,8 @@
         "tags": [
           "Content / Questions"
         ],
-        "summary": "Create question (NEW: order_num, mcq_options alias, written type)",
-        "description": "CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\nCASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n- question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n- question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n- question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.",
+        "summary": "update-3 (NEW: question_image upload): Create question (order_num, mcq_options alias, written type, optional image)",
+        "description": "CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\nCASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n- question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n- question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n- question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.\n\nupdate-3 (NEW): `question_image` (see its own property description) attaches an image to the question - useful for MCQ/true-false/written questions built around a diagram, graph or photographed problem, independent of question_type.\n\nupdate-3 (VALIDATION CHANGE): question text is NO LONGER required - a question with only an image and no text is now accepted (previously `question_text_ar`/`question_text_en`/`question_text` all being empty returned a 422 'Question text is required'; that check was removed specifically to support image-only questions). Send at least one of {text, image} in practice, though nothing currently enforces it.",
         "security": [
           {
             "AdminAuth": []
@@ -5012,6 +5012,11 @@
                   "model_answer": {
                     "type": "string",
                     "description": "NEW"
+                  },
+                  "question_image": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "update-3 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
                   }
                 }
               },
@@ -5036,7 +5041,7 @@
         "tags": [
           "Content / Questions"
         ],
-        "summary": "Update question (fully re-saves/clears data on type switch)",
+        "summary": "update-3 (NEW: question_image upload): Update question - also handles switching type, and clearing/replacing the image",
         "security": [
           {
             "AdminAuth": []
@@ -5050,6 +5055,11 @@
                 "properties": {
                   "id": {
                     "type": "integer"
+                  },
+                  "question_image": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "update-3 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
                   }
                 }
               },
@@ -5070,7 +5080,8 @@
               }
             }
           }
-        }
+        },
+        "description": "update-3 (NEW): see `question_image` on the create operation for the 3 accepted input forms and how to clear it (empty string/null) vs leave it untouched (omit the field)."
       },
       "delete": {
         "tags": [

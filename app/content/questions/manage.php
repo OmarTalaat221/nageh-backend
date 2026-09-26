@@ -6,7 +6,14 @@ require_once __DIR__ . '/../../../helpers/entities.php';
 
 if (!function_exists('get_json_input')) {
     function get_json_input(): array {
-        return read_json_body();
+        $json = read_json_body();
+        if (!empty($json)) {
+            return $json;
+        }
+        if (!empty($_POST)) {
+            return $_POST;
+        }
+        return [];
     }
 }
 
@@ -16,10 +23,81 @@ if (!function_exists('json_error')) {
     }
 }
 
+if (!function_exists('handle_question_image_upload')) {
+    function handle_question_image_upload(array $input, ?string $existingImage = null): string {
+        // 1. Check $_FILES for multipart/form-data upload
+        $fileKey = null;
+        if (isset($_FILES['question_image']) && !empty($_FILES['question_image']['name']) && $_FILES['question_image']['error'] === UPLOAD_ERR_OK) {
+            $fileKey = 'question_image';
+        } elseif (isset($_FILES['image']) && !empty($_FILES['image']['name']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $fileKey = 'image';
+        }
+
+        if ($fileKey !== null) {
+            if (function_exists('handle_file_upload')) {
+                $uploaded = handle_file_upload($fileKey, 'questions');
+                if ($uploaded) return $uploaded;
+            } elseif (function_exists('upload_file')) {
+                $uploaded = upload_file($_FILES[$fileKey], 'questions');
+                if ($uploaded) return $uploaded;
+            } elseif (function_exists('upload_image')) {
+                $uploaded = upload_image($_FILES[$fileKey], 'questions');
+                if ($uploaded) return $uploaded;
+            } else {
+                // Fallback manual upload if helper functions are named differently
+                $ext = strtolower(pathinfo($_FILES[$fileKey]['name'], PATHINFO_EXTENSION));
+                $filename = 'question_' . uniqid('', true) . '.' . $ext;
+                $targetDir = __DIR__ . '/../../../uploads/questions/';
+                if (!is_dir($targetDir)) {
+                    @mkdir($targetDir, 0777, true);
+                }
+                if (move_uploaded_file($_FILES[$fileKey]['tmp_name'], $targetDir . $filename)) {
+                    return 'uploads/questions/' . $filename;
+                }
+            }
+        }
+
+        // 2. Check if a Base64 string was passed in JSON or POST
+        $rawImage = $input['question_image'] ?? $input['image'] ?? null;
+        if (!empty($rawImage) && is_string($rawImage)) {
+            if (preg_match('/^data:image\/(\w+);base64,/', $rawImage, $type)) {
+                if (function_exists('upload_image_base64')) {
+                    $uploaded = upload_image_base64($rawImage, 'questions');
+                    if ($uploaded) return $uploaded;
+                }
+                $data = substr($rawImage, strpos($rawImage, ',') + 1);
+                $data = base64_decode($data);
+                if ($data !== false) {
+                    $ext = strtolower($type[1]);
+                    if ($ext === 'jpeg') $ext = 'jpg';
+                    $filename = 'question_' . uniqid('', true) . '.' . $ext;
+                    $targetDir = __DIR__ . '/../../../uploads/questions/';
+                    if (!is_dir($targetDir)) {
+                        @mkdir($targetDir, 0777, true);
+                    }
+                    if (file_put_contents($targetDir . $filename, $data)) {
+                        return 'uploads/questions/' . $filename;
+                    }
+                }
+            } else {
+                // Already a URL or relative path
+                return trim($rawImage);
+            }
+        }
+
+        // 3. Explicit removal if empty string was passed
+        if ($existingImage !== null && (array_key_exists('question_image', $input) || array_key_exists('image', $input))) {
+            $val = $input['question_image'] ?? $input['image'] ?? null;
+            if ($val === '' || $val === null) {
+                return '';
+            }
+        }
+
+        return $existingImage ?? '';
+    }
+}
+
 if (!function_exists('save_written_model_answer')) {
-    // Replaces the written-question model answer with the given text (per
-    // active language). Always clears the old row first so switching a
-    // question's type away from "written" leaves no orphaned answer behind.
     function save_written_model_answer($con, int $questionId, string $modelAnswerAr, string $modelAnswerEn, array $languages): void {
         mysqli_query($con, "DELETE FROM written_model_answers WHERE question_id = {$questionId}");
 
@@ -52,7 +130,7 @@ if (!function_exists('adminGetQuestionDetails')) {
         if (!$questionId) return null;
         $langInfo = get_language_info($con);
 
-        $stmt = mysqli_prepare($con, "SELECT id, exam_id, course_id, unit_id, subject_id, question_type, order_num, score, is_active, created_by_type, created_by_id, created_at, updated_at FROM questions WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, exam_id, course_id, unit_id, subject_id, question_type, question_image, order_num, score, is_active, created_by_type, created_by_id, created_at, updated_at FROM questions WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $questionId);
         mysqli_stmt_execute($stmt);
@@ -65,6 +143,7 @@ if (!function_exists('adminGetQuestionDetails')) {
         $row['course_id'] = (int)$row['course_id'];
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
+        $row['question_image'] = $row['question_image'] ?? null;
         $row['order_num'] = (int)($row['order_num'] ?? 0);
         $row['score'] = (float)$row['score'];
         $row['is_active'] = (int)$row['is_active'];
@@ -229,9 +308,6 @@ if (!function_exists('adminCreateQuestion')) {
         $unitId = isset($input['unit_id']) && $input['unit_id'] !== '' ? (int)$input['unit_id'] : null;
         $subjectId = isset($input['subject_id']) && $input['subject_id'] !== '' ? (int)$input['subject_id'] : null;
 
-        // Frontends only ever send exam_id when creating an exam question — the
-        // course/unit/subject scope is derived from the exam itself, since
-        // questions.course_id is NOT NULL and must reference a real course.
         if ($examId > 0 && ($courseId <= 0 || $unitId === null || $subjectId === null)) {
             $examRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT course_id, unit_id, subject_id FROM course_exams WHERE id = {$examId} LIMIT 1"));
             if ($examRow) {
@@ -256,15 +332,12 @@ if (!function_exists('adminCreateQuestion')) {
         }
 
         $qType = trim($input['question_type'] ?? 'mcq');
+        $questionImage = handle_question_image_upload($input);
         $score = isset($input['score']) ? (float)$input['score'] : 1.00;
         $isActive = isset($input['is_active']) ? (int)$input['is_active'] : 1;
 
         $textAr = trim($input['question_text_ar'] ?? $input['question_text'] ?? '');
         $textEn = trim($input['question_text_en'] ?? $input['question_text'] ?? '');
-
-        if (!$textAr && !$textEn) {
-            return json_error('Question text is required', 422);
-        }
 
         $createdByType = 'admin';
         $createdById = 1;
@@ -280,12 +353,12 @@ if (!function_exists('adminCreateQuestion')) {
         $nextOrderRes = mysqli_query($con, "SELECT COALESCE(MAX(order_num), 0) + 1 AS next_order FROM questions WHERE exam_id = {$examId}");
         $orderNum = $nextOrderRes ? (int)(mysqli_fetch_assoc($nextOrderRes)['next_order'] ?? 1) : 1;
 
-        $stmt = mysqli_prepare($con, "INSERT INTO questions (exam_id, course_id, unit_id, subject_id, question_type, order_num, score, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = mysqli_prepare($con, "INSERT INTO questions (exam_id, course_id, unit_id, subject_id, question_type, question_image, order_num, score, is_active, created_by_type, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) {
             return json_error('Database error: ' . mysqli_error($con), 500);
         }
 
-        mysqli_stmt_bind_param($stmt, "iiiisidisi", $examId, $courseId, $unitId, $subjectId, $qType, $orderNum, $score, $isActive, $createdByType, $createdById);
+        mysqli_stmt_bind_param($stmt, "iiiissidisi", $examId, $courseId, $unitId, $subjectId, $qType, $questionImage, $orderNum, $score, $isActive, $createdByType, $createdById);
 
         if (!mysqli_stmt_execute($stmt)) {
             return json_error('Failed to create question: ' . mysqli_stmt_error($stmt), 500);
@@ -311,6 +384,13 @@ if (!function_exists('adminCreateQuestion')) {
         }
 
         $mcqOptionsInput = $input['mcq_options'] ?? $input['options'] ?? null;
+        if (is_string($mcqOptionsInput)) {
+            $decoded = json_decode($mcqOptionsInput, true);
+            if (is_array($decoded)) {
+                $mcqOptionsInput = $decoded;
+            }
+        }
+
         if ($qType === 'mcq' && !empty($mcqOptionsInput) && is_array($mcqOptionsInput)) {
             foreach ($mcqOptionsInput as $idx => $opt) {
                 $optKey = trim($opt['option_key'] ?? chr(65 + $idx));
@@ -379,14 +459,15 @@ if (!function_exists('adminUpdateQuestion')) {
         $unitId = isset($input['unit_id']) ? (int)$input['unit_id'] : $existing['unit_id'];
         $subjectId = isset($input['subject_id']) ? (int)$input['subject_id'] : $existing['subject_id'];
         $qType = trim($input['question_type'] ?? $existing['question_type']);
+        $questionImage = handle_question_image_upload($input, $existing['question_image'] ?? '');
         $orderNum = isset($input['order_num']) ? (int)$input['order_num'] : $existing['order_num'];
         $score = isset($input['score']) ? (float)$input['score'] : $existing['score'];
         $isActive = isset($input['is_active']) ? (int)$input['is_active'] : $existing['is_active'];
 
-        $stmt = mysqli_prepare($con, "UPDATE questions SET exam_id = ?, course_id = ?, unit_id = ?, subject_id = ?, question_type = ?, order_num = ?, score = ?, is_active = ? WHERE id = ?");
+        $stmt = mysqli_prepare($con, "UPDATE questions SET exam_id = ?, course_id = ?, unit_id = ?, subject_id = ?, question_type = ?, question_image = ?, order_num = ?, score = ?, is_active = ? WHERE id = ?");
         if (!$stmt) return json_error('Database error: ' . mysqli_error($con), 500);
 
-        mysqli_stmt_bind_param($stmt, "iiiisidii", $examId, $courseId, $unitId, $subjectId, $qType, $orderNum, $score, $isActive, $id);
+        mysqli_stmt_bind_param($stmt, "iiiissidii", $examId, $courseId, $unitId, $subjectId, $qType, $questionImage, $orderNum, $score, $isActive, $id);
 
         if (!mysqli_stmt_execute($stmt)) {
             return json_error('Failed to update question: ' . mysqli_stmt_error($stmt), 500);
@@ -412,15 +493,18 @@ if (!function_exists('adminUpdateQuestion')) {
             }
         }
 
-        // Comprehensive, like create: whichever type the question now has,
-        // its answer data is fully (re)saved and the other two types' leftover
-        // rows are cleared — so switching type or editing options/correct
-        // answer/model answer all work from this one endpoint, not just text/score/status.
         if ($qType === 'mcq') {
             mysqli_query($con, "DELETE FROM true_false_answers WHERE question_id = {$id}");
             mysqli_query($con, "DELETE FROM written_model_answers WHERE question_id = {$id}");
 
             $mcqOptionsInput = $input['mcq_options'] ?? $input['options'] ?? null;
+            if (is_string($mcqOptionsInput)) {
+                $decoded = json_decode($mcqOptionsInput, true);
+                if (is_array($decoded)) {
+                    $mcqOptionsInput = $decoded;
+                }
+            }
+
             if (!empty($mcqOptionsInput) && is_array($mcqOptionsInput)) {
                 mysqli_query($con, "DELETE FROM mcq_options WHERE question_id = {$id}");
                 foreach ($mcqOptionsInput as $idx => $opt) {
@@ -510,9 +594,6 @@ if (!function_exists('adminDeleteQuestion')) {
 }
 
 if (!function_exists('adminReorderQuestions')) {
-    // Persists a manually drag-reordered list of questions within one exam.
-    // Body: { exam_id, ordered_ids: [question_id, question_id, ...] } — the
-    // new order, top to bottom.
     function adminReorderQuestions($con, $creatorData = null) {
         $input = get_json_input();
         $examId = isset($input['exam_id']) ? (int)$input['exam_id'] : 0;
