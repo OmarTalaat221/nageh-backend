@@ -1218,6 +1218,71 @@
             "type": "string"
           }
         }
+      },
+      "StudentCertificate": {
+        "type": "object",
+        "description": "One certificate awarded to one student. `course_id` is nullable: a certificate can be granted at any time without belonging to any course, which is what the admin grant screen does.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "certificate_id": {
+            "type": "integer"
+          },
+          "student_id": {
+            "type": "integer"
+          },
+          "student_name": {
+            "type": "string"
+          },
+          "student_email": {
+            "type": "string",
+            "nullable": true
+          },
+          "student_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "course_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Copied from the certificate template; null when the certificate is not tied to a course."
+          },
+          "exam_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "certificate_code": {
+            "type": "string",
+            "description": "Unique per issued certificate, generated on grant."
+          },
+          "pdf_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "score_achieved": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "grade_obtained": {
+            "type": "string",
+            "nullable": true
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "certificate": {
+            "type": "object",
+            "nullable": true,
+            "description": "The certificate template this was issued from."
+          },
+          "course": {
+            "type": "object",
+            "nullable": true
+          }
+        }
       }
     }
   },
@@ -7252,7 +7317,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Create subscription code(s) targeting a course, subject, or teacher",
-        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
+        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-3 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
         "security": [
           {
             "AdminAuth": []
@@ -7282,7 +7347,8 @@
                     "default": "NAJEH"
                   },
                   "price": {
-                    "type": "number"
+                    "type": "number",
+                    "description": "update-3: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
                   },
                   "max_uses": {
                     "type": "integer",
@@ -7358,7 +7424,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Update a subscription code, including switching its type",
-        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
+        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-3 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
         "security": [
           {
             "AdminAuth": []
@@ -7386,7 +7452,8 @@
                     "type": "string"
                   },
                   "price": {
-                    "type": "number"
+                    "type": "number",
+                    "description": "update-3: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
                   },
                   "max_uses": {
                     "type": "integer"
@@ -12916,6 +12983,408 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/student-certificates": {
+      "get": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "update-3 (NEW): List certificates issued to students",
+        "description": "Newest issue date first.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "certificate_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "A course id, or the literal `none` to list only certificates granted outside any course."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Alias `q`. Matches student name, student email or the certificate code."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StudentCertificate"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "update-3 (NEW for admin): Grant a certificate to one or more students",
+        "description": "Awards an existing certificate to students. The grant logic itself already existed but was only reachable by a teacher, so an admin could not award a certificate at all.\n\nNO COURSE IS REQUIRED: the issued row takes its `course_id` from the certificate template, and a template without a course produces a certificate with `course_id` null. A certificate can therefore be granted to any student at any time, independently of enrolment.\n\nA student who already holds this certificate is SKIPPED rather than duplicated, so re-sending the same list is safe. The response separates `issued`, `skipped` and `failed`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "certificate_id"
+                ],
+                "properties": {
+                  "certificate_id": {
+                    "type": "integer"
+                  },
+                  "student_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "One or more students. `student_id` is accepted as a single-value alias."
+                  },
+                  "student_id": {
+                    "type": "integer",
+                    "description": "Alias for a single student."
+                  },
+                  "issue_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Defaults to today."
+                  },
+                  "score_achieved": {
+                    "type": "number",
+                    "format": "float",
+                    "nullable": true
+                  },
+                  "grade_obtained": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "pdf_url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "exam_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Optional link to the exam that earned it; validated when sent."
+                  }
+                }
+              },
+              "example": {
+                "certificate_id": 4,
+                "student_ids": [
+                  1001,
+                  1002
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Which students were issued, skipped or failed."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "update-3 (NEW): Revoke a certificate from a student",
+        "description": "Deletes the issued row by its own id (NOT the certificate template id). The template itself is untouched.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "The `student_certificates.id` of the issued certificate."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revoked."
+          }
+        }
+      }
+    },
+    "/teacher/student-certificates": {
+      "get": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "update-3 (NEW): List certificates this teacher has issued",
+        "description": "Same as the admin listing, scoped by the token: a teacher sees issued certificates whose template they created, or that is assigned to them, or that an admin created and no teacher owns. `teacher_id` cannot be passed in - it comes from the token.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "certificate_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "A course id, or the literal `none` to list only certificates granted outside any course."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Alias `q`. Matches student name, student email or the certificate code."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StudentCertificate"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "Grant a certificate to one or more students (teacher)",
+        "description": "Existing route, unchanged. Identical behaviour to the admin grant: no course is required, and a student who already holds the certificate is skipped rather than duplicated.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "certificate_id"
+                ],
+                "properties": {
+                  "certificate_id": {
+                    "type": "integer"
+                  },
+                  "student_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "One or more students. `student_id` is accepted as a single-value alias."
+                  },
+                  "student_id": {
+                    "type": "integer",
+                    "description": "Alias for a single student."
+                  },
+                  "issue_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Defaults to today."
+                  },
+                  "score_achieved": {
+                    "type": "number",
+                    "format": "float",
+                    "nullable": true
+                  },
+                  "grade_obtained": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "pdf_url": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "exam_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Optional link to the exam that earned it; validated when sent."
+                  }
+                }
+              },
+              "example": {
+                "certificate_id": 4,
+                "student_ids": [
+                  1001,
+                  1002
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Which students were issued, skipped or failed."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Content / Certificates"
+        ],
+        "summary": "update-3 (NEW): Revoke a certificate this teacher granted",
+        "description": "Refused unless the certificate template belongs to this teacher (created by them, or assigned to them). Ownership is checked on the server, not taken from the request.",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "The `student_certificates.id` of the issued certificate."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Revoked."
           }
         }
       }

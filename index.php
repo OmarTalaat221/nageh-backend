@@ -1280,6 +1280,26 @@ $routes = [
             return adminAddStudentCertificate($con, $teacherData);
         },
     ],
+    [
+        "method" => "GET",
+        "path" => "/najeh/teacher/student-certificates",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/content/certificates/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherListStudentCertificates($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "DELETE",
+        "path" => "/najeh/teacher/student-certificates",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/content/certificates/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherRevokeStudentCertificate($con, $teacherData);
+        },
+    ],
         [
         "method" => "POST",
         "path" => "/najeh/teacher/course-student",
@@ -3566,6 +3586,41 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
                 return adminDeleteCertificate($con);
+            },
+        ],
+
+        // Admin: certificates issued to students (not tied to any course) ----
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/student-certificates",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/content/certificates/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListStudentCertificates($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/student-certificates",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/content/certificates/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminAddStudentCertificate($con, $adminData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/student-certificates",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/content/certificates/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminRevokeStudentCertificate($con);
             },
         ],
 

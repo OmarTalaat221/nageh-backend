@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
+require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../helpers.php';
 
 if (!function_exists('get_certificate_details')) {
@@ -851,5 +852,198 @@ if (!function_exists('get_course_students')) {
         mysqli_stmt_close($stmt);
 
         return ['status' => 'success', 'message' => $students];
+    }
+}
+/**
+ * Certificates already issued to students. `student_certificates.course_id` is nullable, so a
+ * certificate granted outside any course shows up here with a null course rather than being
+ * impossible to record.
+ */
+if (!function_exists('adminListStudentCertificates')) {
+    function adminListStudentCertificates($con) {
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+        $offset = ($page - 1) * $limit;
+        $search = trim($_GET['search'] ?? $_GET['q'] ?? '');
+
+        $where = [];
+        $params = [];
+        $types = '';
+
+        if (!empty($_GET['student_id'])) {
+            $where[] = 'sc.student_id = ?';
+            $params[] = (int)$_GET['student_id'];
+            $types .= 'i';
+        }
+        if (!empty($_GET['certificate_id'])) {
+            $where[] = 'sc.certificate_id = ?';
+            $params[] = (int)$_GET['certificate_id'];
+            $types .= 'i';
+        }
+        // Same ownership rule the certificates list uses: a teacher sees certificates they created,
+        // ones explicitly assigned to them, and admin-made ones that no teacher owns.
+        $teacherId = (int)($_GET['teacher_id'] ?? 0);
+        if ($teacherId > 0) {
+            $where[] = "sc.certificate_id IN (
+                SELECT c.id FROM certificates c
+                LEFT JOIN certificate_teachers ct ON ct.certificate_id = c.id
+                WHERE (c.created_by_type = 'teacher' AND c.created_by_id = ?)
+                   OR (ct.teacher_id = ? AND ct.is_active = 1)
+                   OR (c.created_by_type = 'admin' AND NOT EXISTS (
+                        SELECT 1 FROM certificate_teachers ct_chk
+                        WHERE ct_chk.certificate_id = c.id AND ct_chk.is_active = 1
+                   ))
+            )";
+            $params[] = $teacherId;
+            $params[] = $teacherId;
+            $types .= 'ii';
+        }
+
+        if (isset($_GET['course_id']) && $_GET['course_id'] !== '') {
+            if ((string)$_GET['course_id'] === 'none') {
+                $where[] = 'sc.course_id IS NULL';
+            } else {
+                $where[] = 'sc.course_id = ?';
+                $params[] = (int)$_GET['course_id'];
+                $types .= 'i';
+            }
+        }
+        if ($search !== '') {
+            $where[] = '(st.name LIKE ? OR st.email LIKE ? OR sc.certificate_code LIKE ?)';
+            $pattern = '%' . $search . '%';
+            array_push($params, $pattern, $pattern, $pattern);
+            $types .= 'sss';
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $countSql = "SELECT COUNT(*) AS total FROM student_certificates sc LEFT JOIN students st ON st.id = sc.student_id {$whereSql}";
+        if ($params) {
+            $countStmt = mysqli_prepare($con, $countSql);
+            mysqli_stmt_bind_param($countStmt, $types, ...$params);
+            mysqli_stmt_execute($countStmt);
+            $total = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($countStmt))['total'] ?? 0);
+        } else {
+            $countRes = mysqli_query($con, $countSql);
+            $total = $countRes ? (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0) : 0;
+        }
+
+        $sql = "
+            SELECT sc.id, sc.certificate_id, sc.student_id, sc.course_id, sc.exam_id,
+                   sc.certificate_code, sc.pdf_url, sc.score_achieved, sc.grade_obtained,
+                   sc.issue_date, sc.created_at,
+                   st.name AS student_name, st.email AS student_email, st.image AS student_image
+            FROM student_certificates sc
+            LEFT JOIN students st ON st.id = sc.student_id
+            {$whereSql}
+            ORDER BY sc.issue_date DESC, sc.id DESC
+            LIMIT ? OFFSET ?
+        ";
+        $listParams = $params;
+        $listTypes = $types . 'ii';
+        $listParams[] = $limit;
+        $listParams[] = $offset;
+
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, $listTypes, ...$listParams);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $rows = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $row['id'] = (int)$row['id'];
+            $row['certificate_id'] = (int)$row['certificate_id'];
+            $row['student_id'] = (int)$row['student_id'];
+            $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
+            $row['exam_id'] = $row['exam_id'] ? (int)$row['exam_id'] : null;
+            $row['score_achieved'] = $row['score_achieved'] !== null ? (float)$row['score_achieved'] : null;
+            $row['certificate'] = get_certificate_details($con, $row['certificate_id']);
+            $row['course'] = $row['course_id'] ? get_course_details($con, $row['course_id']) : null;
+            $rows[] = $row;
+        }
+
+        return build_paginated_response(format_response_images($rows), $page, $limit, $total);
+    }
+}
+
+if (!function_exists('adminRevokeStudentCertificate')) {
+    function adminRevokeStudentCertificate($con) {
+        $body = read_json_body();
+        $id = (int)($body['id'] ?? $body['student_certificate_id'] ?? $_GET['id'] ?? 0);
+        if ($id <= 0) {
+            return ['status' => 'error', 'message' => 'Student certificate id is required'];
+        }
+
+        $stmt = mysqli_prepare($con, "DELETE FROM student_certificates WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $id);
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['status' => 'error', 'message' => 'Failed to revoke certificate: ' . mysqli_error($con)];
+        }
+        if (mysqli_stmt_affected_rows($stmt) === 0) {
+            return ['status' => 'error', 'message' => 'Student certificate not found'];
+        }
+
+        return ['status' => 'success', 'message' => 'تم سحب الشهادة من الطالب'];
+    }
+}
+
+/**
+ * Teacher-side wrappers. The teacher id comes from the token, never the request, so a teacher can
+ * only ever list or revoke certificates within their own scope.
+ */
+if (!function_exists('teacher_certificate_scope_id')) {
+    function teacher_certificate_scope_id($teacherData): int {
+        if (is_array($teacherData)) {
+            return (int)($teacherData['id'] ?? $teacherData['teacher_id'] ?? 0);
+        }
+        if (is_object($teacherData)) {
+            return (int)($teacherData->id ?? $teacherData->teacher_id ?? 0);
+        }
+        return 0;
+    }
+}
+
+if (!function_exists('teacherListStudentCertificates')) {
+    function teacherListStudentCertificates($con, $teacherData = null) {
+        $teacherId = teacher_certificate_scope_id($teacherData);
+        if ($teacherId <= 0) {
+            return ['status' => 'error', 'message' => 'Teacher authentication is required'];
+        }
+        $_GET['teacher_id'] = $teacherId;
+        return adminListStudentCertificates($con);
+    }
+}
+
+if (!function_exists('teacherRevokeStudentCertificate')) {
+    function teacherRevokeStudentCertificate($con, $teacherData = null) {
+        $teacherId = teacher_certificate_scope_id($teacherData);
+        if ($teacherId <= 0) {
+            return ['status' => 'error', 'message' => 'Teacher authentication is required'];
+        }
+
+        $body = read_json_body();
+        $id = (int)($body['id'] ?? $body['student_certificate_id'] ?? $_GET['id'] ?? 0);
+        if ($id <= 0) {
+            return ['status' => 'error', 'message' => 'Student certificate id is required'];
+        }
+
+        // Revoking is destructive, so ownership is checked here rather than trusted from the client.
+        $stmt = mysqli_prepare($con, "
+            SELECT sc.id
+            FROM student_certificates sc
+            JOIN certificates c ON c.id = sc.certificate_id
+            LEFT JOIN certificate_teachers ct ON ct.certificate_id = c.id
+            WHERE sc.id = ?
+              AND ((c.created_by_type = 'teacher' AND c.created_by_id = ?)
+                   OR (ct.teacher_id = ? AND ct.is_active = 1))
+            LIMIT 1
+        ");
+        mysqli_stmt_bind_param($stmt, "iii", $id, $teacherId, $teacherId);
+        mysqli_stmt_execute($stmt);
+        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))) {
+            return ['status' => 'error', 'message' => 'This certificate was not granted from one of your certificates'];
+        }
+
+        return adminRevokeStudentCertificate($con);
     }
 }
