@@ -741,6 +741,193 @@
             }
           }
         }
+      },
+      "DashboardEntityCount": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "integer"
+          }
+        }
+      },
+      "DashboardSalesSource": {
+        "type": "object",
+        "description": "One revenue channel. The four channels together make up every figure in `sales`.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "online_payments",
+              "subscription_codes",
+              "offline_book_grants",
+              "legacy_transactions"
+            ],
+            "description": "`online_payments` = paid rows in payment_transactions (EasyKash purchases of a course or a book). `subscription_codes` = every row in code_redemptions_log, valued at subscription_codes.price. `offline_book_grants` = student_book_subscriptions rows with price > 0 that an admin/teacher created by hand - rows that came from an online purchase are excluded here (they are matched through payment_transactions.granted_ref_id) so a paid book is never counted twice. `legacy_transactions` = the old, no-longer-written `transactions` ledger; nothing inserts into it today, but historical rows in it were real money and are still included."
+          },
+          "label_ar": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number",
+            "format": "float"
+          },
+          "orders": {
+            "type": "integer"
+          },
+          "today": {
+            "type": "number",
+            "format": "float"
+          },
+          "this_month": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "DashboardSales": {
+        "type": "object",
+        "description": "Platform revenue. `total`/`today`/`this_month`/`this_year` are the SUM across all four channels in `sources`, so `total` always equals the sum of `sources[].total`.",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "example": "EGP"
+          },
+          "total": {
+            "type": "number",
+            "format": "float",
+            "description": "All-time revenue across every channel."
+          },
+          "today": {
+            "type": "number",
+            "format": "float",
+            "description": "Revenue earned today (server date)."
+          },
+          "this_month": {
+            "type": "number",
+            "format": "float"
+          },
+          "this_year": {
+            "type": "number",
+            "format": "float"
+          },
+          "orders_total": {
+            "type": "integer",
+            "description": "Number of paid transactions across every channel, all time."
+          },
+          "orders_today": {
+            "type": "integer"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardSalesSource"
+            }
+          },
+          "online_by_item": {
+            "type": "object",
+            "description": "Split of the `online_payments` channel only, by what was bought.",
+            "properties": {
+              "courses": {
+                "type": "number",
+                "format": "float"
+              },
+              "books": {
+                "type": "number",
+                "format": "float"
+              }
+            }
+          },
+          "manual_grants_without_price": {
+            "type": "integer",
+            "description": "Count of student_subscriptions an admin handed out by hand - no code, no payment. The schema stores no price for these, so they cannot appear in any revenue figure. The count is returned so that gap is visible instead of looking like missing money."
+          }
+        }
+      },
+      "DashboardCourseSales": {
+        "type": "object",
+        "description": "Sales of a single course, highest revenue first in the array (so index 0 is the best seller). Counts paid course rows in payment_transactions, code redemptions that unlock the course, and legacy transaction_items. A code that unlocks several courses has its price split evenly between them, so per-course revenue still adds up to the platform total.",
+        "properties": {
+          "course_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "The course's current list price, not what was earned."
+          },
+          "is_active": {
+            "type": "integer",
+            "nullable": true
+          },
+          "sales_count": {
+            "type": "integer"
+          },
+          "revenue": {
+            "type": "number",
+            "format": "float"
+          },
+          "link": {
+            "type": "string",
+            "description": "Admin-dashboard route for this course, e.g. `/courses/12`."
+          }
+        }
+      },
+      "DashboardActivityItem": {
+        "type": "object",
+        "description": "One platform event. There is no audit-log table in this project - the feed is assembled on the fly from the newest rows of the tables that represent real events, merged and sorted by time.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "student_registered",
+              "teacher_registered",
+              "parent_registered",
+              "payment",
+              "code_redeemed",
+              "course_created",
+              "book_purchase_request",
+              "reschedule_request",
+              "consultation_booked",
+              "attendance_exception_request"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Ready-to-display Arabic label for the event."
+          },
+          "description": {
+            "type": "string",
+            "description": "Who/what the event is about (person name, amount, status)."
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "description": "Present on money events (`payment`, `code_redeemed`) only."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entity_id": {
+            "type": "integer",
+            "description": "Primary key of the row the event came from, within its own table."
+          },
+          "link": {
+            "type": "string",
+            "description": "Admin-dashboard route to open when the activity is clicked."
+          }
+        }
       }
     }
   },
@@ -10591,6 +10778,186 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/dashboard/statistics": {
+      "get": {
+        "tags": [
+          "Admin / Dashboard"
+        ],
+        "summary": "update-3 (EXPANDED): Dashboard statistics - counts, sales, per-course sales, yearly charts and recent activity",
+        "description": "Everything the admin dashboard home page needs, in one call.\n\nupdate-3 additions (previously this endpoint returned only the `statistics` counts):\n- `statistics.courses` - course count, alongside the existing entity counts.\n- `sales` - total / today / this month / this year revenue, plus a per-channel breakdown.\n- `top_courses` - sales and revenue per course, best seller first.\n- `charts.sales_by_month` and `charts.students_by_month` - always exactly 12 entries (January to December), including months with no data, so a chart can be rendered without filling gaps client-side.\n- `recent_activity` - newest platform events, each with a `link` to the page that handles it.\n\nNo database change was needed for any of this: every figure is derived from tables that already exist.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 2026
+            },
+            "description": "Year for BOTH charts. Defaults to the current server year; anything outside 2000-2100 falls back to it. Only `charts` is affected - `sales` and `top_courses` are always all-time."
+          },
+          {
+            "name": "activity_limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 15,
+              "minimum": 1,
+              "maximum": 50
+            },
+            "description": "How many entries `recent_activity` returns. Out-of-range values fall back to 15."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "statistics": {
+                          "type": "object",
+                          "properties": {
+                            "admins": {
+                              "$ref": "#/components/schemas/DashboardEntityCount"
+                            },
+                            "teachers": {
+                              "allOf": [
+                                {
+                                  "$ref": "#/components/schemas/DashboardEntityCount"
+                                }
+                              ],
+                              "description": "Also carries `pending` (teachers with is_active = 0)."
+                            },
+                            "students": {
+                              "allOf": [
+                                {
+                                  "$ref": "#/components/schemas/DashboardEntityCount"
+                                }
+                              ],
+                              "description": "Also carries `email_verified`."
+                            },
+                            "parents": {
+                              "$ref": "#/components/schemas/DashboardEntityCount"
+                            },
+                            "schools": {
+                              "$ref": "#/components/schemas/DashboardEntityCount"
+                            },
+                            "subjects": {
+                              "$ref": "#/components/schemas/DashboardEntityCount"
+                            },
+                            "cities": {
+                              "$ref": "#/components/schemas/DashboardEntityCount"
+                            },
+                            "courses": {
+                              "allOf": [
+                                {
+                                  "$ref": "#/components/schemas/DashboardEntityCount"
+                                }
+                              ],
+                              "description": "update-3 (NEW)."
+                            }
+                          }
+                        },
+                        "sales": {
+                          "$ref": "#/components/schemas/DashboardSales"
+                        },
+                        "top_courses": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DashboardCourseSales"
+                          },
+                          "description": "Up to 10 courses, highest revenue first."
+                        },
+                        "charts": {
+                          "type": "object",
+                          "properties": {
+                            "year": {
+                              "type": "integer",
+                              "description": "The year the two arrays below cover."
+                            },
+                            "sales_by_month": {
+                              "type": "array",
+                              "description": "Exactly 12 entries, January to December.",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "month": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 12
+                                  },
+                                  "label_ar": {
+                                    "type": "string",
+                                    "example": "يناير"
+                                  },
+                                  "label_en": {
+                                    "type": "string",
+                                    "example": "Jan"
+                                  },
+                                  "revenue": {
+                                    "type": "number",
+                                    "format": "float"
+                                  },
+                                  "orders": {
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            },
+                            "students_by_month": {
+                              "type": "array",
+                              "description": "Exactly 12 entries - how many students registered in each month of `year`.",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "month": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 12
+                                  },
+                                  "label_ar": {
+                                    "type": "string"
+                                  },
+                                  "label_en": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "recent_activity": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DashboardActivityItem"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
