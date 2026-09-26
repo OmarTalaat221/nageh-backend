@@ -1283,6 +1283,153 @@
             "nullable": true
           }
         }
+      },
+      "DiscountCode": {
+        "type": "object",
+        "description": "update-3 (NEW): a code that REDUCES a price. It is not a `subscription_code`: a subscription code opens access outright and is free, while a discount code grants nothing at all on its own. They are separate tables so neither flow can accidentally hand out access or money.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "description": "Unique, upper-cased. Generated as `DISC-XXXXXXXX` when not supplied."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "discount_type": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "fixed"
+            ]
+          },
+          "discount_value": {
+            "type": "number",
+            "format": "float",
+            "description": "Percent (max 100) or a fixed amount in USD."
+          },
+          "max_discount_amount": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "Caps a percentage discount. Ignored for a fixed one."
+          },
+          "applies_to": {
+            "type": "string",
+            "enum": [
+              "all",
+              "selected"
+            ],
+            "description": "Derived from `course_ids`: sending courses makes it 'selected', clearing them makes it 'all', so the two can never contradict each other."
+          },
+          "course_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Courses AND packages - a package is a course row."
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "max_uses": {
+            "type": "integer",
+            "nullable": true,
+            "description": "null = unlimited."
+          },
+          "used_count": {
+            "type": "integer",
+            "description": "Only real applications count; a price preview never increments it."
+          },
+          "remaining_uses": {
+            "type": "integer",
+            "nullable": true
+          },
+          "once_per_student": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_to": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        }
+      },
+      "DiscountCheckResult": {
+        "type": "object",
+        "description": "What a code would take off. Read-only - checking never consumes a use, so a student may check as often as they like.",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "description": "Arabic, ready to display - says exactly why a code was refused (expired, exhausted, wrong course, already used by this student...)."
+          },
+          "code": {
+            "type": "object",
+            "description": "A summary of the matched code (omitted when invalid)."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "course_id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "original_amount": {
+            "type": "number",
+            "format": "float"
+          },
+          "discount_amount": {
+            "type": "number",
+            "format": "float",
+            "description": "Never exceeds the price - a discount can not turn a total negative."
+          },
+          "final_amount": {
+            "type": "number",
+            "format": "float"
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          }
+        }
       }
     }
   },
@@ -7094,7 +7241,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Grant a subscription directly to a student, with NO code",
-        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".\n\nupdate-3 (BEHAVIOUR CHANGE): when neither `end_date` nor `duration_days` is sent and the granted courses include a package, the subscription's `end_date` becomes start + the longest selected package's `courses.duration_months`. Package grants used to be stored with `end_date` NULL, i.e. access that never expired.",
+        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".\n\nupdate-3 (BEHAVIOUR CHANGE): when neither `end_date` nor `duration_days` is sent and the granted courses include a package, the subscription's `end_date` becomes start + the longest selected package's `courses.duration_months`. Package grants used to be stored with `end_date` NULL, i.e. access that never expired.\n\nupdate-3: the response now also carries a `discount` object when `discount_code` was sent - either the applied amounts or the reason the code was refused.",
         "security": [
           {
             "AdminAuth": []
@@ -7143,6 +7290,10 @@
                     "type": "string",
                     "format": "date",
                     "nullable": true
+                  },
+                  "discount_code": {
+                    "type": "string",
+                    "description": "update-3 (NEW): applies a discount code to this grant. THIS is where a code is spent - the redemption is recorded against the new subscription and the code's `used_count` goes up. An invalid code does NOT cancel the grant: the access was requested deliberately, so the subscription is still created and the failure is reported in the response's `discount` object."
                   }
                 }
               },
@@ -13385,6 +13536,396 @@
         "responses": {
           "200": {
             "description": "Revoked."
+          }
+        }
+      }
+    },
+    "/admin/discount-codes": {
+      "get": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): List discount codes",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Alias `q`. Matches code or title."
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Codes scoped to this course or package."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DiscountCode"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    },
+                    "statistics": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Create a discount code",
+        "description": "Omit `code` to have one generated. Omit `course_ids` to make the code work on every course and package.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscountCode"
+              },
+              "example": {
+                "title": "Term start offer",
+                "discount_type": "percentage",
+                "discount_value": 25,
+                "max_discount_amount": 50,
+                "max_uses": 100,
+                "once_per_student": 1,
+                "valid_to": "2026-12-31 23:59:59"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created code."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Update a discount code",
+        "description": "Partial update. Sending `course_ids` also rewrites `applies_to`; sending an empty array makes the code global again.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscountCode"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated code."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Delete a discount code",
+        "description": "Its redemption rows are deliberately kept - they are the record of discounts already given.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted."
+          }
+        }
+      }
+    },
+    "/admin/discount-codes/show": {
+      "get": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Get one discount code",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscountCode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/discount-codes/check": {
+      "post": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Preview what a code would take off (admin)",
+        "description": "Read-only. Used by the grant screen to show the price before and after.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "course_id": {
+                    "type": "integer",
+                    "description": "The course or package being priced."
+                  },
+                  "course_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Several at once; their prices are summed before the discount is applied."
+                  },
+                  "student_id": {
+                    "type": "integer",
+                    "description": "Admin route only - on the student route it comes from the token. Needed for the once-per-student rule."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscountCheckResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/discount-codes/redemptions": {
+      "get": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): List discounts actually applied",
+        "description": "One row per real use, with the amount before, the discount and the amount after, plus the subscription it was applied to.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "discount_code_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/student/discount-codes/check": {
+      "post": {
+        "tags": [
+          "Subscriptions / Discount Codes"
+        ],
+        "summary": "update-3 (NEW): Check a discount code (student)",
+        "description": "Lets a student see the discounted price of a course or package before committing. Read-only: it never consumes a use, so refreshing the page costs nothing. The student id comes from the token and is what enforces the once-per-student rule.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "course_id"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "course_id": {
+                    "type": "integer"
+                  },
+                  "course_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "code": "SUMMER25",
+                "course_id": 237
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscountCheckResult"
+                }
+              }
+            }
           }
         }
       }

@@ -3624,6 +3624,95 @@ $routes = [
             },
         ],
 
+        // Discount codes (reduce a price; they never grant access) ----------
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListDiscountCodes($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/discount-codes/show",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminGetDiscountCode($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminCreateDiscountCode($con, $adminData);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminUpdateDiscountCode($con);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminDeleteDiscountCode($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/discount-codes/check",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminCheckDiscountCode($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/discount-codes/redemptions",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/discounts/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminListDiscountRedemptions($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/student/discount-codes/check",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/discounts/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentCheckDiscountCode($con, $studentData);
+            },
+        ],
+
         // Subscriptions & Subscription Codes CRUD (Admin)
         [
             "method" => "GET",
@@ -3699,7 +3788,7 @@ $routes = [
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_teachers');
-                return adminCreateStudentSubscription($con);
+                return adminCreateStudentSubscription($con, $adminData);
             },
         ],
 

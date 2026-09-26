@@ -725,7 +725,7 @@ if (!function_exists('adminListStudentSubscriptions')) {
 }
 
 if (!function_exists('adminCreateStudentSubscription')) {
-    function adminCreateStudentSubscription($con) {
+    function adminCreateStudentSubscription($con, $adminData = null) {
         $body = read_json_body();
         $studentId = (int)($body['student_id'] ?? 0);
         if ($studentId <= 0) {
@@ -813,10 +813,23 @@ if (!function_exists('adminCreateStudentSubscription')) {
             notify_of_course_subscription($con, $studentId, $courseIds, 'منح إداري', false);
         }
 
+        // A discount code is spent here, not when the student previewed it, and it is recorded
+        // against this subscription so the granted price can be traced later. A code that turns
+        // out to be invalid does NOT undo the subscription - the access was already granted
+        // deliberately; the failure is reported alongside it instead.
+        $discount = null;
+        $discountCode = trim((string)($body['discount_code'] ?? ''));
+        if ($discountCode !== '') {
+            require_once __DIR__ . '/../../../helpers/discounts.php';
+            $adminId = (int)($adminData['id'] ?? 0) ?: null;
+            $discount = discount_apply_code($con, $discountCode, $studentId, $courseIds, 'admin', $adminId, $subId);
+        }
+
         return [
             'status' => 'success',
             'message' => 'Student subscription created successfully',
-            'data' => get_student_subscription_details($con, $subId)
+            'data' => get_student_subscription_details($con, $subId),
+            'discount' => $discount
         ];
     }
 }
