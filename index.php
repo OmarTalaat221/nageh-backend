@@ -3713,7 +3713,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminListDiscountCodes($con);
             },
         ],
@@ -3724,7 +3724,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminGetDiscountCode($con);
             },
         ],
@@ -3735,7 +3735,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminCreateDiscountCode($con, $adminData);
             },
         ],
@@ -3746,7 +3746,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminUpdateDiscountCode($con);
             },
         ],
@@ -3757,7 +3757,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminDeleteDiscountCode($con);
             },
         ],
@@ -3768,7 +3768,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminCheckDiscountCode($con);
             },
         ],
@@ -3779,7 +3779,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/discounts/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_discounts');
                 return adminListDiscountRedemptions($con);
             },
         ],
