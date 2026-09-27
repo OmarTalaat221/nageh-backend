@@ -324,6 +324,13 @@ if (!function_exists('adminListDiscountRedemptions')) {
             $params[] = (int)$_GET['student_id'];
             $types .= 'i';
         }
+        // `pending` rows are codes students are holding but nobody has cashed in yet - worth
+        // listing on their own, since each one is a student waiting to be subscribed.
+        if (!empty($_GET['status']) && in_array($_GET['status'], ['pending', 'applied'], true)) {
+            $where[] = 'r.status = ?';
+            $params[] = $_GET['status'];
+            $types .= 's';
+        }
 
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 

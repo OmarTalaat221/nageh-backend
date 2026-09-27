@@ -3712,6 +3712,108 @@ $routes = [
                 return studentCheckDiscountCode($con, $studentData);
             },
         ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/student/discount-codes/apply",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/discounts/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentApplyDiscountCode($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/discount-codes/my-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/discounts/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentListDiscountClaims($con, $studentData);
+            },
+        ],
+        [
+            "method" => ["DELETE", "POST"],
+            "path" => "/najeh/student/discount-codes/cancel",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/student/discounts/manage.php";
+                $studentData = studentAuthMiddleware();
+                return studentCancelDiscountClaim($con, $studentData);
+            },
+        ],
+
+        // Discount Codes CRUD (Teacher - own courses only) --------------------------------
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListDiscountCodes($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/discount-codes/show",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherGetDiscountCode($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherCreateDiscountCode($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/teacher/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherUpdateDiscountCode($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/teacher/discount-codes",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherDeleteDiscountCode($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/discount-codes/check",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherCheckDiscountCode($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/discount-codes/redemptions",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/discounts/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListDiscountRedemptions($con, $teacherData);
+            },
+        ],
 
         // Subscriptions & Subscription Codes CRUD (Admin)
         [

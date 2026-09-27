@@ -817,12 +817,33 @@ if (!function_exists('adminCreateStudentSubscription')) {
         // against this subscription so the granted price can be traced later. A code that turns
         // out to be invalid does NOT undo the subscription - the access was already granted
         // deliberately; the failure is reported alongside it instead.
+        //
+        // When the admin did not type a code, the student's own pending claim on one of these
+        // courses is used instead. That is the whole point of letting a student apply a code:
+        // they pick it themselves and the grant honours it, so the code never has to survive the
+        // trip through a WhatsApp message and get retyped by hand.
+        require_once __DIR__ . '/../../../helpers/discounts.php';
         $discount = null;
         $discountCode = trim((string)($body['discount_code'] ?? ''));
+        $discountFromStudentClaim = false;
+
+        if ($discountCode === '' && !empty($courseIds)) {
+            $claims = discount_list_pending_claims($con, $studentId, $courseIds);
+            foreach ($claims as $claim) {
+                if (!empty($claim['is_still_valid'])) {
+                    $discountCode = (string)$claim['code'];
+                    $discountFromStudentClaim = true;
+                    break;
+                }
+            }
+        }
+
         if ($discountCode !== '') {
-            require_once __DIR__ . '/../../../helpers/discounts.php';
             $adminId = (int)($adminData['id'] ?? 0) ?: null;
             $discount = discount_apply_code($con, $discountCode, $studentId, $courseIds, 'admin', $adminId, $subId);
+            if (is_array($discount)) {
+                $discount['from_student_claim'] = $discountFromStudentClaim;
+            }
         }
 
         return [
