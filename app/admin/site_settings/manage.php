@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../../../helpers/app_settings.php';
 
 if (!function_exists('ensure_site_settings_schema')) {
     function ensure_site_settings_schema($con): void {
@@ -29,11 +30,14 @@ if (!function_exists('adminGetSiteSettings')) {
  * stats labels - is free text by design, and a whitelist here would quietly stop the website
  * editor from saving.
  *
- * Returns an Arabic error string, or null when the value is acceptable.
+ * Returns the error in the language of the request, or null when the value is acceptable.
  */
 if (!function_exists('validate_site_setting')) {
-    function validate_site_setting(string $key, string $value): ?string {
+    function validate_site_setting(string $key, string $value, $con = null): ?string {
         $value = trim($value);
+        $t = function (string $ar, string $en) use ($con) {
+            return app_text($con, $ar, $en);
+        };
 
         switch ($key) {
             case 'whatsapp_number':
@@ -45,17 +49,23 @@ if (!function_exists('validate_site_setting')) {
                 // sane range. The leading zero is what gives it away: an international number
                 // never starts with one.
                 if (strlen($digits) < 10 || strlen($digits) > 15) {
-                    return 'رقم الواتساب لازم يكون بالصيغة الدولية مع كود الدولة (مثال: 201012345678).';
+                    return $t(
+                        'رقم الواتساب لازم يكون بالصيغة الدولية مع كود الدولة (مثال: 201012345678).',
+                        'The WhatsApp number must be in international format with a country code (e.g. 201012345678).'
+                    );
                 }
                 if ($digits[0] === '0') {
-                    return 'رقم الواتساب مكتوب بالصيغة المحلية. اكتبه بكود الدولة من غير صفر في الأول (مثال: 201012345678 بدل 01012345678).';
+                    return $t(
+                        'رقم الواتساب مكتوب بالصيغة المحلية. اكتبه بكود الدولة من غير صفر في الأول (مثال: 201012345678 بدل 01012345678).',
+                        'That is a local WhatsApp number. Use the country code and drop the leading zero (201012345678, not 01012345678).'
+                    );
                 }
                 return null;
 
             case 'support_email':
                 if ($value === '') return null;
                 if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                    return 'بريد الدعم الفني غير صالح.';
+                    return $t('بريد الدعم الفني غير صالح.', 'The support email address is not valid.');
                 }
                 return null;
 
@@ -66,43 +76,69 @@ if (!function_exists('validate_site_setting')) {
             case 'telegram_link':
                 if ($value === '') return null;
                 if (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value)) {
-                    return 'الروابط لازم تبدأ بـ http:// أو https://';
+                    return $t(
+                        'الروابط لازم تبدأ بـ http:// أو https://',
+                        'Links must start with http:// or https://'
+                    );
                 }
                 return null;
 
             case 'max_login_attempts':
                 if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 50) {
-                    return 'عدد محاولات الدخول لازم يكون رقم بين 1 و 50.';
+                    return $t(
+                        'عدد محاولات الدخول لازم يكون رقم بين 1 و 50.',
+                        'The number of allowed sign-in attempts must be between 1 and 50.'
+                    );
                 }
                 return null;
 
             case 'login_lockout_minutes':
                 if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 1440) {
-                    return 'مدة الإيقاف لازم تكون بين دقيقة و 1440 دقيقة (24 ساعة).';
+                    return $t(
+                        'مدة الإيقاف لازم تكون بين دقيقة و 1440 دقيقة (24 ساعة).',
+                        'The lockout duration must be between 1 and 1440 minutes (24 hours).'
+                    );
                 }
                 return null;
 
             case 'max_devices_per_student':
                 if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 50) {
-                    return 'عدد الأجهزة لازم يكون رقم بين 1 و 50.';
+                    return $t(
+                        'عدد الأجهزة لازم يكون رقم بين 1 و 50.',
+                        'The number of devices must be between 1 and 50.'
+                    );
                 }
                 return null;
 
-            case 'maintenance_mode':
             case 'registration_enabled':
             case 'login_lockout_enabled':
             case 'student_device_limit_enabled':
                 if (!in_array($value, ['0', '1'], true)) {
-                    return 'قيمة المفتاح ' . $key . ' لازم تكون 0 أو 1.';
+                    return $t(
+                        'قيمة المفتاح ' . $key . ' لازم تكون 0 أو 1.',
+                        'The value of ' . $key . ' must be 0 or 1.'
+                    );
                 }
                 return null;
 
-            case 'maintenance_message_ar':
+            // Both languages are required, not just Arabic. A refused user is served the message
+            // in the language they asked for, so leaving one side blank means half the audience
+            // reads the wrong language - or, if both were blank, nothing at all.
             case 'registration_disabled_message_ar':
-                // The Arabic message is what a blocked user actually reads; an empty one leaves
-                // them staring at a blank screen with no idea what happened.
                 if ($value === '') {
-                    return 'رسالة التنبيه بالعربي مينفعش تبقى فاضية.';
+                    return $t(
+                        'رسالة إيقاف التسجيل بالعربي مينفعش تبقى فاضية.',
+                        'The Arabic registration-closed message cannot be empty.'
+                    );
+                }
+                return null;
+
+            case 'registration_disabled_message_en':
+                if ($value === '') {
+                    return $t(
+                        'رسالة إيقاف التسجيل بالإنجليزي مينفعش تبقى فاضية.',
+                        'The English registration-closed message cannot be empty.'
+                    );
                 }
                 return null;
         }
@@ -126,7 +162,7 @@ if (!function_exists('adminUpdateSiteSettings')) {
         foreach ($inputData as $key => $val) {
             if (!is_string($key)) continue;
             if (is_array($val) || is_object($val)) continue;
-            $error = validate_site_setting($key, (string)$val);
+            $error = validate_site_setting($key, (string)$val, $con);
             if ($error !== null) $errors[$key] = $error;
         }
 

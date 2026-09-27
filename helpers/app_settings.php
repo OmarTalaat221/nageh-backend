@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/language.php';
 
 /**
  * The platform's operational settings: who to contact, whether the doors are open, and how hard
@@ -7,7 +8,11 @@ require_once __DIR__ . '/functions.php';
  *
  * These keys lived in `site_settings` for months without a single line reading them. The point of
  * this file is that a switch in the admin screen now does what it says - and that when a setting
- * is missing or unreadable, the platform keeps working rather than locking everyone out.
+ * is missing or unreadable, the platform keeps working rather than shutting anyone out.
+ *
+ * Everything a user can be shown exists in both languages and is picked with the same
+ * `get_request_lang()` the rest of the API uses, so these messages follow the language the client
+ * asked for instead of inventing their own rule.
  */
 
 if (!function_exists('app_settings')) {
@@ -30,9 +35,6 @@ if (!function_exists('app_settings')) {
             'telegram_link' => '',
             'site_name_ar' => '',
             'site_name_en' => '',
-            'maintenance_mode' => '0',
-            'maintenance_message_ar' => 'المنصة تحت الصيانة حاليًا، برجاء المحاولة بعد قليل.',
-            'maintenance_message_en' => 'The platform is under maintenance. Please try again shortly.',
             'registration_enabled' => '1',
             'registration_disabled_message_ar' => 'تسجيل الحسابات الجديدة متوقف حاليًا. برجاء التواصل مع الدعم الفني.',
             'registration_disabled_message_en' => 'New account registration is currently closed. Please contact support.',
@@ -81,49 +83,34 @@ if (!function_exists('app_setting_flag')) {
 }
 
 /**
- * The localized message for a setting that has an `_ar` / `_en` pair.
+ * The message for a setting stored as an `_ar` / `_en` pair, in the language of the request.
+ *
+ * Falls back to the other language rather than to nothing: a half-filled pair should still show
+ * the admin's own wording, and an empty message is worse than one in the wrong language.
  */
 if (!function_exists('app_setting_message')) {
-    function app_setting_message($con, string $baseKey, string $fallbackAr): string {
+    function app_setting_message($con, string $baseKey, string $fallbackAr, string $fallbackEn = ''): string {
         $settings = app_settings($con);
-        $lang = strtolower(substr((string)($_GET['lang'] ?? $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'ar'), 0, 2));
-        $key = $lang === 'en' ? $baseKey . '_en' : $baseKey . '_ar';
-        $msg = trim((string)($settings[$key] ?? ''));
-        if ($msg !== '') return $msg;
-        return trim((string)($settings[$baseKey . '_ar'] ?? '')) ?: $fallbackAr;
+        $isEnglish = get_request_lang($con) === 'en';
+
+        $preferred = trim((string)($settings[$baseKey . ($isEnglish ? '_en' : '_ar')] ?? ''));
+        if ($preferred !== '') return $preferred;
+
+        $other = trim((string)($settings[$baseKey . ($isEnglish ? '_ar' : '_en')] ?? ''));
+        if ($other !== '') return $other;
+
+        if ($isEnglish && $fallbackEn !== '') return $fallbackEn;
+        return $fallbackAr;
     }
 }
 
-// =================================================================================================
-// Maintenance mode
-// =================================================================================================
-
 /**
- * Whether this request should be turned away because the platform is in maintenance.
- *
- * Admin routes are never blocked. That is not a convenience - maintenance mode is switched off
- * through an admin route, so blocking those would make the setting a one-way door with no way
- * back except phpMyAdmin.
- *
- * The public config endpoint is also allowed through, so a client can read the maintenance
- * message it is about to display instead of guessing at a bare 503.
+ * Picks one of two literals by request language. For text that belongs in the code rather than in
+ * a setting - validation errors and the like.
  */
-if (!function_exists('maintenance_blocks_request')) {
-    function maintenance_blocks_request($con, string $path): bool {
-        if (!app_setting_flag($con, 'maintenance_mode', false)) return false;
-
-        $allowedPrefixes = [
-            '/najeh/admin/',          // the way back out
-            '/najeh/app-config',      // so clients can read the message
-            '/najeh/site-settings',   // the public website's own config
-            '/najeh/about-us',
-        ];
-
-        foreach ($allowedPrefixes as $prefix) {
-            if (strpos($path, $prefix) === 0) return false;
-        }
-
-        return true;
+if (!function_exists('app_text')) {
+    function app_text($con, string $ar, string $en): string {
+        return get_request_lang($con) === 'en' ? $en : $ar;
     }
 }
 
@@ -148,7 +135,8 @@ if (!function_exists('registration_blocked_response')) {
             'message' => app_setting_message(
                 $con,
                 'registration_disabled_message',
-                'تسجيل الحسابات الجديدة متوقف حاليًا. برجاء التواصل مع الدعم الفني.'
+                'تسجيل الحسابات الجديدة متوقف حاليًا. برجاء التواصل مع الدعم الفني.',
+                'New account registration is currently closed. Please contact support.'
             ),
         ];
     }
@@ -197,7 +185,11 @@ if (!function_exists('login_attempt_guard')) {
         return [
             'status' => 'error',
             'error_code' => 'login_locked',
-            'message' => "تم إيقاف المحاولات مؤقتًا بسبب محاولات دخول خاطئة متكررة. حاول مرة أخرى بعد {$minutes} دقيقة.",
+            'message' => app_text(
+                $con,
+                "تم إيقاف المحاولات مؤقتًا بسبب محاولات دخول خاطئة متكررة. حاول مرة أخرى بعد {$minutes} دقيقة.",
+                "Too many failed sign-in attempts. Please try again in {$minutes} minute" . ($minutes === 1 ? '' : 's') . "."
+            ),
             'retry_after_minutes' => $minutes,
         ];
     }
@@ -295,10 +287,14 @@ if (!function_exists('getPublicAppConfig')) {
                     'tiktok' => $s['tiktok_link'],
                     'telegram' => $s['telegram_link'],
                 ],
-                'maintenance_mode' => app_setting_flag($con, 'maintenance_mode', false),
-                'maintenance_message' => app_setting_message($con, 'maintenance_message', 'المنصة تحت الصيانة حاليًا، برجاء المحاولة بعد قليل.'),
                 'registration_enabled' => app_setting_flag($con, 'registration_enabled', true),
-                'registration_disabled_message' => app_setting_message($con, 'registration_disabled_message', 'تسجيل الحسابات الجديدة متوقف حاليًا.'),
+                // Already in the language of the request, so a client shows it as-is.
+                'registration_disabled_message' => app_setting_message(
+                    $con,
+                    'registration_disabled_message',
+                    'تسجيل الحسابات الجديدة متوقف حاليًا. برجاء التواصل مع الدعم الفني.',
+                    'New account registration is currently closed. Please contact support.'
+                ),
             ],
         ];
     }

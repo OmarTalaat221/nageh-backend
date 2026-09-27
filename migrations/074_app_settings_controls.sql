@@ -1,9 +1,12 @@
 -- Migration 074: make the platform's operational settings real, and editable.
 --
--- `site_settings` already held keys like `maintenance_mode`, `registration_enabled` and
--- `max_login_attempts`. Not one of them was read by a single line of PHP, and nothing in any
--- dashboard could edit them - they were rows that looked like controls and did nothing. An admin
--- who found them and switched maintenance on would have been told it worked and seen no change.
+-- `site_settings` already held keys like `registration_enabled` and `max_login_attempts`. Not one
+-- of them was read by a single line of PHP, and nothing in any dashboard could edit them - they
+-- were rows that looked like controls and did nothing. An admin who found one and switched it on
+-- would have been told it worked and seen no change.
+--
+-- Every message an end user can be shown is stored as an `_ar` / `_en` pair and served in the
+-- language of the request, so a switch cannot put Arabic in front of an English-speaking user.
 --
 -- This migration makes them mean something: it seeds the keys that were missing, adds the table
 -- the login limit needs to count against, and creates the permission that guards the new screen.
@@ -17,8 +20,8 @@
 -- ---------------------------------------------------------------------------------------------
 --
 -- The site-settings endpoints had NO permission check at all - any admin account, however
--- narrowly scoped, could rewrite every key in the table including maintenance mode. Now they are
--- gated, and this is what opens them.
+-- narrowly scoped, could rewrite every key in the table. Now they are gated, and this is what
+-- opens them.
 --
 -- As in migration 073, it is granted to nobody: a permission that has to be handed over is a
 -- decision someone made, and `manage_settings` is the one permission where that matters most.
@@ -27,19 +30,19 @@ VALUES (
     'manage_settings',
     'Manage Application Settings',
     'app_settings',
-    'Edit contact details, social links, maintenance mode, registration and login protection'
+    'Edit contact details, social links, registration and login protection'
 )
 ON DUPLICATE KEY UPDATE `code` = `code`;
 
 INSERT INTO `permissions_translations` (`permission_id`, `language_id`, `name`, `description`)
-SELECT p.id, l.id, 'إدارة إعدادات التطبيق', 'تعديل بيانات التواصل وروابط التواصل الاجتماعي ووضع الصيانة والتسجيل وحماية تسجيل الدخول'
+SELECT p.id, l.id, 'إدارة إعدادات التطبيق', 'تعديل بيانات التواصل وروابط التواصل الاجتماعي والتسجيل وحماية تسجيل الدخول'
 FROM `permissions` p
 JOIN `languages` l ON l.code = 'ar'
 WHERE p.code = 'manage_settings'
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
 INSERT INTO `permissions_translations` (`permission_id`, `language_id`, `name`, `description`)
-SELECT p.id, l.id, 'Manage Application Settings', 'Edit contact details, social links, maintenance mode, registration and login protection'
+SELECT p.id, l.id, 'Manage Application Settings', 'Edit contact details, social links, registration and login protection'
 FROM `permissions` p
 JOIN `languages` l ON l.code = 'en'
 WHERE p.code = 'manage_settings'
@@ -68,10 +71,7 @@ VALUES
     ('tiktok_link', ''),
     ('telegram_link', ''),
 
-    -- Platform controls.
-    ('maintenance_mode', '0'),
-    ('maintenance_message_ar', 'المنصة تحت الصيانة حاليًا، برجاء المحاولة بعد قليل.'),
-    ('maintenance_message_en', 'The platform is under maintenance. Please try again shortly.'),
+    -- Registration. Both messages are seeded, because one of them is what a refused user reads.
     ('registration_enabled', '1'),
     ('registration_disabled_message_ar', 'تسجيل الحسابات الجديدة متوقف حاليًا. برجاء التواصل مع الدعم الفني.'),
     ('registration_disabled_message_en', 'New account registration is currently closed. Please contact support.'),
