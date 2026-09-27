@@ -351,38 +351,15 @@ if (!function_exists('studentRedeemSubscriptionCode')) {
             notify_of_course_subscription($con, $stId, $courses, 'كود اشتراك');
         }
 
-        // A discount code applied at activation time. Note what this does and does not mean: a
-        // subscription code opens access outright and is free, so there is no platform charge here
-        // to reduce. What gets recorded is the list price of the courses the code just opened and
-        // what the coupon took off it - i.e. the price the student actually paid whoever sold them
-        // the code. It is a record of the sale, not a charge the platform is making.
-        //
-        // It is applied AFTER redemption on purpose: the courses a code opens are only known once
-        // it has been read, and a discount needs courses to price against. An invalid coupon never
-        // undoes the activation - the access was earned by the subscription code, not the coupon -
-        // so the failure is reported alongside a successful redemption.
-        require_once __DIR__ . '/../../../../helpers/discounts.php';
-        $discount = null;
-        $discountCode = trim((string)($body['discount_code'] ?? $body['coupon'] ?? ''));
-
-        if ($discountCode === '' && !empty($courses)) {
-            foreach (discount_list_pending_claims($con, $stId, $courses) as $claim) {
-                if (!empty($claim['is_still_valid'])) {
-                    $discountCode = (string)$claim['code'];
-                    break;
-                }
-            }
-        }
-
-        if ($discountCode !== '') {
-            $discount = discount_apply_code($con, $discountCode, $stId, $courses, 'student', $stId, $subId);
-        }
-
+        // Deliberately no discount code here. A subscription code opens access outright and is
+        // free: by the time a student is holding one they have already paid whoever sold it to
+        // them, so there is nothing left for a coupon to reduce. A coupon belongs to the step
+        // BEFORE the money changes hands - the student asking to subscribe to a course - which is
+        // where POST /student/discount-codes/apply and the admin grant pick it up.
         return [
             'status' => 'success',
             'message' => trans('Subscription code redeemed and activated successfully'),
-            'data' => get_student_subscription_details($con, $subId),
-            'discount' => $discount
+            'data' => get_student_subscription_details($con, $subId)
         ];
     }
 }
