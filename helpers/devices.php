@@ -19,7 +19,12 @@ if (!function_exists('device_settings')) {
         static $cached = null;
         if ($cached !== null) return $cached;
 
-        $enabled = true;
+        // Off unless the setting says otherwise, on purpose. Enforcement refuses any client that
+        // sends no device id, so the window between deploying this code and running migration 071
+        // - or any database where the row is missing for whatever reason - would lock every
+        // student out of the platform. Absence must mean "not configured yet", never "block
+        // everyone": the failure has to be a limit that is not enforced, not a login that is.
+        $enabled = false;
         $maxDevices = 1;
 
         $res = mysqli_query($con, "SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('max_devices_per_student', 'student_device_limit_enabled')");

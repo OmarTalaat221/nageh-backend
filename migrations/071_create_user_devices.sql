@@ -55,14 +55,19 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Defaults: one device, and enforcement ON.
+-- Defaults: one device, and enforcement OFF.
 --
--- Enforcement being on means a client that does NOT send a device id on login is refused, because
--- letting it through unregistered would be a hole big enough to make the whole feature decorative.
--- If a client that cannot be updated yet has to keep working, set student_device_limit_enabled to
--- 0 until it can.
+-- Off is the only safe way to ship this. Enforcement refuses any client that does not send a
+-- device id - it has to, or dropping the field would buy unlimited sessions and make the whole
+-- feature decorative - and the student app only started sending one in this same release. A
+-- migration that switched enforcement on would therefore lock out every student still running
+-- yesterday's build, for as long as the two sides were out of step.
+--
+-- So the migration is inert: devices are recorded from the first request, nobody is blocked, and
+-- enforcement is turned on from Settings -> "حد الأجهزة لكل طالب" once the student app is live.
+-- By then the device table already knows who is signed in where, so switching it on is not a leap.
 INSERT INTO `site_settings` (`setting_key`, `setting_value`)
 VALUES
     ('max_devices_per_student', '1'),
-    ('student_device_limit_enabled', '1')
+    ('student_device_limit_enabled', '0')
 ON DUPLICATE KEY UPDATE `setting_key` = `setting_key`;
