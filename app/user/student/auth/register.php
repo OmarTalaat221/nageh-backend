@@ -3,9 +3,15 @@ require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/email_verification.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
+require_once __DIR__ . '/../../../../helpers/app_settings.php';
 
 if (!function_exists('studentRegister')) {
     function studentRegister($con) {
+        // Checked before anything is read or written, so a closed platform never half-creates an
+        // account and never sends a verification email for one that will not exist.
+        $blocked = registration_blocked_response($con);
+        if ($blocked !== null) return $blocked;
+
         $body = read_json_body();
         $name = trim($body['name'] ?? '');
         $email = strtolower(trim($body['email'] ?? ''));

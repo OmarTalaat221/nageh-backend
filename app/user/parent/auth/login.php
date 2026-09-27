@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/app_settings.php';
 
 if (!function_exists('parentLogin')) {
     function parentLogin($con) {
@@ -11,6 +12,9 @@ if (!function_exists('parentLogin')) {
         if (empty($email) || empty($password)) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
+
+        $locked = login_attempt_guard($con, $email, 'parent');
+        if ($locked !== null) return $locked;
 
         $stmt = mysqli_prepare($con, "SELECT id, name, email, password, image, city_id, is_email_verified, is_active FROM parents WHERE email = ? LIMIT 1");
         if (!$stmt) {
@@ -23,12 +27,16 @@ if (!function_exists('parentLogin')) {
         $parent = mysqli_fetch_assoc($result);
 
         if (!$parent) {
+            login_attempt_fail($con, $email, 'parent');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
 
         if (!password_verify($password, $parent['password'])) {
+            login_attempt_fail($con, $email, 'parent');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
+
+        login_attempt_reset($con, $email, 'parent');
 
         if ((int)$parent['is_email_verified'] !== 1) {
             return [

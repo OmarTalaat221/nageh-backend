@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../../helpers/app_settings.php';
 
 if (!function_exists('adminLogin')) {
     function adminLogin($con) {
@@ -9,6 +10,12 @@ if (!function_exists('adminLogin')) {
         if (empty($email) || empty($password)) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
+
+        // The admin account is the one worth guessing at, so it is counted like any other. The
+        // count is per (email, IP), so an attacker locks out their own address and never the
+        // admin's, and the lock expires on its own - there is no state to unstick.
+        $locked = login_attempt_guard($con, $email, 'admin');
+        if ($locked !== null) return $locked;
 
         $stmt = mysqli_prepare($con, "SELECT id, name, email, password, role, is_active FROM admins WHERE email = ? LIMIT 1");
         if (!$stmt) {
@@ -21,6 +28,7 @@ if (!function_exists('adminLogin')) {
         $admin = mysqli_fetch_assoc($result);
 
         if (!$admin) {
+            login_attempt_fail($con, $email, 'admin');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
 
@@ -29,8 +37,11 @@ if (!function_exists('adminLogin')) {
         }
 
         if (!password_verify($password, $admin['password'])) {
+            login_attempt_fail($con, $email, 'admin');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
+
+        login_attempt_reset($con, $email, 'admin');
 
         $payload = [
             'id' => (int)$admin['id'],

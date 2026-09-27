@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../../helpers/devices.php';
+require_once __DIR__ . '/../../../../helpers/app_settings.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 
 if (!function_exists('studentLogin')) {
@@ -14,6 +15,11 @@ if (!function_exists('studentLogin')) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
 
+        // Before the password is read, so a locked-out attacker learns nothing from how long the
+        // response takes or from which error comes back.
+        $locked = login_attempt_guard($con, $email, 'student');
+        if ($locked !== null) return $locked;
+
         $stmt = mysqli_prepare($con, "SELECT id, name, email, password, image, phone, age, school_id, city_id, is_email_verified, is_active FROM students WHERE email = ? LIMIT 1");
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Database query preparation failed: ' . mysqli_error($con)];
@@ -24,13 +30,22 @@ if (!function_exists('studentLogin')) {
         $result = mysqli_stmt_get_result($stmt);
         $student = mysqli_fetch_assoc($result);
 
+        // A wrong email counts too. Not counting it would leave the door open to spraying one
+        // password across a list of addresses, which is the attack this limit exists to stop.
         if (!$student) {
+            login_attempt_fail($con, $email, 'student');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
 
         if (!password_verify($password, $student['password'])) {
+            login_attempt_fail($con, $email, 'student');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
+
+        // The password was right. Everything after this - unverified email, deactivated account,
+        // device limit - is a legitimate user meeting a rule, not someone guessing, so the
+        // counter is cleared here rather than at the end.
+        login_attempt_reset($con, $email, 'student');
 
         if ((int)$student['is_email_verified'] !== 1) {
             return [

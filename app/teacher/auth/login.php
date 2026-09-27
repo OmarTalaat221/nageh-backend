@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
+require_once __DIR__ . '/../../../helpers/app_settings.php';
 
 if (!function_exists('teacherLogin')) {
     function teacherLogin($con) {
@@ -11,6 +12,9 @@ if (!function_exists('teacherLogin')) {
         if (empty($email) || empty($password)) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
+
+        $locked = login_attempt_guard($con, $email, 'teacher');
+        if ($locked !== null) return $locked;
 
         $stmt = mysqli_prepare($con, "SELECT id, name, email, password, city_id, whatsapp, specialization, image, is_email_verified, is_active, is_attendance_suspended FROM teachers WHERE email = ? LIMIT 1");
         if (!$stmt) {
@@ -23,12 +27,16 @@ if (!function_exists('teacherLogin')) {
         $teacher = mysqli_fetch_assoc($result);
 
         if (!$teacher) {
+            login_attempt_fail($con, $email, 'teacher');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
 
         if (!password_verify($password, $teacher['password'])) {
+            login_attempt_fail($con, $email, 'teacher');
             return ['status' => 'error', 'message' => trans('invalid_credentials')];
         }
+
+        login_attempt_reset($con, $email, 'teacher');
 
         if ((int)$teacher['is_email_verified'] !== 1) {
             return [

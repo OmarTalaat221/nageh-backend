@@ -233,6 +233,21 @@ if ($path !== "/" && substr($path, -1) === "/") {
     $path = rtrim($path, "/");
 }
 
+// Maintenance mode, checked once for the whole API rather than per handler - a switch that only
+// covered the endpoints someone remembered to annotate would not be a maintenance mode.
+//
+// Admin routes are exempt because the switch is turned back OFF through one of them; without that
+// exemption this would be a door that locks from the inside. OPTIONS is exempt so the browser's
+// CORS preflight still succeeds and the client sees the real 503 instead of a CORS error.
+require_once "./helpers/app_settings.php";
+if ($method !== 'OPTIONS' && maintenance_blocks_request($con, $path)) {
+    json_response([
+        "status" => "error",
+        "error_code" => "maintenance_mode",
+        "message" => app_setting_message($con, 'maintenance_message', 'المنصة تحت الصيانة حاليًا، برجاء المحاولة بعد قليل.'),
+    ], 503);
+}
+
 $routes = [
     [
         "method" => "GET",
@@ -4557,6 +4572,17 @@ $routes = [
                 return getPublicAboutUsConfig($con);
             },
         ],
+        // The operational settings a client needs before anyone signs in: the support number, the
+        // social links, and whether the platform is open. Separate from /site-settings, which is
+        // the WEBSITE's landing payload - banners, courses and books - and is far too heavy to be
+        // fetched for a phone number.
+        [
+            "method" => "GET",
+            "path" => "/najeh/app-config",
+            "handler" => function ($con) {
+                return getPublicAppConfig($con);
+            },
+        ],
         [
             "method" => "GET",
             "path" => "/najeh/admin/site-settings",
@@ -4564,6 +4590,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/site_settings/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_settings');
                 return adminGetSiteSettings($con);
             },
         ],
@@ -4574,7 +4601,25 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/site_settings/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_settings');
                 return adminUpdateSiteSettings($con);
+            },
+        ],
+        // Clears every active lockout at once. The escape hatch for a limit set too low, so that
+        // fixing it never requires phpMyAdmin.
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/login-attempts/clear",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_settings');
+                $cleared = login_attempt_clear_all($con);
+                return [
+                    'status' => 'success',
+                    'message' => "تم إلغاء {$cleared} إيقاف مؤقت.",
+                    'data' => ['cleared' => $cleared],
+                ];
             },
         ],
         [

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
+require_once __DIR__ . '/../../../helpers/app_settings.php';
 
 if (!function_exists('parentLogin')) {
     function parentLogin($con) {
@@ -23,11 +24,17 @@ if (!function_exists('parentLogin')) {
             ];
         }
 
-        $sql = "SELECT 
-                    id, name, email, password, image, phone, age, 
-                    school_id, city_id, is_email_verified, is_active 
-                FROM students 
-                WHERE email = ? 
+        // Counted as 'student' rather than 'parent' because that is whose credentials this
+        // endpoint actually checks - the table below is `students`. Sharing the counter with the
+        // student login means a lockout cannot be sidestepped by switching to this path.
+        $locked = login_attempt_guard($con, $email, 'student');
+        if ($locked !== null) return $locked;
+
+        $sql = "SELECT
+                    id, name, email, password, image, phone, age,
+                    school_id, city_id, is_email_verified, is_active
+                FROM students
+                WHERE email = ?
                 LIMIT 1";
 
         $stmt = mysqli_prepare($con, $sql);
@@ -45,11 +52,14 @@ if (!function_exists('parentLogin')) {
         mysqli_stmt_close($stmt);
 
         if (!$student || !password_verify($password, $student['password'])) {
+            login_attempt_fail($con, $email, 'student');
             return [
                 'status'  => 'error',
                 'message' => trans('invalid_credentials')
             ];
         }
+
+        login_attempt_reset($con, $email, 'student');
 
         if ((int)$student['is_email_verified'] !== 1) {
             return [

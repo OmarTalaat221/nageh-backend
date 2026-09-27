@@ -21,6 +21,96 @@ if (!function_exists('adminGetSiteSettings')) {
     }
 }
 
+/**
+ * Rejects values that would break something downstream rather than storing them and letting the
+ * damage show up somewhere else.
+ *
+ * Only the keys with a real contract are checked. Everything else - the landing page copy, the
+ * stats labels - is free text by design, and a whitelist here would quietly stop the website
+ * editor from saving.
+ *
+ * Returns an Arabic error string, or null when the value is acceptable.
+ */
+if (!function_exists('validate_site_setting')) {
+    function validate_site_setting(string $key, string $value): ?string {
+        $value = trim($value);
+
+        switch ($key) {
+            case 'whatsapp_number':
+                if ($value === '') return null;
+                $digits = preg_replace('/\D/', '', $value);
+                // wa.me needs the country code, so a local number opens a chat with nobody and
+                // support is left wondering why no messages arrive. Length alone does not catch
+                // it - Egypt's local format (01012345678) is 11 digits, comfortably inside any
+                // sane range. The leading zero is what gives it away: an international number
+                // never starts with one.
+                if (strlen($digits) < 10 || strlen($digits) > 15) {
+                    return 'رقم الواتساب لازم يكون بالصيغة الدولية مع كود الدولة (مثال: 201012345678).';
+                }
+                if ($digits[0] === '0') {
+                    return 'رقم الواتساب مكتوب بالصيغة المحلية. اكتبه بكود الدولة من غير صفر في الأول (مثال: 201012345678 بدل 01012345678).';
+                }
+                return null;
+
+            case 'support_email':
+                if ($value === '') return null;
+                if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    return 'بريد الدعم الفني غير صالح.';
+                }
+                return null;
+
+            case 'facebook_link':
+            case 'instagram_link':
+            case 'youtube_link':
+            case 'tiktok_link':
+            case 'telegram_link':
+                if ($value === '') return null;
+                if (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value)) {
+                    return 'الروابط لازم تبدأ بـ http:// أو https://';
+                }
+                return null;
+
+            case 'max_login_attempts':
+                if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 50) {
+                    return 'عدد محاولات الدخول لازم يكون رقم بين 1 و 50.';
+                }
+                return null;
+
+            case 'login_lockout_minutes':
+                if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 1440) {
+                    return 'مدة الإيقاف لازم تكون بين دقيقة و 1440 دقيقة (24 ساعة).';
+                }
+                return null;
+
+            case 'max_devices_per_student':
+                if (!ctype_digit($value) || (int)$value < 1 || (int)$value > 50) {
+                    return 'عدد الأجهزة لازم يكون رقم بين 1 و 50.';
+                }
+                return null;
+
+            case 'maintenance_mode':
+            case 'registration_enabled':
+            case 'login_lockout_enabled':
+            case 'student_device_limit_enabled':
+                if (!in_array($value, ['0', '1'], true)) {
+                    return 'قيمة المفتاح ' . $key . ' لازم تكون 0 أو 1.';
+                }
+                return null;
+
+            case 'maintenance_message_ar':
+            case 'registration_disabled_message_ar':
+                // The Arabic message is what a blocked user actually reads; an empty one leaves
+                // them staring at a blank screen with no idea what happened.
+                if ($value === '') {
+                    return 'رسالة التنبيه بالعربي مينفعش تبقى فاضية.';
+                }
+                return null;
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('adminUpdateSiteSettings')) {
     function adminUpdateSiteSettings($con) {
         $body = read_json_body();
@@ -28,6 +118,24 @@ if (!function_exists('adminUpdateSiteSettings')) {
 
         if (empty($inputData) || !is_array($inputData)) {
             return ['status' => 'error', 'message' => 'No settings data provided'];
+        }
+
+        // Validated up front, before a single row is written: a half-saved settings form leaves
+        // the platform in a state nobody chose.
+        $errors = [];
+        foreach ($inputData as $key => $val) {
+            if (!is_string($key)) continue;
+            if (is_array($val) || is_object($val)) continue;
+            $error = validate_site_setting($key, (string)$val);
+            if ($error !== null) $errors[$key] = $error;
+        }
+
+        if ($errors) {
+            return [
+                'status' => 'error',
+                'message' => implode(' ', array_values($errors)),
+                'errors' => $errors,
+            ];
         }
 
         $stmt = mysqli_prepare($con, "INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");

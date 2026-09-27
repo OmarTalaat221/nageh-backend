@@ -2,9 +2,15 @@
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/email_verification.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/app_settings.php';
 
 if (!function_exists('parentRegister')) {
     function parentRegister($con) {
+        // A parent account exists to watch a student, so it is closed by the same switch. Leaving
+        // it open would mean "registration is off" still let half the sign-up flow through.
+        $blocked = registration_blocked_response($con);
+        if ($blocked !== null) return $blocked;
+
         $body = read_json_body();
         $name = trim($body['name'] ?? '');
         $email = strtolower(trim($body['email'] ?? ''));
