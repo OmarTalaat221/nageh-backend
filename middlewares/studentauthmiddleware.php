@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../helpers/JWT.php";
 require_once __DIR__ . "/../helpers/language.php";
+require_once __DIR__ . "/../helpers/devices.php";
 
 if (!function_exists('studentAuthMiddleware')) {
     function studentAuthMiddleware() {
@@ -24,6 +25,21 @@ if (!function_exists('studentAuthMiddleware')) {
                         json_response([
                             'status' => 'error',
                             'message' => trans('account_inactive')
+                        ], 401);
+                    }
+
+                    // Checked on every request, not just at login: an admin resetting a student's
+                    // devices has to end the sessions already open on them, otherwise the reset
+                    // does nothing until the tokens happen to expire.
+                    //
+                    // Tokens minted before this feature carry no `did` and are left alone, so
+                    // turning the limit on does not sign out everyone who is already logged in.
+                    $deviceId = (string)($decoded['did'] ?? '');
+                    if ($deviceId !== '' && !device_is_authorized($con, 'student', (int)$studentId, $deviceId)) {
+                        json_response([
+                            'status' => 'error',
+                            'message' => 'تم إلغاء تفعيل هذا الجهاز. يرجى تسجيل الدخول مرة أخرى أو التواصل مع الدعم الفني.',
+                            'error_code' => 'device_revoked'
                         ], 401);
                     }
                 }

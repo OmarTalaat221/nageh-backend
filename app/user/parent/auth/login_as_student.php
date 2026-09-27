@@ -32,6 +32,10 @@ if (!function_exists('parentLoginAsStudent')) {
             return ['status' => 'error', 'message' => 'Student account not found or inactive'];
         }
 
+        // No `did` claim here on purpose: a parent looking in on their child is not the child
+        // signing in, so it must not eat one of the student's device slots, and the student's
+        // device limit must not lock the parent out. The student auth middleware only enforces
+        // the device check on tokens that carry a `did`, so this passes through untouched.
         $payload = [
             'id' => (int)$student['id'],
             'name' => $student['name'],

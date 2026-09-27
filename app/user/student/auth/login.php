@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/devices.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 
 if (!function_exists('studentLogin')) {
@@ -44,16 +45,36 @@ if (!function_exists('studentLogin')) {
             return ['status' => 'error', 'message' => trans('account_inactive')];
         }
 
+        // Device limiting runs only after the password has been accepted, so a wrong password can
+        // never be used to discover how many devices an account has or to fill up its slots.
+        $stId = (int)$student['id'];
+        $device = device_register_login($con, $stId, $body);
+
+        if (!$device['allowed']) {
+            return [
+                'status' => 'error',
+                'message' => $device['message'],
+                'error_code' => $device['code'],
+                'max_devices' => $device['max_devices'] ?? null,
+                'active_devices' => $device['active_devices'] ?? null,
+            ];
+        }
+
         $payload = [
-            'id' => (int)$student['id'],
+            'id' => $stId,
             'name' => $student['name'],
             'email' => $student['email'],
             'role' => 'student'
         ];
 
+        // Carried in the token so every later request can be checked against the device that was
+        // authorised - that is what makes an admin reset take effect immediately.
+        if (!empty($device['device_id'])) {
+            $payload['did'] = $device['device_id'];
+        }
+
         $tokens = generateStudentTokens($payload);
 
-        $stId = (int)$student['id'];
         $cityId = $student['city_id'] ? (int)$student['city_id'] : null;
         $schoolId = $student['school_id'] ? (int)$student['school_id'] : null;
 

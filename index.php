@@ -68,6 +68,19 @@ if (!function_exists('handleTokenRefresh')) {
             if (!$row || (int)$row['is_active'] === 0) {
                 json_response(['status' => 'error', 'message' => trans('account_inactive')], 403);
             }
+
+            // Gated here too, or a revoked device could mint itself fresh access tokens forever
+            // and an admin reset would never actually end that session.
+            if ($role === 'student' && !empty($decoded['did'])) {
+                require_once __DIR__ . '/helpers/devices.php';
+                if (!device_is_authorized($con, 'student', $entityId, (string)$decoded['did'])) {
+                    json_response([
+                        'status' => 'error',
+                        'message' => 'تم إلغاء تفعيل هذا الجهاز. يرجى تسجيل الدخول مرة أخرى أو التواصل مع الدعم الفني.',
+                        'error_code' => 'device_revoked'
+                    ], 403);
+                }
+            }
         }
 
         unset($decoded['token_type'], $decoded['iat'], $decoded['exp'], $decoded['role']);
@@ -2547,6 +2560,52 @@ $routes = [
             },
         ],
 
+        // Student Devices — how many devices an account may sign in from (manage_students)
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/students/devices",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/devices/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                return adminListStudentDevices($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/students/devices/reset",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/devices/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                return adminResetStudentDevices($con, $adminData);
+            },
+        ],
+        [
+            "method" => ["DELETE", "POST"],
+            "path" => "/najeh/admin/students/devices/revoke",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/devices/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                return adminRevokeStudentDevice($con, $adminData);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/students/device-limit",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/devices/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                return adminSetStudentDeviceLimit($con);
+            },
+        ],
+
         // 4. Teachers Management (manage_teachers)
         [
             "method" => "GET",
@@ -4989,6 +5048,26 @@ $routes = [
                 include_once "./app/user/student/auth/profile.php";
                 $studentData = studentAuthMiddleware();
                 return studentUpdateFcmToken($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/devices",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/auth/devices.php";
+                $studentData = studentAuthMiddleware();
+                return studentListMyDevices($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/user/student/devices",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/auth/devices.php";
+                $studentData = studentAuthMiddleware();
+                return studentListMyDevices($con, $studentData);
             },
         ],
         [
