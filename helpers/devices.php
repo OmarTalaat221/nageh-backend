@@ -213,6 +213,65 @@ if (!function_exists('device_is_authorized')) {
     }
 }
 
+/**
+ * Signs an account out of everything, everywhere, at once.
+ *
+ * Deliberately a cutoff rather than a list of tokens: every JWT already carries `iat`, so one
+ * timestamp invalidates every token minted before it - with a device id or without one, access or
+ * refresh, on any client - with nothing to keep in sync.
+ *
+ * Separate from revoking devices on purpose. "Log my son out, he left his tablet at school" must
+ * not also cost him the device slot he will want back in an hour. Pass $alsoRevokeDevices when
+ * both really are wanted.
+ */
+if (!function_exists('device_revoke_all_sessions')) {
+    function device_revoke_all_sessions($con, int $studentId, ?int $adminId = null, bool $alsoRevokeDevices = false): array {
+        // UTC, not NOW(). connection.php sets the session timezone from the request, so NOW()
+        // would write whatever wall clock the admin's request happened to carry and the student's
+        // request could read it back in a different one - shifting the cutoff by hours and either
+        // sparing a session that should have died or killing one that should have lived.
+        $stmt = mysqli_prepare($con, "UPDATE students SET sessions_revoked_at = UTC_TIMESTAMP() WHERE id = ?");
+        if (!$stmt) {
+            return ['ok' => false, 'revoked_devices' => 0];
+        }
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['ok' => false, 'revoked_devices' => 0];
+        }
+
+        $revokedDevices = 0;
+        if ($alsoRevokeDevices) {
+            $revokedDevices = device_revoke($con, 'student', $studentId, null, $adminId);
+        }
+
+        return ['ok' => true, 'revoked_devices' => $revokedDevices];
+    }
+}
+
+/**
+ * True when this token was issued before the account's sign-out cutoff. Called on every
+ * authenticated request, so it reads one already-indexed column and nothing else.
+ */
+if (!function_exists('session_is_revoked')) {
+    function session_is_revoked($con, int $studentId, $issuedAt): bool {
+        $iat = (int)$issuedAt;
+        if ($iat <= 0) return false;
+
+        $stmt = mysqli_prepare($con, "SELECT sessions_revoked_at FROM students WHERE id = ? LIMIT 1");
+        if (!$stmt) return false;
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+
+        if (!$row || empty($row['sessions_revoked_at'])) return false;
+
+        // Stored as UTC by device_revoke_all_sessions, so it is read as UTC too - `iat` is a UTC
+        // epoch and the two must be measured against the same clock.
+        $cutoff = strtotime($row['sessions_revoked_at'] . ' UTC');
+        return $cutoff !== false && $iat < $cutoff;
+    }
+}
+
 if (!function_exists('device_list')) {
     function device_list($con, string $userType, int $userId, bool $activeOnly = false): array {
         $sql = "SELECT * FROM user_devices WHERE user_type = ? AND user_id = ?";

@@ -42,6 +42,17 @@ if (!function_exists('studentAuthMiddleware')) {
                             'error_code' => 'device_revoked'
                         ], 401);
                     }
+
+                    // The admin's "sign out everywhere". Checked against `iat` rather than the
+                    // device, so it also catches tokens issued before devices existed or while
+                    // the limit was switched off - the ones device revocation cannot see.
+                    if (session_is_revoked($con, (int)$studentId, $decoded['iat'] ?? 0)) {
+                        json_response([
+                            'status' => 'error',
+                            'message' => 'تم تسجيل خروجك من كل الأجهزة. يرجى تسجيل الدخول مرة أخرى.',
+                            'error_code' => 'session_revoked'
+                        ], 401);
+                    }
                 }
 
                 return $decoded;

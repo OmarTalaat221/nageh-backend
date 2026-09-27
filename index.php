@@ -71,13 +71,24 @@ if (!function_exists('handleTokenRefresh')) {
 
             // Gated here too, or a revoked device could mint itself fresh access tokens forever
             // and an admin reset would never actually end that session.
-            if ($role === 'student' && !empty($decoded['did'])) {
+            if ($role === 'student') {
                 require_once __DIR__ . '/helpers/devices.php';
-                if (!device_is_authorized($con, 'student', $entityId, (string)$decoded['did'])) {
+
+                if (!empty($decoded['did']) && !device_is_authorized($con, 'student', $entityId, (string)$decoded['did'])) {
                     json_response([
                         'status' => 'error',
                         'message' => 'تم إلغاء تفعيل هذا الجهاز. يرجى تسجيل الدخول مرة أخرى أو التواصل مع الدعم الفني.',
                         'error_code' => 'device_revoked'
+                    ], 403);
+                }
+
+                // A refresh token outlives an access token by a month, so this is the one that
+                // matters most: without it, "sign out everywhere" would last an hour.
+                if (session_is_revoked($con, $entityId, $decoded['iat'] ?? 0)) {
+                    json_response([
+                        'status' => 'error',
+                        'message' => 'تم تسجيل خروجك من كل الأجهزة. يرجى تسجيل الدخول مرة أخرى.',
+                        'error_code' => 'session_revoked'
                     ], 403);
                 }
             }
@@ -2581,6 +2592,17 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_students');
                 return adminResetStudentDevices($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/students/logout-all",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/devices/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_students');
+                return adminLogoutStudentEverywhere($con, $adminData);
             },
         ],
         [

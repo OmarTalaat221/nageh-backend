@@ -17,7 +17,7 @@ if (!function_exists('adminListStudentDevices')) {
             return ['status' => 'error', 'message' => 'student_id is required'];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, max_devices FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, max_devices, sessions_revoked_at FROM students WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $studentId);
         mysqli_stmt_execute($stmt);
         $student = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
@@ -45,6 +45,9 @@ if (!function_exists('adminListStudentDevices')) {
                 'student_max_devices' => $student['max_devices'] !== null ? (int)$student['max_devices'] : null,
                 'global_max_devices' => $settings['max_devices'],
                 'enforcement_enabled' => $settings['enabled'],
+                // UTC, as stored. Shown so an admin can tell "I already signed them out five
+                // minutes ago" from "nobody has touched this account".
+                'sessions_revoked_at' => $student['sessions_revoked_at'] ?: null,
             ],
         ];
     }
@@ -72,6 +75,56 @@ if (!function_exists('adminResetStudentDevices')) {
                 ? "تم إلغاء تفعيل {$revoked} جهاز. الطالب يقدر يسجل دخول من جهاز جديد دلوقتي."
                 : 'لا توجد أجهزة مفعّلة لهذا الطالب.',
             'data' => ['revoked_count' => $revoked],
+        ];
+    }
+}
+
+/**
+ * Signs the student out of everything, everywhere, immediately.
+ *
+ * Different from resetting devices, and both are worth having:
+ *   - reset devices  -> frees the slots, so a NEW device can sign in
+ *   - sign out       -> ends every session, so the SAME device has to sign in again
+ *
+ * The second is what you want when a phone goes missing: end the sessions without also giving up
+ * the slot the student will want back in an hour. Send `revoke_devices: true` to do both.
+ *
+ * It also reaches sessions device revocation cannot see - tokens issued before devices existed,
+ * or while the limit was switched off - because it compares the token's issue time to a cutoff
+ * rather than looking for a device id.
+ */
+if (!function_exists('adminLogoutStudentEverywhere')) {
+    function adminLogoutStudentEverywhere($con, $adminData = null) {
+        $body = read_json_body();
+        $studentId = (int)($body['student_id'] ?? $body['id'] ?? 0);
+        if ($studentId <= 0) {
+            return ['status' => 'error', 'message' => 'student_id is required'];
+        }
+
+        $exists = mysqli_prepare($con, "SELECT id FROM students WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($exists, "i", $studentId);
+        mysqli_stmt_execute($exists);
+        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($exists))) {
+            return ['status' => 'error', 'message' => 'Student not found'];
+        }
+
+        $alsoRevoke = !empty($body['revoke_devices']);
+        $adminId = (int)($adminData['id'] ?? 0) ?: null;
+
+        $result = device_revoke_all_sessions($con, $studentId, $adminId, $alsoRevoke);
+        if (empty($result['ok'])) {
+            return ['status' => 'error', 'message' => 'Failed to sign the student out: ' . mysqli_error($con)];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => $alsoRevoke
+                ? 'تم تسجيل خروج الطالب من كل الجلسات وإلغاء تفعيل أجهزته'
+                : 'تم تسجيل خروج الطالب من كل الجلسات. أجهزته المسجّلة زي ما هي.',
+            'data' => [
+                'revoked_devices' => $result['revoked_devices'],
+                'devices_kept' => !$alsoRevoke,
+            ],
         ];
     }
 }
