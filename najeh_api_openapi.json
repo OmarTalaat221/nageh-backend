@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Najeh Backend - Session Changelog API (update-3)",
-    "version": "3.0.0",
-    "description": "OpenAPI spec covering every endpoint ADDED or CHANGED across this project's work, cumulative across update-1, update-2 and update-3. Import into Apidog via Import > OpenAPI/Swagger. Auth: each role has its own Bearer JWT (Admin/Teacher/Student/Parent security schemes below); AnyAuth accepts a JWT from any one of the 4 roles.\n\n=== WHAT IS NEW IN update-3 ===\nupdate-3 documents Section 10 of the product spec - the Attendance / Delay / Salaries / Deductions system - plus every behavioral change made after update-2. Search this file for the string 'update-3' to find every affected operation.\n\nupdate-3 introduces 21 brand-new endpoints (teacher wallet + attendance exceptions, student check-in + attendance exceptions, admin HR policy settings, pay rates, exception review, teacher wallets ledger, and deduction appeals), and changes the behavior of several existing ones. It also ships 3 DB migrations (060, 061, 062).\n\n--- GLOBAL BEHAVIOR CHANGES (update-3, apply to EVERY endpoint, not just new ones) ---\n\n1) ACCOUNT DEACTIVATION IS NOW ENFORCED ON EVERY REQUEST. All four auth middlewares (admin/teacher/student/parent) now re-read the caller's own `is_active` column from the DB on each authenticated request. If the row is missing or `is_active = 0`, the request is rejected with HTTP 401 and message `account_inactive` ('الحساب غير مفعل، يرجى التواصل مع الدعم الفني'). Previously a token issued before deactivation kept working until it expired. CLIENT ACTION: treat a 401 carrying that message as a hard logout, not as a 'refresh the token' signal.\n\n2) TOKEN REFRESH IS ALSO GATED. POST /{role}/auth/refresh-token now performs the same `is_active` check before minting new tokens and returns HTTP 403 + `account_inactive` for a deactivated account, so a deactivated user cannot silently renew a session.\n\n3) IMPORTANT DISTINCTION - `is_active` vs `is_attendance_suspended` (teachers only). `teachers.is_active` is the ADMIN's manual enable/disable switch and is the ONLY thing that blocks login/API access (see 1 and 2 above). The NEW column `teachers.is_attendance_suspended` (migration 061) is set automatically by the attendance policy when a teacher exceeds the allowed number of unauthorized absences. It NEVER blocks login and NEVER blocks any API call - it is a pure UI signal telling the teacher app to restrict the teacher to the support chat until an admin lifts it via POST /admin/teacher-wallets/lift-suspension. Do not conflate the two.\n\n4) SERVER CLOCK / TIMEZONE FIX. The default request timezone changed from UTC to Africa/Cairo, and Egypt's reintroduced daylight saving time (forward on the last Friday of April, back on the last Thursday of October) is now computed explicitly instead of trusting the server's stale tzdata. Every time-sensitive value in the API (session start/end matching, check-in lateness, `created_at`, cron no-show detection) is now consistently Cairo local time, UTC+2 in winter and UTC+3 in summer. The `?_timezone=` query parameter still overrides it per request.\n\n5) PAGINATION SCHEMA CORRECTION. The `PaginatedResponse` component in earlier revisions of this file described a `meta {page, limit, total}` envelope that the backend never actually returned. It now documents the real envelope: `pagination {current_page, per_page, total_records, total_pages, has_next_page, has_prev_page}`, plus the optional `statistics` object. No server code changed - the spec was wrong, not the API.\n\n--- HOW THE ATTENDANCE / SALARY SYSTEM FITS TOGETHER (read this before the endpoints) ---\n\n* One global, admin-editable policy row drives everything: GET/PUT /admin/hr-settings (table `hr_policy_settings`, always id = 1). It holds the monthly absence/reschedule limits and the grace period for BOTH roles, the teacher fine amounts, and the default pay model + rate. Changes apply only to sessions evaluated from that moment on - nothing is recalculated retroactively.\n\n* Teacher pay: default comes from the policy row; a per-teacher override can be set with POST /admin/teachers/pay-rate and removed with DELETE /admin/teachers/pay-rate. Three models: `hourly` (rate x minutes/60), `per_session` (flat rate), `per_minute` (rate x minutes).\n\n* Teacher check-in = the EXISTING POST /teacher/sessions/start. Teacher check-out = the EXISTING POST /teacher/sessions/end. There is no separate teacher check-in endpoint. Starting records attendance and may fine lateness; ending computes the session's earning and credits the wallet.\n\n* Student check-in = the NEW POST /student/attendance/check-in, which the app should call right before opening the meeting link.\n\n* Never showing up at all is detected by a cron script (cron/attendance_auto_process.php, runs every minute) at the session's scheduled END time - not at start+grace. Anyone who checks in at any point before the end is 'late'; only a total no-show is 'absent'.\n\n* Excused vs unexcused: an approved absence_permission / late_notice request (POST /teacher|/student/attendance/exceptions, reviewed by admin at PUT /admin/attendance/exceptions) marks that occurrence `is_excused = 1`, which exempts it from fines AND from the monthly unauthorized-absence counter.\n\n* Consequences of crossing the unauthorized-absence limit: a TEACHER gets `is_attendance_suspended = 1` (UI restriction only, see 3 above); a STUDENT gets their subscription frozen (`student_subscriptions.is_active = 0`), which every student-facing endpoint now surfaces as `is_frozen` + `freeze_reason` rather than as a plain 'inactive'/'not subscribed' state.\n\n* Money is an append-only ledger (`teacher_wallet_transactions`) with a cached balance on `teachers.wallet_balance`. Positive amount = credit (earning/refund/positive adjustment), negative = debit (fine/negative adjustment). A teacher may appeal ONLY `fine` rows, once each, via POST /teacher/wallet/appeals; an approved appeal writes a compensating `refund` row.\n"
+    "title": "Najeh Backend - Session Changelog API (update-4)",
+    "version": "4.0.0",
+    "description": "OpenAPI spec covering every endpoint ADDED or CHANGED across this project's work, cumulative across update-1, update-2, update-3 and update-4. Import into Apidog via Import > OpenAPI/Swagger. Auth: each role has its own Bearer JWT (Admin/Teacher/Student/Parent security schemes below); AnyAuth accepts a JWT from any one of the 4 roles.\n\n=== WHAT IS NEW IN update-4 ===\nupdate-4 is everything done after update-3 shipped. Search this file for the string 'update-4' to find every affected operation. It adds 20 brand-new paths and ships 6 DB migrations (064, 065, 066, 067, 068, 069), each of which must be run on the database by hand before the matching endpoints will work.\n\n1) DATED APPOINTMENT SLOTS (NEW LAYER, migration 066 `teacher_availability_slots`). A second, parallel scheduling layer next to `class_sessions`. `class_sessions` stays exactly as it was: a weekly recurring pattern (`day_of_week` + `start_time`) with no calendar date on it. A slot is ONE appointment on a REAL date, with a `capacity` (1 = private lesson, higher = group). 15 new endpoints: admin GET/POST/PUT/DELETE /admin/availability plus /admin/availability/generate, /book, /schedule-student; teacher GET/POST/PUT/DELETE /teacher/availability plus /generate and /book; student GET /student/availability, GET /student/availability/my-schedule, POST/DELETE /student/availability/book. CLIENT ACTION: a client that only knows about /sessions will not see these appointments - they are not returned by the session endpoints.\n\n2) PACKAGES NOW EXPIRE (migration 065, `courses.duration_months`). A package (`courses.kind` = 'package') can declare how many months a subscription to it lasts (1, 3, 6 or 12). When a package is granted or redeemed and the caller sends neither `end_date` nor `duration_days`, the subscription's `end_date` is now start + `duration_months`. BEFORE update-4 package access was stored with `end_date` NULL and never expired, so a client that showed 'unlimited' for packages must stop doing that.\n\n3) DISCOUNT CODES (NEW, migration 069). A discount code REDUCES a price; it is NOT a `subscription_code` (which opens access outright and is free). Separate tables so neither flow can hand out the other's thing. New: /admin/discount-codes (list/create/update/delete), /admin/discount-codes/show, /admin/discount-codes/check, /admin/discount-codes/redemptions, /student/discount-codes/check. A code is only SPENT when an admin actually grants a subscription with `discount_code` in the body; checking a code is a read and never consumes a use.\n\n4) CERTIFICATES CAN BE GRANTED AND REVOKED (no migration - existing tables). New: /admin/student-certificates (list, grant to one or many students, revoke) and /teacher/student-certificates (list own, revoke own).\n\n5) CURRENCY IS USD (migration 067). `payment_transactions.currency` defaulted to 'EGP' because the EasyKash gateway was wired first; no gateway is actually in use. The column default is now 'USD' and existing rows were relabelled. CLIENT ACTION: hardcoded 'ج.م'/'EGP' labels must become '$'/'USD'.\n\n6) PER-COURSE VIDEO DOWNLOAD (migration 068, `courses.allow_video_download`). Mirrors the pre-existing `course_books.allow_download`. Defaults to 0 (watch in-platform only), deliberately - the protective choice must not depend on someone ticking a box.\n\n7) QUESTION IMAGES (migration 064, `questions.question_image`). An optional image on a question itself (a diagram, a photographed problem). This feature had been edited straight onto production without a commit; update-4 brings it into the tracked codebase. Same operation also relaxes validation: question TEXT is no longer required, so an image-only question is legal.\n\n8) TEACHER HOME REWRITTEN. GET /teacher/home (and its alias GET /teacher/content/home) used to fall back to hardcoded demo data - fake KPI numbers, a fixed 7-month chart, 3 invented 'recent activity' rows - whenever the real query came back empty. Every field is now computed live from the DB. CLIENT ACTION: empty states are now real and must be handled.\n\n9) ADMIN DASHBOARD STATISTICS EXPANDED. GET /admin/dashboard/statistics previously returned only the `statistics` counts. It now also returns sales totals (total/today/month/year), per-course sales, yearly charts, and a bilingual recent-activity feed assembled on the fly from the newest rows of the tables that represent real events (there is no audit-log table). Every label ships in both `_ar` and `_en` so no DB enum value ever reaches the screen untranslated.\n\n10) EXAM VISIBILITY AND SORTING. `show_to_students` is now exposed as an explicit alias of `is_active` on an exam, so the show/hide semantics do not have to be inferred from a generic field name. Teacher/admin exam listings take an explicit `sort` (`newest` default, `oldest`; aliases `sort_by`, `order`), and the student-facing exam list filters on `is_active` = 1.\n\n=== WHAT IS NEW IN update-3 ===\nupdate-3 documents Section 10 of the product spec - the Attendance / Delay / Salaries / Deductions system - plus every behavioral change made after update-2. Search this file for the string 'update-3' to find every affected operation.\n\nupdate-3 introduces 21 brand-new endpoints (teacher wallet + attendance exceptions, student check-in + attendance exceptions, admin HR policy settings, pay rates, exception review, teacher wallets ledger, and deduction appeals), and changes the behavior of several existing ones. It also ships 3 DB migrations (060, 061, 062).\n\n--- GLOBAL BEHAVIOR CHANGES (update-3, apply to EVERY endpoint, not just new ones) ---\n\n1) ACCOUNT DEACTIVATION IS NOW ENFORCED ON EVERY REQUEST. All four auth middlewares (admin/teacher/student/parent) now re-read the caller's own `is_active` column from the DB on each authenticated request. If the row is missing or `is_active = 0`, the request is rejected with HTTP 401 and message `account_inactive` ('الحساب غير مفعل، يرجى التواصل مع الدعم الفني'). Previously a token issued before deactivation kept working until it expired. CLIENT ACTION: treat a 401 carrying that message as a hard logout, not as a 'refresh the token' signal.\n\n2) TOKEN REFRESH IS ALSO GATED. POST /{role}/auth/refresh-token now performs the same `is_active` check before minting new tokens and returns HTTP 403 + `account_inactive` for a deactivated account, so a deactivated user cannot silently renew a session.\n\n3) IMPORTANT DISTINCTION - `is_active` vs `is_attendance_suspended` (teachers only). `teachers.is_active` is the ADMIN's manual enable/disable switch and is the ONLY thing that blocks login/API access (see 1 and 2 above). The NEW column `teachers.is_attendance_suspended` (migration 061) is set automatically by the attendance policy when a teacher exceeds the allowed number of unauthorized absences. It NEVER blocks login and NEVER blocks any API call - it is a pure UI signal telling the teacher app to restrict the teacher to the support chat until an admin lifts it via POST /admin/teacher-wallets/lift-suspension. Do not conflate the two.\n\n4) SERVER CLOCK / TIMEZONE FIX. The default request timezone changed from UTC to Africa/Cairo, and Egypt's reintroduced daylight saving time (forward on the last Friday of April, back on the last Thursday of October) is now computed explicitly instead of trusting the server's stale tzdata. Every time-sensitive value in the API (session start/end matching, check-in lateness, `created_at`, cron no-show detection) is now consistently Cairo local time, UTC+2 in winter and UTC+3 in summer. The `?_timezone=` query parameter still overrides it per request.\n\n5) PAGINATION SCHEMA CORRECTION. The `PaginatedResponse` component in earlier revisions of this file described a `meta {page, limit, total}` envelope that the backend never actually returned. It now documents the real envelope: `pagination {current_page, per_page, total_records, total_pages, has_next_page, has_prev_page}`, plus the optional `statistics` object. No server code changed - the spec was wrong, not the API.\n\n--- HOW THE ATTENDANCE / SALARY SYSTEM FITS TOGETHER (read this before the endpoints) ---\n\n* One global, admin-editable policy row drives everything: GET/PUT /admin/hr-settings (table `hr_policy_settings`, always id = 1). It holds the monthly absence/reschedule limits and the grace period for BOTH roles, the teacher fine amounts, and the default pay model + rate. Changes apply only to sessions evaluated from that moment on - nothing is recalculated retroactively.\n\n* Teacher pay: default comes from the policy row; a per-teacher override can be set with POST /admin/teachers/pay-rate and removed with DELETE /admin/teachers/pay-rate. Three models: `hourly` (rate x minutes/60), `per_session` (flat rate), `per_minute` (rate x minutes).\n\n* Teacher check-in = the EXISTING POST /teacher/sessions/start. Teacher check-out = the EXISTING POST /teacher/sessions/end. There is no separate teacher check-in endpoint. Starting records attendance and may fine lateness; ending computes the session's earning and credits the wallet.\n\n* Student check-in = the NEW POST /student/attendance/check-in, which the app should call right before opening the meeting link.\n\n* Never showing up at all is detected by a cron script (cron/attendance_auto_process.php, runs every minute) at the session's scheduled END time - not at start+grace. Anyone who checks in at any point before the end is 'late'; only a total no-show is 'absent'.\n\n* Excused vs unexcused: an approved absence_permission / late_notice request (POST /teacher|/student/attendance/exceptions, reviewed by admin at PUT /admin/attendance/exceptions) marks that occurrence `is_excused = 1`, which exempts it from fines AND from the monthly unauthorized-absence counter.\n\n* Consequences of crossing the unauthorized-absence limit: a TEACHER gets `is_attendance_suspended = 1` (UI restriction only, see 3 above); a STUDENT gets their subscription frozen (`student_subscriptions.is_active = 0`), which every student-facing endpoint now surfaces as `is_frozen` + `freeze_reason` rather than as a plain 'inactive'/'not subscribed' state.\n\n* Money is an append-only ledger (`teacher_wallet_transactions`) with a cached balance on `teachers.wallet_balance`. Positive amount = credit (earning/refund/positive adjustment), negative = debit (fine/negative adjustment). A teacher may appeal ONLY `fine` rows, once each, via POST /teacher/wallet/appeals; an approved appeal writes a compensating `refund` row.\n"
   },
   "servers": [
     {
@@ -497,7 +497,7 @@
               0,
               1
             ],
-            "description": "update-3 (CLARIFIED): this IS the 'show exam to students' toggle - GET /student/exams filters on is_active = 1, so an admin/teacher setting this to 0 (via PUT /admin/exams or PUT /teacher/exams) immediately hides the exam from every student, with no other side effect. See also the explicit alias `show_to_students` below."
+            "description": "update-4 (CLARIFIED): this IS the 'show exam to students' toggle - GET /student/exams filters on is_active = 1, so an admin/teacher setting this to 0 (via PUT /admin/exams or PUT /teacher/exams) immediately hides the exam from every student, with no other side effect. See also the explicit alias `show_to_students` below."
           },
           "title": {
             "type": "string"
@@ -543,13 +543,13 @@
               0,
               1
             ],
-            "description": "update-3 (NEW): explicit alias of `is_active` for this exam, added so the show/hide-to-students semantics don't have to be inferred from a generically-named `is_active` field. Always equal to `is_active`."
+            "description": "update-4 (NEW): explicit alias of `is_active` for this exam, added so the show/hide-to-students semantics don't have to be inferred from a generically-named `is_active` field. Always equal to `is_active`."
           }
         }
       },
       "TeacherHomeResponse": {
         "type": "object",
-        "description": "update-3 (REWRITE): the teacher dashboard home screen. Every field is computed live from the DB - the previous version of this endpoint returned hardcoded demo data (fake KPI numbers, a fixed 7-month chart, 3 made-up 'recent activity' rows) whenever the real query came back empty; none of that placeholder behavior remains.",
+        "description": "update-4 (REWRITE): the teacher dashboard home screen. Every field is computed live from the DB - the previous version of this endpoint returned hardcoded demo data (fake KPI numbers, a fixed 7-month chart, 3 made-up 'recent activity' rows) whenever the real query came back empty; none of that placeholder behavior remains.",
         "properties": {
           "greeting": {
             "type": "string"
@@ -794,7 +794,7 @@
           "currency": {
             "type": "string",
             "example": "USD",
-            "description": "update-3: the platform prices everything in US dollars. `payment_transactions.currency` used to default to 'EGP' because the EasyKash gateway was wired up first, but no gateway is actually in use; migration 067 switches the column default to 'USD' and relabels existing rows, so revenue totals never sum two currencies into one number."
+            "description": "update-4: the platform prices everything in US dollars. `payment_transactions.currency` used to default to 'EGP' because the EasyKash gateway was wired up first, but no gateway is actually in use; migration 067 switches the column default to 'USD' and relabels existing rows, so revenue totals never sum two currencies into one number."
           },
           "total": {
             "type": "number",
@@ -999,7 +999,7 @@
       },
       "AvailabilitySlot": {
         "type": "object",
-        "description": "update-3 (NEW): one teaching appointment on a REAL calendar date. This is a separate layer from `class_sessions`, which is a weekly recurring pattern (`day_of_week` + `start_time`) with no date on it and is unchanged. A slot with `capacity` 1 is a private appointment; a higher capacity makes it a group one - both use the same `bookings` array, there is no second mechanism.",
+        "description": "update-4 (NEW): one teaching appointment on a REAL calendar date. This is a separate layer from `class_sessions`, which is a weekly recurring pattern (`day_of_week` + `start_time`) with no date on it and is unchanged. A slot with `capacity` 1 is a private appointment; a higher capacity makes it a group one - both use the same `bookings` array, there is no second mechanism.",
         "properties": {
           "id": {
             "type": "integer"
@@ -1286,7 +1286,7 @@
       },
       "DiscountCode": {
         "type": "object",
-        "description": "update-3 (NEW): a code that REDUCES a price. It is not a `subscription_code`: a subscription code opens access outright and is free, while a discount code grants nothing at all on its own. They are separate tables so neither flow can accidentally hand out access or money.",
+        "description": "update-4 (NEW): a code that REDUCES a price. It is not a `subscription_code`: a subscription code opens access outright and is free, while a discount code grants nothing at all on its own. They are separate tables so neither flow can accidentally hand out access or money.",
         "properties": {
           "id": {
             "type": "integer"
@@ -5099,7 +5099,7 @@
         "tags": [
           "Content / Exams"
         ],
-        "summary": "update-3 (CLARIFIED): Update exam - includes the show/hide-to-students toggle",
+        "summary": "update-4 (CLARIFIED): Update exam - includes the show/hide-to-students toggle",
         "security": [
           {
             "AdminAuth": []
@@ -5123,7 +5123,7 @@
                       0,
                       1
                     ],
-                    "description": "update-3: THE show/hide-to-students toggle. 0 = hidden from GET /student/exams, 1 = shown there again."
+                    "description": "update-4: THE show/hide-to-students toggle. 0 = hidden from GET /student/exams, 1 = shown there again."
                   },
                   "duration_minutes": {
                     "type": "integer"
@@ -5179,7 +5179,7 @@
             }
           }
         },
-        "description": "Partial update - send only the fields you want to change. NOTE: this exact path item is also reused, unchanged, for PUT /teacher/exams (a teacher may edit any exam this way, not only their own - there is no ownership check on this specific operation).\n\nupdate-3: `is_active` (alias in the response: `show_to_students`) is THE show/hide-to-students toggle for an exam. Setting it to 0 makes the exam disappear from GET /student/exams immediately and unconditionally; setting it back to 1 makes it reappear there, sorted normally. This has no other effect - existing exam_attempts, questions and translations are untouched either way, so hiding an exam a student is mid-attempt on does not invalidate that attempt.\n\nOther fields accepted in the body (all optional, only applied when present): `duration_minutes`, `total_marks`, `pass_marks`, `subject_id`, `course_id`, `unit_id` (send `null` on any of the three scope fields to clear it), and `title_ar`/`title_en`/`description_ar`/`description_en` (upserted into course_exams_translations)."
+        "description": "Partial update - send only the fields you want to change. NOTE: this exact path item is also reused, unchanged, for PUT /teacher/exams (a teacher may edit any exam this way, not only their own - there is no ownership check on this specific operation).\n\nupdate-4: `is_active` (alias in the response: `show_to_students`) is THE show/hide-to-students toggle for an exam. Setting it to 0 makes the exam disappear from GET /student/exams immediately and unconditionally; setting it back to 1 makes it reappear there, sorted normally. This has no other effect - existing exam_attempts, questions and translations are untouched either way, so hiding an exam a student is mid-attempt on does not invalidate that attempt.\n\nOther fields accepted in the body (all optional, only applied when present): `duration_minutes`, `total_marks`, `pass_marks`, `subject_id`, `course_id`, `unit_id` (send `null` on any of the three scope fields to clear it), and `title_ar`/`title_en`/`description_ar`/`description_en` (upserted into course_exams_translations)."
       },
       "delete": {
         "tags": [
@@ -5590,8 +5590,8 @@
         "tags": [
           "Content / Questions"
         ],
-        "summary": "update-3 (NEW: question_image upload): Create question (order_num, mcq_options alias, written type, optional image)",
-        "description": "CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\nCASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n- question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n- question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n- question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.\n\nupdate-3 (NEW): `question_image` (see its own property description) attaches an image to the question - useful for MCQ/true-false/written questions built around a diagram, graph or photographed problem, independent of question_type.\n\nupdate-3 (VALIDATION CHANGE): question text is NO LONGER required - a question with only an image and no text is now accepted (previously `question_text_ar`/`question_text_en`/`question_text` all being empty returned a 422 'Question text is required'; that check was removed specifically to support image-only questions). Send at least one of {text, image} in practice, though nothing currently enforces it.",
+        "summary": "update-4 (NEW: question_image upload): Create question (order_num, mcq_options alias, written type, optional image)",
+        "description": "CASE 1 (scope resolution): course_id/unit_id/subject_id are OPTIONAL — if omitted, the server auto-resolves them from exam_id (inherits whatever course/unit/subject the parent exam itself belongs to, see /admin/exams cases above). Only send them explicitly to override; if the course can't be resolved at all (bad exam_id), the request fails with 422.\nCASE 2 (question_type decides which answer-fields are used, others are ignored/must be omitted):\n- question_type=mcq -> use mcq_options[] (each option has is_correct); correct_answer and model_answer_* are ignored.\n- question_type=true_false -> use correct_answer (0 or 1); mcq_options and model_answer_* are ignored.\n- question_type=written -> use model_answer_ar/model_answer_en/model_answer (for reference/manual grading); mcq_options and correct_answer are ignored, this type is NOT auto-graded.\n\nupdate-4 (NEW): `question_image` (see its own property description) attaches an image to the question - useful for MCQ/true-false/written questions built around a diagram, graph or photographed problem, independent of question_type.\n\nupdate-4 (VALIDATION CHANGE): question text is NO LONGER required - a question with only an image and no text is now accepted (previously `question_text_ar`/`question_text_en`/`question_text` all being empty returned a 422 'Question text is required'; that check was removed specifically to support image-only questions). Send at least one of {text, image} in practice, though nothing currently enforces it.",
         "security": [
           {
             "AdminAuth": []
@@ -5705,7 +5705,7 @@
                   "question_image": {
                     "type": "string",
                     "nullable": true,
-                    "description": "update-3 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
+                    "description": "update-4 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
                   }
                 }
               },
@@ -5730,7 +5730,7 @@
         "tags": [
           "Content / Questions"
         ],
-        "summary": "update-3 (NEW: question_image upload): Update question - also handles switching type, and clearing/replacing the image",
+        "summary": "update-4 (NEW: question_image upload): Update question - also handles switching type, and clearing/replacing the image",
         "security": [
           {
             "AdminAuth": []
@@ -5748,7 +5748,7 @@
                   "question_image": {
                     "type": "string",
                     "nullable": true,
-                    "description": "update-3 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
+                    "description": "update-4 (RECOVERED - was made directly on production without a matching commit; now brought into the tracked codebase): an optional image attached to the question itself (e.g. a diagram or a photographed problem), stored in the new `questions.question_image` column (TEXT, nullable - see migrations/064). Accepted in three forms, tried in this order:\n1) multipart/form-data file upload under the field name `question_image` (or `image`).\n2) a base64 data URI string (`data:image/<ext>;base64,....`) inside a JSON or form body - decoded and saved to `uploads/questions/`.\n3) a plain URL/relative path string - stored as-is, no upload performed.\nSending an empty string (`\"\"`) or `null` for this field on PUT explicitly clears an existing image. Omit the field entirely to leave the current image untouched on PUT.\nNOTE: because option (1) requires multipart/form-data, `get_json_input()` now falls back to `$_POST` when the JSON body is empty, so this endpoint accepts EITHER a raw JSON body (as before) OR a multipart form body with a `question_image` file field - not just JSON anymore."
                   }
                 }
               },
@@ -5770,7 +5770,7 @@
             }
           }
         },
-        "description": "update-3 (NEW): see `question_image` on the create operation for the 3 accepted input forms and how to clear it (empty string/null) vs leave it untouched (omit the field)."
+        "description": "update-4 (NEW): see `question_image` on the create operation for the 3 accepted input forms and how to clear it (empty string/null) vs leave it untouched (omit the field)."
       },
       "delete": {
         "tags": [
@@ -7241,7 +7241,7 @@
           "Admin / Subscriptions (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Grant a subscription directly to a student, with NO code",
-        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".\n\nupdate-3 (BEHAVIOUR CHANGE): when neither `end_date` nor `duration_days` is sent and the granted courses include a package, the subscription's `end_date` becomes start + the longest selected package's `courses.duration_months`. Package grants used to be stored with `end_date` NULL, i.e. access that never expired.\n\nupdate-3: the response now also carries a `discount` object when `discount_code` was sent - either the applied amounts or the reason the code was refused.",
+        "description": "update-1: Lets admin subscribe a plain student to a specific course, a whole subject (grants every course under it, scoped to the student's own academic_year_id), or a whole teacher (grants everything that teacher teaches, also scoped to the student's own academic_year_id) — all three without generating or using any subscription code. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. update-2 (Admin): when course_ids is sent and EVERY one of those courses has kind='package', subscription_type in the response is 'package' instead of 'course' — same request shape, no new fields to send, this is purely a smarter label so the admin UI can show \"Package subscription\" vs \"Course subscription\".\n\nupdate-4 (BEHAVIOUR CHANGE): when neither `end_date` nor `duration_days` is sent and the granted courses include a package, the subscription's `end_date` becomes start + the longest selected package's `courses.duration_months`. Package grants used to be stored with `end_date` NULL, i.e. access that never expired.\n\nupdate-4: the response now also carries a `discount` object when `discount_code` was sent - either the applied amounts or the reason the code was refused.",
         "security": [
           {
             "AdminAuth": []
@@ -7293,7 +7293,7 @@
                   },
                   "discount_code": {
                     "type": "string",
-                    "description": "update-3 (NEW): applies a discount code to this grant. THIS is where a code is spent - the redemption is recorded against the new subscription and the code's `used_count` goes up. An invalid code does NOT cancel the grant: the access was requested deliberately, so the subscription is still created and the failure is reported in the response's `discount` object."
+                    "description": "update-4 (NEW): applies a discount code to this grant. THIS is where a code is spent - the redemption is recorded against the new subscription and the code's `used_count` goes up. An invalid code does NOT cancel the grant: the access was requested deliberately, so the subscription is still created and the failure is reported in the response's `discount` object."
                   }
                 }
               },
@@ -7468,7 +7468,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Create subscription code(s) targeting a course, subject, or teacher",
-        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-3 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
+        "description": "update-1: Admin subscription-codes modal now exposes course_ids and teacher_ids alongside the pre-existing subject_ids, mirroring the same 3 modes as direct grant. subscription_type is derived automatically from which *_ids array is non-empty (course_ids only -> 'course', subject_ids only -> 'subject', teacher_ids only -> 'teacher', a mix -> 'custom'). At least one of subject_ids/teacher_ids/course_ids is required. Set batch_count > 1 to generate multiple auto-generated codes with the same targets in one call.\n\nupdate-4 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-4 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
         "security": [
           {
             "AdminAuth": []
@@ -7499,7 +7499,7 @@
                   },
                   "price": {
                     "type": "number",
-                    "description": "update-3: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
+                    "description": "update-4: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
                   },
                   "max_uses": {
                     "type": "integer",
@@ -7508,7 +7508,7 @@
                   "duration_days": {
                     "type": "integer",
                     "nullable": true,
-                    "description": "update-3: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
+                    "description": "update-4: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
                   },
                   "valid_from": {
                     "type": "string",
@@ -7575,7 +7575,7 @@
           "Admin / Subscription Codes (update-1)"
         ],
         "summary": "update-1 (NEW UI capability, pre-existing backend): Update a subscription code, including switching its type",
-        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-3 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
+        "description": "update-1: Any of course_ids/subject_ids/teacher_ids present in the body FULLY REPLACES that category's targets for this code (delete-then-insert per category). To switch a code from e.g. subject-type to course-type, the frontend now always sends all three keys on update (empty arrays for the two unused categories) so old targets get cleared correctly.\n\nupdate-4 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.\n\nupdate-4 (PRODUCT CHANGE): a subscription code is a free grant - handing the code to a student opens the subscription directly. `price` is no longer collected anywhere in the admin UI and defaults to 0; it is kept in the API and the table only so codes sold before this change keep their recorded value in the revenue reports.",
         "security": [
           {
             "AdminAuth": []
@@ -7604,7 +7604,7 @@
                   },
                   "price": {
                     "type": "number",
-                    "description": "update-3: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
+                    "description": "update-4: optional, defaults to 0. Codes are free grants now; this exists for historical rows and for a caller that still wants to record a sale value."
                   },
                   "max_uses": {
                     "type": "integer"
@@ -7612,7 +7612,7 @@
                   "duration_days": {
                     "type": "integer",
                     "nullable": true,
-                    "description": "update-3: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
+                    "description": "update-4: optional. Leave it out (or send null) for a package code so the package's `duration_months` decides the subscription length."
                   },
                   "valid_from": {
                     "type": "string",
@@ -7762,8 +7762,8 @@
         "tags": [
           "Student / Subscriptions (update-1)"
         ],
-        "summary": "update-3 (CHANGED): Redeem a subscription code - a package code now inherits the package's duration",
-        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone). update-2 (Student): the resulting subscription's type is now 'package' (instead of always 'course') when every course the code is linked to has kind='package'. NOTE for API consumers creating codes (see POST /admin/subscription-codes): if a code is created with NO course_ids/subject_ids/teacher_ids linked at all, redeeming it here returns success but the message is \"this activation code isn't linked to any content\" and no access is granted — always send at least one of those three arrays when creating a code.\n\nupdate-3 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
+        "summary": "update-4 (CHANGED): Redeem a subscription code - a package code now inherits the package's duration",
+        "description": "update-1: request/response shape unchanged, but on the FIRST successful redemption of a given code by ANY student, the code's claimed_by_student_id is now permanently set (first claimer wins, never overwritten by later redemptions of the same multi-use code). This is what lets /parent/onboard/start later find which student to link a parent to. Course access granted by a subject_ids or teacher_ids code is scoped to the redeeming student's own academic_year_id (a course with academic_year_id=NULL stays visible to everyone). update-2 (Student): the resulting subscription's type is now 'package' (instead of always 'course') when every course the code is linked to has kind='package'. NOTE for API consumers creating codes (see POST /admin/subscription-codes): if a code is created with NO course_ids/subject_ids/teacher_ids linked at all, redeeming it here returns success but the message is \"this activation code isn't linked to any content\" and no access is granted — always send at least one of those three arrays when creating a code.\n\nupdate-4 (BEHAVIOUR CHANGE): a code that unlocks a PACKAGE no longer needs its own day count. On redemption the subscription's end date is decided in this order: (1) the code's `duration_days` when set, (2) the package's own `courses.duration_months`, (3) the code's `valid_to`. The package now comes BEFORE `valid_to` because `valid_to` is how long the code may still be redeemed, not how long the access it grants should last - using it as an end date cut subscriptions short.\nSend `duration_days: null` to clear a day count left over from before a code was pointed at a package; leaving the old value in place would keep it winning over the package's duration.",
         "security": [
           {
             "StudentAuth": []
@@ -8401,7 +8401,7 @@
           "Admin / Courses (NEW - update-2)"
         ],
         "summary": "update-2 (NEW doc): List courses, now filterable by kind (course vs package)",
-        "description": "update-2 (Admin): this endpoint and its filters (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, min/max lessons, search, sort, pagination, etc.) already existed and are unchanged — the only genuinely NEW thing is the `kind` filter/field below, added for the packages feature. Every course row in the response now also carries `kind` ('normal' | 'package'), defaulting to 'normal' for any pre-existing row. A 'package' course is just a course row with no units/videos/exams attached — it is organized around a weekly `class_sessions` schedule (see GET /admin/sessions and GET /teacher/sessions, both course_id-filterable, update-1) plus the existing course-files feature, instead of curriculum content.\n\nupdate-3: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
+        "description": "update-2 (Admin): this endpoint and its filters (subject_ids, teacher_ids, category_ids, academic_year_ids, price range, min/max lessons, search, sort, pagination, etc.) already existed and are unchanged — the only genuinely NEW thing is the `kind` filter/field below, added for the packages feature. Every course row in the response now also carries `kind` ('normal' | 'package'), defaulting to 'normal' for any pre-existing row. A 'package' course is just a course row with no units/videos/exams attached — it is organized around a weekly `class_sessions` schedule (see GET /admin/sessions and GET /teacher/sessions, both course_id-filterable, update-1) plus the existing course-files feature, instead of curriculum content.\n\nupdate-4: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
         "security": [
           {
             "AdminAuth": []
@@ -8584,7 +8584,7 @@
                       12
                     ],
                     "nullable": true,
-                    "description": "update-3 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-3 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
+                    "description": "update-4 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-4 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
                   }
                 }
               },
@@ -8655,7 +8655,7 @@
                       12
                     ],
                     "nullable": true,
-                    "description": "update-3 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-3 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
+                    "description": "update-4 (NEW): how many months a subscription to this PACKAGE lasts (1, 3, 6 or 12). Only meaningful when `kind` = 'package'; an ordinary course leaves it null. Any other value (including 0 or an empty string) is stored as null.\nThis is what finally gives a package subscription an end date: when a student is granted or buys a package and the caller did not spell out `end_date`/`duration_days`, the subscription's `end_date` becomes start + duration_months. Before update-4 nothing on a package said how long it lasted, so package access was stored open ended and never expired.\nIt also bounds scheduling - a dated appointment cannot be booked for a student after their subscription ends."
                   }
                 }
               },
@@ -8683,7 +8683,7 @@
           "Admin / Courses (NEW - update-2)"
         ],
         "summary": "update-2 (NEW doc): Course details (now includes kind)",
-        "description": "update-2 (Admin): the only new field is `kind` ('normal' | 'package'), defaulting to 'normal'. Everything else in this response (teachers[], subject, category, academic_year, created_by) is pre-existing, unchanged.\n\nupdate-3: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
+        "description": "update-2 (Admin): the only new field is `kind` ('normal' | 'package'), defaulting to 'normal'. Everything else in this response (teachers[], subject, category, academic_year, created_by) is pre-existing, unchanged.\n\nupdate-4: every course row now also carries `duration_months` (the package's subscription length in months, null for a normal course).",
         "security": [
           {
             "AdminAuth": []
@@ -11111,7 +11111,7 @@
           "Student / Exams"
         ],
         "summary": "update-3: List exams available to the student - defaults to WHOLE-COURSE exams only when filtering by course_id; unit exams are opt-in",
-        "description": "Every exam in the system always has a non-null `course_id` (the creation UI requires picking a course first, whether the exam is a whole-course exam or a unit exam - `unit_id` is only set for the latter, on top of the same course_id). Because of that, this endpoint treats `course_id` requests differently depending on `include_unit_exams` - READ THIS BEFORE CALLING IT WITH course_id:\n\n1) `course_id` ALONE (default, `include_unit_exams` unset/`0`/`false`) -> returns ONLY whole-course exams for that course (`unit_id IS NULL`). Unit exams belonging to that course are DELIBERATELY excluded - this is the default precisely so a course-details screen doesn't unexpectedly show unit exams mixed in with the course's own exam.\n2) `course_id` + `unit_id` -> returns exams for that ONE specific unit only (existing, unchanged behavior) - `include_unit_exams` is ignored in this case.\n3) `course_id` + `include_unit_exams=1` (alias: `with_unit_exams=1`) -> returns the COMBINED list: the whole-course exam(s) AND every unit exam under that course, mixed together in one array. Use this for an aggregated 'all exams in this course' screen/tab - each item still carries its own `unit_id`/`unit` object (null for the whole-course ones) so the client can group or label them.\n4) `course_id` + `include_unit_exams=only` -> returns UNIT EXAMS ONLY for that course (`unit_id IS NOT NULL`), EXCLUDING the whole-course exam(s) entirely. Use this for a screen that lists only per-unit exams, with no whole-course exam mixed in.\n\n`unit_id` alone (no course_id) and `subject_id` alone keep their original, unrelated behavior - filtering directly on that column, unaffected by any of the above.\n\nAccess control (unrelated to the scoping above): an exam is only returned if the student is subscribed to its subject or its course - a student with no subscriptions at all gets an empty list immediately, before any of the filters run.\n\nupdate-3 (SORTING): results are now explicitly ordered - previously this endpoint had NO ORDER BY at all, so the order was undefined (effectively storage-engine dependent) and could silently change between calls. The default is now NEWEST FIRST (by `created_at` then `id`, descending). Use the `sort` parameter to reverse it.\n\nupdate-3 (VISIBILITY): only exams with `is_active` (= `show_to_students`) equal to 1 are ever returned here - an exam an admin or teacher has hidden via PUT /admin/exams or PUT /teacher/exams (`is_active: 0`) disappears from this list immediately and unconditionally, regardless of any other filter in this request.",
+        "description": "Every exam in the system always has a non-null `course_id` (the creation UI requires picking a course first, whether the exam is a whole-course exam or a unit exam - `unit_id` is only set for the latter, on top of the same course_id). Because of that, this endpoint treats `course_id` requests differently depending on `include_unit_exams` - READ THIS BEFORE CALLING IT WITH course_id:\n\n1) `course_id` ALONE (default, `include_unit_exams` unset/`0`/`false`) -> returns ONLY whole-course exams for that course (`unit_id IS NULL`). Unit exams belonging to that course are DELIBERATELY excluded - this is the default precisely so a course-details screen doesn't unexpectedly show unit exams mixed in with the course's own exam.\n2) `course_id` + `unit_id` -> returns exams for that ONE specific unit only (existing, unchanged behavior) - `include_unit_exams` is ignored in this case.\n3) `course_id` + `include_unit_exams=1` (alias: `with_unit_exams=1`) -> returns the COMBINED list: the whole-course exam(s) AND every unit exam under that course, mixed together in one array. Use this for an aggregated 'all exams in this course' screen/tab - each item still carries its own `unit_id`/`unit` object (null for the whole-course ones) so the client can group or label them.\n4) `course_id` + `include_unit_exams=only` -> returns UNIT EXAMS ONLY for that course (`unit_id IS NOT NULL`), EXCLUDING the whole-course exam(s) entirely. Use this for a screen that lists only per-unit exams, with no whole-course exam mixed in.\n\n`unit_id` alone (no course_id) and `subject_id` alone keep their original, unrelated behavior - filtering directly on that column, unaffected by any of the above.\n\nAccess control (unrelated to the scoping above): an exam is only returned if the student is subscribed to its subject or its course - a student with no subscriptions at all gets an empty list immediately, before any of the filters run.\n\nupdate-4 (SORTING): results are now explicitly ordered - previously this endpoint had NO ORDER BY at all, so the order was undefined (effectively storage-engine dependent) and could silently change between calls. The default is now NEWEST FIRST (by `created_at` then `id`, descending). Use the `sort` parameter to reverse it.\n\nupdate-4 (VISIBILITY): only exams with `is_active` (= `show_to_students`) equal to 1 are ever returned here - an exam an admin or teacher has hidden via PUT /admin/exams or PUT /teacher/exams (`is_active: 0`) disappears from this list immediately and unconditionally, regardless of any other filter in this request.",
         "security": [
           {
             "StudentAuth": []
@@ -11167,7 +11167,7 @@
               ],
               "default": "newest"
             },
-            "description": "update-3 (NEW): `newest` (default) sorts by creation date/id descending; `oldest` reverses it. Aliases: `sort_by`, `order` (accepted with the same two values). Any unrecognised value falls back to `newest`."
+            "description": "update-4 (NEW): `newest` (default) sorts by creation date/id descending; `oldest` reverses it. Aliases: `sort_by`, `order` (accepted with the same two values). Any unrecognised value falls back to `newest`."
           }
         ],
         "responses": {
@@ -11222,7 +11222,7 @@
         "tags": [
           "Teacher / Home"
         ],
-        "summary": "update-3 (REWRITE): Teacher dashboard home - fully real, wired to every teacher-relevant system",
+        "summary": "update-4 (REWRITE): Teacher dashboard home - fully real, wired to every teacher-relevant system",
         "description": "Complete rewrite of this endpoint. The previous implementation was demo/placeholder code: every KPI had a hardcoded fallback number (e.g. a fake '24512 students' / '$84254 revenue') that was returned whenever the real query came back empty or zero, a 7-month chart with fixed fake numbers, and 3 hardcoded 'recent activity' rows naming students who don't exist in this database. NONE of that remains - every field below is a live, real query against this teacher's own data, and a genuinely empty result now correctly reads as zero/empty rather than being papered over with a fake number.\n\nThis is the single aggregate call for a teacher app's home/dashboard screen, pulling together:\n- Profile snapshot + real rating/reviews (`teacher`).\n- Top-line KPI cards (`kpis`).\n- Section 10 wallet balance and effective pay rate (`wallet`) - same numbers as GET /teacher/wallet.\n- Today's full schedule with live status per session (`today`) - same session objects as GET /teacher/sessions.\n- Every action currently awaiting this teacher, broken out per source, so the UI can deep-link each one (`pending_actions`): ungraded homework submissions, ungraded exam attempts, incoming student reschedule requests, this teacher's own pending Section 10 exception requests and deduction appeals, and pending consultation bookings.\n- A preview of up to 6 owned courses/packages with real student counts (`my_courses`).\n- The next 5 approved+booked consultations (`upcoming_consultations`).\n- The 5 most recent notifications (`recent_notifications`).\n\nBoth GET /teacher/home and GET /teacher/content/home hit the exact same handler (`teacherHome`) - they are not two different implementations, just two paths that existed already.",
         "security": [
           {
@@ -11272,7 +11272,7 @@
         "tags": [
           "Teacher / Home"
         ],
-        "summary": "update-3 (NEW to this spec): Alias of GET /teacher/home (identical handler `teacherHome`, identical response)",
+        "summary": "update-4 (NEW to this spec): Alias of GET /teacher/home (identical handler `teacherHome`, identical response)",
         "description": "Kept as a separate path only because both existed already in index.php (same `teacherHome` handler, same middleware) - not a different implementation. See GET /teacher/home for the full description.",
         "security": [
           {
@@ -11322,8 +11322,8 @@
         "tags": [
           "Admin / Dashboard"
         ],
-        "summary": "update-3 (EXPANDED): Dashboard statistics - counts, sales, per-course sales, yearly charts and recent activity",
-        "description": "Everything the admin dashboard home page needs, in one call.\n\nupdate-3 additions (previously this endpoint returned only the `statistics` counts):\n- `statistics.courses` - course count, alongside the existing entity counts.\n- `sales` - total / today / this month / this year revenue, plus a per-channel breakdown.\n- `top_courses` - sales and revenue per course, best seller first.\n- `charts.sales_by_month` and `charts.students_by_month` - always exactly 12 entries (January to December), including months with no data, so a chart can be rendered without filling gaps client-side.\n- `recent_activity` - newest platform events, each with a `link` to the page that handles it.\n\nNo database change was needed for any of this: every figure is derived from tables that already exist.",
+        "summary": "update-4 (EXPANDED): Dashboard statistics - counts, sales, per-course sales, yearly charts and recent activity",
+        "description": "Everything the admin dashboard home page needs, in one call.\n\nupdate-4 additions (previously this endpoint returned only the `statistics` counts):\n- `statistics.courses` - course count, alongside the existing entity counts.\n- `sales` - total / today / this month / this year revenue, plus a per-channel breakdown.\n- `top_courses` - sales and revenue per course, best seller first.\n- `charts.sales_by_month` and `charts.students_by_month` - always exactly 12 entries (January to December), including months with no data, so a chart can be rendered without filling gaps client-side.\n- `recent_activity` - newest platform events, each with a `link` to the page that handles it.\n\nNo database change was needed for any of this: every figure is derived from tables that already exist.",
         "security": [
           {
             "AdminAuth": []
@@ -11406,7 +11406,7 @@
                                   "$ref": "#/components/schemas/DashboardEntityCount"
                                 }
                               ],
-                              "description": "update-3 (NEW)."
+                              "description": "update-4 (NEW)."
                             }
                           }
                         },
@@ -11502,7 +11502,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): List dated appointment slots",
+        "summary": "update-4 (NEW): List dated appointment slots",
         "description": "Every slot matching the filters, oldest date first. An admin may filter by `teacher_id`; leaving it out returns slots across all teachers.",
         "security": [
           {
@@ -11619,7 +11619,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Create one dated slot",
+        "summary": "update-4 (NEW): Create one dated slot",
         "description": "Creates a single appointment on a specific date. A teacher can only ever have one slot starting at a given date+time; a second one is rejected rather than silently duplicated.",
         "security": [
           {
@@ -11717,7 +11717,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Update a dated slot",
+        "summary": "update-4 (NEW): Update a dated slot",
         "security": [
           {
             "AdminAuth": []
@@ -11816,7 +11816,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Delete a dated slot",
+        "summary": "update-4 (NEW): Delete a dated slot",
         "description": "Deletes the slot and its bookings. To keep the record but stop new bookings, set `status` to 'cancelled' with PUT instead.",
         "security": [
           {
@@ -11853,7 +11853,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Generate recurring dated slots for a teacher",
+        "summary": "update-4 (NEW): Generate recurring dated slots for a teacher",
         "description": "Expands a daily/weekly/monthly pattern into one slot per date. See the request schema for the caps and the skip-on-duplicate behaviour.",
         "security": [
           {
@@ -12016,7 +12016,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Put a student into a dated slot",
+        "summary": "update-4 (NEW): Put a student into a dated slot",
         "description": "Books on the student's behalf. Unlike the student's own booking route this does NOT require the student to hold a live subscription, so an admin can schedule someone whose paperwork is still being sorted out; the slot's capacity is still enforced. The student is notified.",
         "security": [
           {
@@ -12073,7 +12073,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Remove a student from a dated slot",
+        "summary": "update-4 (NEW): Remove a student from a dated slot",
         "description": "Marks the booking cancelled (the row is kept for history) and frees the place. The student is notified.",
         "security": [
           {
@@ -12132,7 +12132,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Build a whole schedule for one student in a single call",
+        "summary": "update-4 (NEW): Build a whole schedule for one student in a single call",
         "description": "The 'open a subscribed student and set their dates' flow: generates the slots from the pattern AND books that student into every one of them, in one request, so a half-made schedule (dates with nobody in them) cannot be left behind.\n\nWhen `start_date`/`end_date` are omitted they default to the student's own active subscription window - which for a package is exactly what `courses.duration_months` decides. If the student has no dated subscription to infer them from, the request is rejected and asks for the dates explicitly.\n\nDates that already had a slot are reused rather than duplicated, so the response distinguishes `created_slots` from `reused_slots`, and `failures` lists any date the student could not be booked into (for example a slot that was already full).",
         "security": [
           {
@@ -12312,7 +12312,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): List my dated slots (teacher)",
+        "summary": "update-4 (NEW): List my dated slots (teacher)",
         "description": "Identical to the admin list, except the teacher is taken from the token and cannot be overridden.",
         "security": [
           {
@@ -12422,7 +12422,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Create one dated slot (teacher)",
+        "summary": "update-4 (NEW): Create one dated slot (teacher)",
         "security": [
           {
             "TeacherAuth": []
@@ -12515,7 +12515,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Update one of my dated slots (teacher)",
+        "summary": "update-4 (NEW): Update one of my dated slots (teacher)",
         "description": "A slot belonging to another teacher is refused.",
         "security": [
           {
@@ -12615,7 +12615,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Delete one of my dated slots (teacher)",
+        "summary": "update-4 (NEW): Delete one of my dated slots (teacher)",
         "security": [
           {
             "TeacherAuth": []
@@ -12651,7 +12651,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Publish my availability for a period (teacher)",
+        "summary": "update-4 (NEW): Publish my availability for a period (teacher)",
         "description": "Same generator as the admin route, for the authenticated teacher. This is how a teacher publishes a month of available times in one go.",
         "security": [
           {
@@ -12680,7 +12680,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Put one of my students into a slot (teacher)",
+        "summary": "update-4 (NEW): Put one of my students into a slot (teacher)",
         "description": "Same as the admin booking route but restricted to the teacher's own slots; no active subscription is required, capacity still is.",
         "security": [
           {
@@ -12737,7 +12737,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Remove a student from one of my slots (teacher)",
+        "summary": "update-4 (NEW): Remove a student from one of my slots (teacher)",
         "security": [
           {
             "TeacherAuth": []
@@ -12795,7 +12795,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Available slots I can book (student)",
+        "summary": "update-4 (NEW): Available slots I can book (student)",
         "description": "Only slots that are still open: status 'available', with a free place, and dated today or later. `teacher_id` or `course_id` is required - this endpoint never returns the whole platform's calendar.",
         "security": [
           {
@@ -12923,7 +12923,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): My booked appointments (student)",
+        "summary": "update-4 (NEW): My booked appointments (student)",
         "description": "The dated slots this student is booked into. Cancelled bookings are excluded. Pair `date_from`/`date_to` to fetch one month for a calendar.",
         "security": [
           {
@@ -13035,7 +13035,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Book a slot (student)",
+        "summary": "update-4 (NEW): Book a slot (student)",
         "description": "Books the authenticated student into the slot. Unlike the admin/teacher routes this REQUIRES a live subscription: the request is rejected when the student has no active subscription covering the slot's course, and when the slot's date falls after that subscription's end date - which for a package is set by `courses.duration_months`. The teacher is notified.",
         "security": [
           {
@@ -13088,7 +13088,7 @@
         "tags": [
           "Scheduling / Dated Availability"
         ],
-        "summary": "update-3 (NEW): Cancel my booking (student)",
+        "summary": "update-4 (NEW): Cancel my booking (student)",
         "description": "Frees the place and notifies the teacher. The booking row is kept, marked cancelled.",
         "security": [
           {
@@ -13143,7 +13143,7 @@
         "tags": [
           "Content / Certificates"
         ],
-        "summary": "update-3 (NEW): List certificates issued to students",
+        "summary": "update-4 (NEW): List certificates issued to students",
         "description": "Newest issue date first.",
         "security": [
           {
@@ -13230,7 +13230,7 @@
         "tags": [
           "Content / Certificates"
         ],
-        "summary": "update-3 (NEW for admin): Grant a certificate to one or more students",
+        "summary": "update-4 (NEW for admin): Grant a certificate to one or more students",
         "description": "Awards an existing certificate to students. The grant logic itself already existed but was only reachable by a teacher, so an admin could not award a certificate at all.\n\nNO COURSE IS REQUIRED: the issued row takes its `course_id` from the certificate template, and a template without a course produces a certificate with `course_id` null. A certificate can therefore be granted to any student at any time, independently of enrolment.\n\nA student who already holds this certificate is SKIPPED rather than duplicated, so re-sending the same list is safe. The response separates `issued`, `skipped` and `failed`.",
         "security": [
           {
@@ -13306,7 +13306,7 @@
         "tags": [
           "Content / Certificates"
         ],
-        "summary": "update-3 (NEW): Revoke a certificate from a student",
+        "summary": "update-4 (NEW): Revoke a certificate from a student",
         "description": "Deletes the issued row by its own id (NOT the certificate template id). The template itself is untouched.",
         "security": [
           {
@@ -13344,7 +13344,7 @@
         "tags": [
           "Content / Certificates"
         ],
-        "summary": "update-3 (NEW): List certificates this teacher has issued",
+        "summary": "update-4 (NEW): List certificates this teacher has issued",
         "description": "Same as the admin listing, scoped by the token: a teacher sees issued certificates whose template they created, or that is assigned to them, or that an admin created and no teacher owns. `teacher_id` cannot be passed in - it comes from the token.",
         "security": [
           {
@@ -13507,7 +13507,7 @@
         "tags": [
           "Content / Certificates"
         ],
-        "summary": "update-3 (NEW): Revoke a certificate this teacher granted",
+        "summary": "update-4 (NEW): Revoke a certificate this teacher granted",
         "description": "Refused unless the certificate template belongs to this teacher (created by them, or assigned to them). Ownership is checked on the server, not taken from the request.",
         "security": [
           {
@@ -13545,7 +13545,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): List discount codes",
+        "summary": "update-4 (NEW): List discount codes",
         "security": [
           {
             "AdminAuth": []
@@ -13631,7 +13631,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Create a discount code",
+        "summary": "update-4 (NEW): Create a discount code",
         "description": "Omit `code` to have one generated. Omit `course_ids` to make the code work on every course and package.",
         "security": [
           {
@@ -13667,7 +13667,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Update a discount code",
+        "summary": "update-4 (NEW): Update a discount code",
         "description": "Partial update. Sending `course_ids` also rewrites `applies_to`; sending an empty array makes the code global again.",
         "security": [
           {
@@ -13694,7 +13694,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Delete a discount code",
+        "summary": "update-4 (NEW): Delete a discount code",
         "description": "Its redemption rows are deliberately kept - they are the record of discounts already given.",
         "security": [
           {
@@ -13731,7 +13731,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Get one discount code",
+        "summary": "update-4 (NEW): Get one discount code",
         "security": [
           {
             "AdminAuth": []
@@ -13766,7 +13766,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Preview what a code would take off (admin)",
+        "summary": "update-4 (NEW): Preview what a code would take off (admin)",
         "description": "Read-only. Used by the grant screen to show the price before and after.",
         "security": [
           {
@@ -13825,7 +13825,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): List discounts actually applied",
+        "summary": "update-4 (NEW): List discounts actually applied",
         "description": "One row per real use, with the amount before, the discount and the amount after, plus the subscription it was applied to.",
         "security": [
           {
@@ -13877,7 +13877,7 @@
         "tags": [
           "Subscriptions / Discount Codes"
         ],
-        "summary": "update-3 (NEW): Check a discount code (student)",
+        "summary": "update-4 (NEW): Check a discount code (student)",
         "description": "Lets a student see the discounted price of a course or package before committing. Read-only: it never consumes a use, so refreshing the page costs nothing. The student id comes from the token and is what enforces the once-per-student rule.",
         "security": [
           {
