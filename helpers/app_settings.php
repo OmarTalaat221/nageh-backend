@@ -41,6 +41,13 @@ if (!function_exists('app_settings')) {
             'login_lockout_enabled' => '0',
             'max_login_attempts' => '5',
             'login_lockout_minutes' => '15',
+            // Pricing. The base currency is 'USD' because migration 067 already relabelled every
+            // transaction on this platform to dollars; defaulting to anything else here would
+            // silently re-denominate an unreadable settings table.
+            'base_currency' => 'USD',
+            'country_pricing_enabled' => '1',
+            'geoip_lookup_enabled' => '1',
+            'geoip_provider_url' => 'https://ipwho.is/{ip}',
         ];
 
         // A blank contact field is a real answer - "no support number has been entered yet". A
@@ -288,6 +295,11 @@ if (!function_exists('getPublicAppConfig')) {
                     'telegram' => $s['telegram_link'],
                 ],
                 'registration_enabled' => app_setting_flag($con, 'registration_enabled', true),
+                // The currency a price with no country entry is quoted in. The student app reads
+                // this once at boot so it can label a cached price it was handed before the
+                // pricing context came back.
+                'base_currency' => function_exists('pricing_base_currency') ? pricing_base_currency($con) : 'USD',
+                'country_pricing_enabled' => app_setting_flag($con, 'country_pricing_enabled', true),
                 // Already in the language of the request, so a client shows it as-is.
                 'registration_disabled_message' => app_setting_message(
                     $con,

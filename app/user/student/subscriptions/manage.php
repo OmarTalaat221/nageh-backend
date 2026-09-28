@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 
@@ -143,6 +144,9 @@ if (!function_exists('get_student_subscription_details')) {
                 $courses[] = format_response_images($cRow);
             }
         }
+        // Already paid for, so this is informational - but a price with no currency beside it is
+        // what the whole cycle exists to stop, and these rows are read by the same components.
+        pricing_decorate_rows($con, $courses, 'course');
         $row['courses'] = $courses;
 
         return format_response_images($row);
@@ -829,6 +833,8 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
                 $courses[] = format_response_images($row);
             }
         }
+        pricing_decorate_rows($con, $courses, 'course', $stId);
+
 
         return build_admin_paginated_response($courses, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
@@ -951,6 +957,11 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             $row['is_subscribed'] = true;
             $books[] = function_exists('enrich_student_book_details') ? enrich_student_book_details($con, $row) : format_response_images($row);
         }
+
+        // This copy of the books listing is the one that actually answers /najeh/books - the one
+        // in content/books.php is shadowed, because that file requires this one first and its own
+        // definition is behind a function_exists guard.
+        pricing_decorate_rows($con, $books, 'book', $stId);
 
         return build_admin_paginated_response($books, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
@@ -1309,6 +1320,8 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
                 $courses[] = format_response_images($row);
             }
         }
+        pricing_decorate_rows($con, $courses, 'course', $stId);
+
 
         return build_admin_paginated_response($courses, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
@@ -1407,6 +1420,11 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
 
             $books[] = format_response_images($row);
         }
+
+        // This copy of the books listing is the one that actually answers /najeh/books - the one
+        // in content/books.php is shadowed, because that file requires this one first and its own
+        // definition is behind a function_exists guard.
+        pricing_decorate_rows($con, $books, 'book', $stId);
 
         return build_admin_paginated_response($books, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }

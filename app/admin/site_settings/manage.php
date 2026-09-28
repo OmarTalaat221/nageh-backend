@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../../helpers/app_settings.php';
+require_once __DIR__ . '/../../../helpers/pricing.php';
 
 if (!function_exists('ensure_site_settings_schema')) {
     function ensure_site_settings_schema($con): void {
@@ -110,9 +111,36 @@ if (!function_exists('validate_site_setting')) {
                 }
                 return null;
 
+            // The currency everything falls back to. Checked against the currencies table, not
+            // just its shape: a base currency nothing can name would put a three-letter code in
+            // front of every price on the platform, including the ones nobody set a country
+            // price for - which is most of them.
+            case 'base_currency':
+                if (!preg_match('/^[A-Z]{3}$/', strtoupper($value))) {
+                    return $t('العملة الأساسية لازم تكون كود من 3 حروف زي USD.', 'The base currency must be a three-letter code such as USD.');
+                }
+                if ($con && !currency_info($con, strtoupper($value))['is_active']) {
+                    return $t('العملة دي مش موجودة أو مش مفعّلة.', 'That currency does not exist or is not active.');
+                }
+                return null;
+
+            // A URL with {ip} in it. Without the placeholder every lookup would ask about the
+            // same address, so the check is for the placeholder as much as for the URL.
+            case 'geoip_provider_url':
+                if ($value === '') return null;
+                if (!filter_var($value, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $value)) {
+                    return $t('رابط خدمة تحديد الدولة لازم يبدأ بـ http:// أو https://', 'The geo lookup URL must start with http:// or https://');
+                }
+                if (strpos($value, '{ip}') === false) {
+                    return $t('الرابط لازم يحتوي على {ip} مكان عنوان الزائر.', 'The URL must contain {ip} where the visitor address goes.');
+                }
+                return null;
+
             case 'registration_enabled':
             case 'login_lockout_enabled':
             case 'student_device_limit_enabled':
+            case 'country_pricing_enabled':
+            case 'geoip_lookup_enabled':
                 if (!in_array($value, ['0', '1'], true)) {
                     return $t(
                         'قيمة المفتاح ' . $key . ' لازم تكون 0 أو 1.',

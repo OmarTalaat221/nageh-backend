@@ -3,6 +3,7 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/language.php';
 require_once __DIR__ . '/payments_grant.php';
 require_once __DIR__ . '/discounts.php';
+require_once __DIR__ . '/pricing.php';
 require_once __DIR__ . '/admin_notifications.php';
 
 /**
@@ -46,6 +47,8 @@ if (!function_exists('payment_account_format')) {
             'account_name' => $row['account_name'],
             'account_number' => $row['account_number'],
             'swift_code' => $row['swift_code'] ?? null,
+            'currency_code' => $row['currency_code'] ?? pricing_base_currency($con),
+            'currency' => currency_info($con, (string)($row['currency_code'] ?? pricing_base_currency($con))),
             'instructions' => $isEnglish
                 ? ($row['instructions_en'] ?: $row['instructions_ar'])
                 : ($row['instructions_ar'] ?: $row['instructions_en']),
@@ -69,7 +72,7 @@ if (!function_exists('payment_account_format')) {
 }
 
 if (!function_exists('payment_accounts_list')) {
-    function payment_accounts_list($con, bool $activeOnly = false): array {
+    function payment_accounts_list($con, bool $activeOnly = false, string $preferCurrency = ''): array {
         $sql = "SELECT * FROM payment_accounts";
         if ($activeOnly) $sql .= " WHERE is_active = 1";
         $sql .= " ORDER BY sort_order ASC, id ASC";
@@ -81,6 +84,18 @@ if (!function_exists('payment_accounts_list')) {
         while ($row = mysqli_fetch_assoc($res)) {
             $rows[] = payment_account_format($con, $row, $activeOnly);
         }
+
+        // A student quoted in riyals is sent to the account that takes riyals. If there is no such
+        // account the full list is returned rather than an empty one: somewhere to send the money
+        // and a currency to sort out with support beats a screen that offers nothing at all.
+        $preferCurrency = strtoupper(trim($preferCurrency));
+        if ($preferCurrency !== '') {
+            $matching = array_values(array_filter($rows, function ($row) use ($preferCurrency) {
+                return strtoupper((string)$row['currency_code']) === $preferCurrency;
+            }));
+            if ($matching) return $matching;
+        }
+
         return $rows;
     }
 }
@@ -117,7 +132,13 @@ if (!function_exists('offline_payment_quote')) {
             return ['ok' => false, 'message' => app_offline_text($con, 'العنصر ده مش متاح حاليًا.', 'That item is not available right now.')];
         }
 
-        $price = (float)$item['price'];
+        // Priced for the student's country, so the number quoted here is the number they were
+        // shown on the course page - and the currency is pinned to the request from this point on.
+        $priced = pricing_for_item($con, $itemType, $itemId, (float)$item['price'], $studentId);
+        $context = pricing_context($con, $studentId);
+        $currency = $priced['currency'];
+
+        $price = (float)$priced['price'];
         if ($price <= 0) {
             return ['ok' => false, 'message' => app_offline_text(
                 $con,
@@ -145,17 +166,29 @@ if (!function_exists('offline_payment_quote')) {
             }
         }
 
-        $final = max(0.0, round($price - $discountAmount, 2));
+        $digits = (int)$currency['decimal_digits'];
+        $final = max(0.0, round($price - $discountAmount, $digits));
 
         return [
             'ok' => true,
             'item_type' => $itemType,
             'item_id' => $itemId,
-            'original_amount' => round($price, 2),
-            'discount_amount' => round($discountAmount, 2),
+            'original_amount' => round($price, $digits),
+            'discount_amount' => round($discountAmount, $digits),
             'discount_code_id' => $discountCodeId,
             'discount_message' => $discountMessage,
             'amount_due' => $final,
+            // Everything a reviewer and a student need to agree on what was quoted: which
+            // currency, which country it was quoted for, and whether it was a country price at
+            // all or the base price falling through.
+            'currency' => $currency,
+            'currency_code' => $currency['code'],
+            'country_id' => $context['country_id'],
+            'country_iso2' => $context['country_iso2'],
+            'country_name' => $context['country_name'],
+            'is_country_price' => $priced['is_country_price'],
+            'amount_due_formatted' => pricing_format_amount($con, $final, $currency),
+            'original_amount_formatted' => pricing_format_amount($con, $price, $currency),
         ];
     }
 }
@@ -182,6 +215,15 @@ if (!function_exists('offline_payment_format')) {
             'discount_amount' => (float)$row['discount_amount'],
             'amount' => (float)$row['amount'],
             'currency' => $row['currency'],
+            // The currency is on the row already; this is what it is called and what sign to put
+            // in front of it, so a reviewer reading a queue of requests in four currencies can
+            // tell them apart at a glance instead of decoding three-letter codes.
+            'currency_info' => currency_info($con, (string)$row['currency']),
+            'amount_formatted' => pricing_format_amount($con, (float)$row['amount'], currency_info($con, (string)$row['currency'])),
+            'original_amount_formatted' => pricing_format_amount($con, (float)$row['original_amount'], currency_info($con, (string)$row['currency'])),
+            'country_id' => $row['country_id'] ? (int)$row['country_id'] : null,
+            'country_name' => $row['country_name'] ?? null,
+            'country_iso2' => $row['country_iso2'] ?? null,
             'sender_name' => $row['sender_name'],
             'sender_reference' => $row['sender_reference'],
             'transferred_at' => $row['transferred_at'],
@@ -220,10 +262,13 @@ if (!function_exists('offline_payment_base_query')) {
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
 
+        $countryNameColumn = get_request_lang($con) === 'en' ? 'co.name_en' : 'co.name_ar';
+
         return "
             SELECT r.*,
                    s.name AS student_name, s.email AS student_email, s.phone AS student_phone,
                    pa.label_ar AS payment_account_label,
+                   co.iso2 AS country_iso2, {$countryNameColumn} AS country_name,
                    CASE r.item_type
                        WHEN 'course' THEN COALESCE(
                            (SELECT ct.name FROM courses_translations ct WHERE ct.course_id = r.item_id AND ct.language_id = {$langId} LIMIT 1),
@@ -235,7 +280,63 @@ if (!function_exists('offline_payment_base_query')) {
             FROM offline_payment_requests r
             LEFT JOIN students s ON s.id = r.student_id
             LEFT JOIN payment_accounts pa ON pa.id = r.payment_account_id
+            LEFT JOIN countries co ON co.id = r.country_id
         ";
+    }
+}
+
+/**
+ * The counts, and the pending money broken out by currency.
+ *
+ * A single `SUM(amount)` over this table used to be the whole answer. Once a course can sell for
+ * 1500 Egyptian pounds in Cairo and 200 riyals in Riyadh, that sum adds pounds to riyals and
+ * prints the result as one number - a figure that is not the total of anything.
+ *
+ * So `pending_amount` now means only what it can honestly mean: the pending total in the base
+ * currency. Everything else is in `pending_amounts`, one entry per currency, for a screen to list.
+ *
+ * `$scopeSql` is the teacher's ownership condition, or '' for the whole platform.
+ */
+if (!function_exists('offline_payment_statistics')) {
+    function offline_payment_statistics($con, string $scopeSql = ''): array {
+        $where = $scopeSql !== '' ? " WHERE {$scopeSql}" : '';
+        $baseCurrency = pricing_base_currency($con);
+
+        $statistics = [
+            'pending' => 0, 'approved' => 0, 'rejected' => 0, 'cancelled' => 0,
+            'pending_amount' => 0.0,
+            'pending_amount_currency' => $baseCurrency,
+            'pending_amounts' => [],
+        ];
+
+        $res = @mysqli_query($con, "SELECT r.status, r.currency, COUNT(*) AS c, SUM(r.amount) AS total
+            FROM offline_payment_requests r{$where} GROUP BY r.status, r.currency");
+        if (!$res) return $statistics;
+
+        $byCurrency = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $status = (string)$row['status'];
+            if (isset($statistics[$status])) $statistics[$status] += (int)$row['c'];
+
+            if ($status !== 'pending') continue;
+
+            $code = strtoupper((string)$row['currency']) ?: $baseCurrency;
+            $byCurrency[$code] = ($byCurrency[$code] ?? 0.0) + (float)$row['total'];
+        }
+
+        foreach ($byCurrency as $code => $total) {
+            $currency = currency_info($con, $code);
+            $statistics['pending_amounts'][] = [
+                'currency_code' => $code,
+                'currency' => $currency,
+                'total' => round($total, (int)$currency['decimal_digits']),
+                'total_formatted' => pricing_format_amount($con, $total, $currency),
+            ];
+        }
+
+        $statistics['pending_amount'] = round($byCurrency[$baseCurrency] ?? 0.0, 2);
+
+        return $statistics;
     }
 }
 

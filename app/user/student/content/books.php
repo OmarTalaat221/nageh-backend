@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
@@ -94,6 +95,16 @@ if (!function_exists('enrich_student_book_details')) {
 
         $row['price'] = isset($row['price']) ? (float)$row['price'] : (!empty($row['course']['price']) ? (float)$row['course']['price'] : 0.00);
         $row['rating'] = isset($row['rating']) ? (float)$row['rating'] : (!empty($row['teacher']['rating']) ? (float)$row['teacher']['rating'] : 5.0);
+
+        // Both listings of books and the single-book endpoint all pass through here, so this is
+        // the one place the country price has to be applied for it to be applied everywhere.
+        pricing_decorate_row($con, $row, 'book');
+
+        // The course attached to a book carries its own price and its own country prices; it is a
+        // course, so it is priced as one rather than inheriting the book's currency.
+        if (is_array($row['course'] ?? null) && isset($row['course']['id'])) {
+            pricing_decorate_row($con, $row['course'], 'course');
+        }
 
         return format_response_images($row);
     }

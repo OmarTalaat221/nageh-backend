@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 require_once __DIR__ . '/../../../teacher/sessions/manage.php'; // get_class_session_details / class_session_is_available_now
@@ -192,6 +193,11 @@ if (!function_exists('studentHome')) {
                 $allCourses[] = format_response_images($row);
             }
         }
+
+        // Both lists, because the landing page shows a price on the ones the student does not own
+        // yet and those are exactly the ones a country price is for.
+        pricing_decorate_rows($con, $subscribedCourses, 'course', $stId);
+        pricing_decorate_rows($con, $allCourses, 'course', $stId);
 
         $overallProgress = $totalCoursesWithLessons > 0 ? round($totalProgressSum / $totalCoursesWithLessons, 2) : 0.00;
 

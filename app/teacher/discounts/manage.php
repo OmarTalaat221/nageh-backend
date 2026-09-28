@@ -195,15 +195,21 @@ if (!function_exists('teacherCreateDiscountCode')) {
         $validTo = !empty($body['valid_to']) ? date('Y-m-d H:i:s', strtotime($body['valid_to'])) : null;
         $isActive = isset($body['is_active']) ? (int)(bool)$body['is_active'] : 1;
 
+        // Which currency a fixed amount is in; ignored for a percentage code.
+        $currencyCode = strtoupper(trim((string)($body['currency_code'] ?? ''))) ?: pricing_base_currency($con);
+        if (!currency_info($con, $currencyCode)['is_active']) {
+            return ['status' => 'error', 'message' => app_text($con, 'العملة دي مش موجودة أو مش مفعّلة.', 'That currency does not exist or is not active.')];
+        }
+
         $stmt = mysqli_prepare($con, "
             INSERT INTO discount_codes
-                (code, title, description, discount_type, discount_value, max_discount_amount, applies_to,
+                (code, title, description, discount_type, discount_value, currency_code, max_discount_amount, applies_to,
                  max_uses, once_per_student, valid_from, valid_to, is_active, created_by_type, created_by_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'teacher', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'teacher', ?)
         ");
         mysqli_stmt_bind_param(
-            $stmt, "ssssddsiissii",
-            $code, $title, $description, $discountType, $discountValue, $maxDiscount, $appliesTo,
+            $stmt, "ssssdsdsiissii",
+            $code, $title, $description, $discountType, $discountValue, $currencyCode, $maxDiscount, $appliesTo,
             $maxUses, $oncePerStudent, $validFrom, $validTo, $isActive, $teacherId
         );
         if (!mysqli_stmt_execute($stmt)) {
@@ -260,6 +266,15 @@ if (!function_exists('teacherUpdateDiscountCode')) {
             $fields[] = 'discount_value = ?';
             $params[] = (float)$body['discount_value'];
             $types .= 'd';
+        }
+        if (array_key_exists('currency_code', $body)) {
+            $currencyCode = strtoupper(trim((string)$body['currency_code'])) ?: pricing_base_currency($con);
+            if (!currency_info($con, $currencyCode)['is_active']) {
+                return ['status' => 'error', 'message' => app_text($con, 'العملة دي مش موجودة أو مش مفعّلة.', 'That currency does not exist or is not active.')];
+            }
+            $fields[] = 'currency_code = ?';
+            $params[] = $currencyCode;
+            $types .= 's';
         }
         if (array_key_exists('max_discount_amount', $body)) {
             $fields[] = 'max_discount_amount = ?';

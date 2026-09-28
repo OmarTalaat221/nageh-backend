@@ -72,14 +72,7 @@ if (!function_exists('adminListOfflinePayments')) {
 
         // The counts are the point of this screen - "how many are waiting" is the first thing
         // anyone opening it wants, and it must not depend on the filter currently applied.
-        $statistics = ['pending' => 0, 'approved' => 0, 'rejected' => 0, 'cancelled' => 0, 'pending_amount' => 0.0];
-        $statRes = @mysqli_query($con, "SELECT status, COUNT(*) AS c, SUM(amount) AS total FROM offline_payment_requests GROUP BY status");
-        if ($statRes) {
-            while ($row = mysqli_fetch_assoc($statRes)) {
-                $statistics[$row['status']] = (int)$row['c'];
-                if ($row['status'] === 'pending') $statistics['pending_amount'] = (float)$row['total'];
-            }
-        }
+        $statistics = offline_payment_statistics($con);
 
         $countSql = "SELECT COUNT(*) AS total FROM offline_payment_requests r LEFT JOIN students s ON s.id = r.student_id" . $where;
         $total = 0;
@@ -204,6 +197,19 @@ if (!function_exists('payment_account_validate')) {
             }
         }
 
+        // Which currency the account receives. Checked against the currencies table rather than
+        // just the shape, because "the account takes SAR" is what decides whether a student
+        // quoted in riyals is ever shown it - a typo here hides the account from everyone.
+        if (array_key_exists('currency_code', $body)) {
+            $code = strtoupper(trim((string)$body['currency_code']));
+            if ($code !== '') {
+                $currency = currency_info($con, $code);
+                if (!$currency['is_active']) {
+                    return app_offline_text($con, 'العملة دي مش موجودة أو مش مفعّلة.', 'That currency does not exist or is not active.');
+                }
+            }
+        }
+
         return null;
     }
 }
@@ -216,8 +222,8 @@ if (!function_exists('adminCreatePaymentAccount')) {
         if ($error !== null) return ['status' => 'error', 'message' => $error];
 
         $stmt = mysqli_prepare($con, "INSERT INTO payment_accounts
-            (method, label_ar, label_en, bank_name, account_name, account_number, swift_code, instructions_ar, instructions_en, is_active, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (method, label_ar, label_en, bank_name, account_name, account_number, swift_code, currency_code, instructions_ar, instructions_en, is_active, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
 
         // Only bank transfers exist today, so an omitted method is that rather than a validation
@@ -229,12 +235,15 @@ if (!function_exists('adminCreatePaymentAccount')) {
         $accountName = trim((string)($body['account_name'] ?? '')) ?: null;
         $accountNumber = trim((string)$body['account_number']);
         $swift = strtoupper(trim((string)($body['swift_code'] ?? ''))) ?: null;
+        // An omitted currency means the base currency, which is what every account created before
+        // this column existed was already implicitly receiving.
+        $currencyCode = strtoupper(trim((string)($body['currency_code'] ?? ''))) ?: pricing_base_currency($con);
         $insAr = trim((string)($body['instructions_ar'] ?? '')) ?: null;
         $insEn = trim((string)($body['instructions_en'] ?? '')) ?: null;
         $isActive = isset($body['is_active']) ? (int)(bool)$body['is_active'] : 1;
         $sortOrder = (int)($body['sort_order'] ?? 0);
 
-        mysqli_stmt_bind_param($stmt, "sssssssssii", $method, $labelAr, $labelEn, $bankName, $accountName, $accountNumber, $swift, $insAr, $insEn, $isActive, $sortOrder);
+        mysqli_stmt_bind_param($stmt, "ssssssssssii", $method, $labelAr, $labelEn, $bankName, $accountName, $accountNumber, $swift, $currencyCode, $insAr, $insEn, $isActive, $sortOrder);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
         }
@@ -274,7 +283,7 @@ if (!function_exists('adminUpdatePaymentAccount')) {
         $map = [
             'method' => 's', 'label_ar' => 's', 'label_en' => 's', 'bank_name' => 's',
             'account_name' => 's', 'account_number' => 's', 'swift_code' => 's',
-            'instructions_ar' => 's', 'instructions_en' => 's',
+            'currency_code' => 's', 'instructions_ar' => 's', 'instructions_en' => 's',
             'is_active' => 'i', 'sort_order' => 'i',
         ];
 
@@ -290,7 +299,10 @@ if (!function_exists('adminUpdatePaymentAccount')) {
                 $params[] = (int)$value;
             } else {
                 $trimmed = trim((string)$value);
-                if ($key === 'swift_code') $trimmed = strtoupper($trimmed);
+                if ($key === 'swift_code' || $key === 'currency_code') $trimmed = strtoupper($trimmed);
+                // `currency_code` is NOT NULL, so an edit that clears it means "back to the base
+                // currency" rather than a constraint violation.
+                if ($key === 'currency_code' && $trimmed === '') $trimmed = pricing_base_currency($con);
                 $params[] = ($trimmed === '' && in_array($key, $nullable, true)) ? null : $trimmed;
             }
             $types .= $type;

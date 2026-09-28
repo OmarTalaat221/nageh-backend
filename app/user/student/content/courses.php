@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 
@@ -106,6 +107,11 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
             }
         }
 
+        // The price a student in this country actually pays, in that country's currency.
+        // One query for the whole page, and every row with no country price of its own keeps
+        // the base price it already had.
+        pricing_decorate_rows($con, $courses, 'course', $stId);
+
         return build_admin_paginated_response($courses, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
 }
@@ -200,6 +206,8 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
             }
         }
 
+        pricing_decorate_rows($con, $courses, 'course', $stId);
+
         return build_admin_paginated_response($courses, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
 }
@@ -256,7 +264,10 @@ if (!function_exists('studentGetCourseDetails')) {
         $isFrozen = !$isSubscribed && $stId > 0 && function_exists('get_student_frozen_course_ids')
             && in_array($cId, get_student_frozen_course_ids($con, $stId));
 
-        $price = (float)$cRow['price'];
+        // The figure below is what the student is quoted and what the payment flow charges,
+        // so it is resolved once here rather than read straight off the course row.
+        $pricing = pricing_for_item($con, 'course', $cId, (float)$cRow['price'], $stId);
+        $price = $pricing['price'];
         $originalPrice = $price;
         $discountPct = 0;
         $savingsAmount = 0.00;
@@ -471,6 +482,13 @@ if (!function_exists('studentGetCourseDetails')) {
             'original_price' => $originalPrice,
             'discount_percentage' => $discountPct,
             'savings_amount' => $savingsAmount,
+            // What `price` above is denominated in, and what the same course costs in the base
+            // currency. Sent on every response rather than only when a country price exists, so a
+            // client never has to guess which currency it is holding.
+            'base_price' => $pricing['base_price'],
+            'currency' => $pricing['currency'],
+            'price_formatted' => $pricing['price_formatted'],
+            'is_country_price' => $pricing['is_country_price'],
             'image' => format_response_images(['img' => $cRow['image']])['img'],
             'video_preview_url' => $previewVideoUrl,
             'rating' => $avgRating,
@@ -688,6 +706,8 @@ if (!function_exists('studentGetCoursesAndSubjects')) {
             }
         }
 
+        pricing_decorate_rows($con, $courses, 'course');
+
         return [
             'status' => 'success',
             'data' => format_response_images([
@@ -780,6 +800,8 @@ if (!function_exists('studentGetTeacherProfileDetails')) {
                 $courses[] = $cRow;
             }
         }
+
+        pricing_decorate_rows($con, $courses, 'course');
 
         $ratingsCount = 0;
         $averageRating = (float)$tRow['rating'];
@@ -1309,12 +1331,18 @@ if (!function_exists('studentGetCourseAllContent')) {
 
         $overallAvgPercentage = $overallTotalAnswersCount > 0 ? round(($overallTotalCorrectCount / $overallTotalAnswersCount) * 100, 2) : 0.00;
 
+        $contentPricing = pricing_for_item($con, 'course', $cId, (float)$cRow['price'], $stId);
+
         $responseData = [
             'id' => $cId,
             'slug' => $cRow['slug'],
             'name' => $cRow['name'],
             'description' => $cRow['description'],
-            'price' => (float)$cRow['price'],
+            'price' => $contentPricing['price'],
+            'base_price' => $contentPricing['base_price'],
+            'currency' => $contentPricing['currency'],
+            'price_formatted' => $contentPricing['price_formatted'],
+            'is_country_price' => $contentPricing['is_country_price'],
             'image' => $cRow['image'],
             'video_preview_url' => $cRow['video_preview_url'],
             'is_subscribed' => $isSubscribed,

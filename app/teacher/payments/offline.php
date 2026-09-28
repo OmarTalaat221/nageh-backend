@@ -41,7 +41,12 @@ if (!function_exists('teacherListOfflinePayments')) {
             return [
                 'status' => 'success',
                 'data' => [],
-                'statistics' => ['pending' => 0, 'approved' => 0, 'rejected' => 0, 'cancelled' => 0, 'pending_amount' => 0.0],
+                'statistics' => [
+                    'pending' => 0, 'approved' => 0, 'rejected' => 0, 'cancelled' => 0,
+                    'pending_amount' => 0.0,
+                    'pending_amount_currency' => pricing_base_currency($con),
+                    'pending_amounts' => [],
+                ],
             ];
         }
 
@@ -67,15 +72,7 @@ if (!function_exists('teacherListOfflinePayments')) {
         $where = ' WHERE ' . implode(' AND ', $conditions);
 
         // Scoped to this teacher, so the totals are about their own courses and not the platform.
-        $statistics = ['pending' => 0, 'approved' => 0, 'rejected' => 0, 'cancelled' => 0, 'pending_amount' => 0.0];
-        $statRes = @mysqli_query($con, "SELECT r.status, COUNT(*) AS c, SUM(r.amount) AS total
-            FROM offline_payment_requests r WHERE {$scope} GROUP BY r.status");
-        if ($statRes) {
-            while ($row = mysqli_fetch_assoc($statRes)) {
-                $statistics[$row['status']] = (int)$row['c'];
-                if ($row['status'] === 'pending') $statistics['pending_amount'] = (float)$row['total'];
-            }
-        }
+        $statistics = offline_payment_statistics($con, $scope);
 
         $sql = offline_payment_base_query($con) . $where . " ORDER BY FIELD(r.status, 'pending') DESC, r.id DESC LIMIT 100";
         $stmt = mysqli_prepare($con, $sql);

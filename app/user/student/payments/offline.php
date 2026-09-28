@@ -17,10 +17,20 @@ if (!function_exists('offline_student_id')) {
 }
 
 if (!function_exists('studentListPaymentAccounts')) {
-    function studentListPaymentAccounts($con) {
+    function studentListPaymentAccounts($con, $studentData = null) {
+        // Narrowed to the currency this student is being quoted in, so the account on screen is
+        // one that can actually receive the transfer they are about to make.
+        $context = pricing_context($con, offline_student_id($studentData));
+
         return [
             'status' => 'success',
-            'data' => payment_accounts_list($con, true),
+            'data' => payment_accounts_list($con, true, $context['currency']['code']),
+            'currency' => $context['currency'],
+            'country' => [
+                'id' => $context['country_id'],
+                'iso2' => $context['country_iso2'],
+                'name' => $context['country_name'],
+            ],
         ];
     }
 }
@@ -55,7 +65,7 @@ if (!function_exists('studentQuoteOfflinePayment')) {
         }
 
         unset($quote['ok']);
-        $quote['accounts'] = payment_accounts_list($con, true);
+        $quote['accounts'] = payment_accounts_list($con, true, $quote['currency_code']);
 
         return ['status' => 'success', 'data' => $quote];
     }
@@ -124,6 +134,27 @@ if (!function_exists('studentCreateOfflinePayment')) {
             if (!$account || (int)$account['is_active'] !== 1) {
                 return ['status' => 'error', 'message' => app_offline_text($con, 'وسيلة الدفع دي مش متاحة.', 'That payment method is not available.')];
             }
+
+            // Only refused when the platform has an account that does take this currency. Where it
+            // has none, the student has nowhere else to send the money and blocking them would
+            // just end the purchase - so the request goes through and the reviewer sorts it out,
+            // which is what the mismatch on the record is for.
+            $accountCurrency = strtoupper((string)($account['currency_code'] ?? ''));
+            if ($accountCurrency !== '' && $accountCurrency !== strtoupper((string)$quote['currency_code'])) {
+                $matching = payment_accounts_list($con, true, $quote['currency_code']);
+                $hasMatch = false;
+                foreach ($matching as $candidate) {
+                    if (strtoupper((string)$candidate['currency_code']) === strtoupper((string)$quote['currency_code'])) $hasMatch = true;
+                }
+                if ($hasMatch) {
+                    $quoteCurrency = currency_info($con, (string)$quote['currency_code']);
+                    return ['status' => 'error', 'message' => app_offline_text(
+                        $con,
+                        "الحساب ده مش بيستقبل {$quoteCurrency['name']}. اختار حساب تاني.",
+                        "That account does not receive {$quoteCurrency['name']}. Choose another one."
+                    )];
+                }
+            }
         } else {
             $accountId = null;
         }
@@ -141,10 +172,14 @@ if (!function_exists('studentCreateOfflinePayment')) {
             if ($ts !== false) $transferredAt = date('Y-m-d H:i:s', $ts);
         }
 
+        // The currency and the country come off the quote, never off the request body. What the
+        // student is charged has to be what the server just worked out they should be charged; a
+        // client that could name its own currency could ask to pay 1500 of the cheapest one.
         $stmt = mysqli_prepare($con, "INSERT INTO offline_payment_requests
             (student_id, item_type, item_id, payment_account_id, original_amount, discount_code_id,
-             discount_amount, amount, sender_name, sender_reference, transferred_at, receipt_image, student_note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+             discount_amount, amount, currency, country_id, sender_name, sender_reference,
+             transferred_at, receipt_image, student_note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
         }
@@ -152,11 +187,14 @@ if (!function_exists('studentCreateOfflinePayment')) {
         $original = (float)$quote['original_amount'];
         $discountAmount = (float)$quote['discount_amount'];
         $discountCodeId = $quote['discount_code_id'];
+        $currencyCode = (string)$quote['currency_code'];
+        $countryId = $quote['country_id'];
 
         mysqli_stmt_bind_param(
-            $stmt, "isiididdsssss",
+            $stmt, "isiididdsisssss",
             $studentId, $itemType, $itemId, $accountId, $original, $discountCodeId,
-            $discountAmount, $amount, $senderName, $reference, $transferredAt, $receipt, $note
+            $discountAmount, $amount, $currencyCode, $countryId, $senderName, $reference,
+            $transferredAt, $receipt, $note
         );
 
         if (!mysqli_stmt_execute($stmt)) {
@@ -166,7 +204,9 @@ if (!function_exists('studentCreateOfflinePayment')) {
         $id = mysqli_insert_id($con);
 
         if (function_exists('notify_admins')) {
-            notify_admins($con, 'طلب دفع يدوي جديد', "طالب رفع إيصال تحويل بمبلغ {$amount} وبيستنى المراجعة.");
+            // The currency belongs in the notification: "1500" alone tells a reviewer nothing now
+            // that the same course sells for 1500 pounds and 200 riyals.
+            notify_admins($con, 'طلب دفع يدوي جديد', "طالب رفع إيصال تحويل بمبلغ {$amount} {$currencyCode} وبيستنى المراجعة.");
         }
 
         return [

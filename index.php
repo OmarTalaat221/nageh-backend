@@ -3710,8 +3710,12 @@ $routes = [
             "method" => "GET",
             "path" => "/najeh/student/payment-accounts",
             "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
                 include_once "./app/user/student/payments/offline.php";
-                return studentListPaymentAccounts($con);
+                // Optional: a logged-out visitor still gets the accounts, priced for wherever
+                // their address puts them. A logged-in one gets their own saved country instead.
+                $studentData = studentAuthMiddlewareOptional();
+                return studentListPaymentAccounts($con, $studentData);
             },
         ],
         [
@@ -3838,6 +3842,180 @@ $routes = [
                 include_once "./app/teacher/payments/offline.php";
                 $teacherData = teacherAuthMiddleware();
                 return teacherReviewOfflinePayment($con, $teacherData);
+            },
+        ],
+
+        // Pricing by country -------------------------------------------------------------------
+        //
+        // The three lookups are open. A country list is not a secret, and the price a visitor is
+        // shown depends on which country they resolve to - if that answer changed when they
+        // signed in, the price would change with it for no reason they could see.
+        [
+            "method" => "GET",
+            "path" => "/najeh/countries",
+            "handler" => function ($con) {
+                include_once "./app/common/pricing/lookups.php";
+                return publicListCountries($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/currencies",
+            "handler" => function ($con) {
+                include_once "./app/common/pricing/lookups.php";
+                return publicListCurrencies($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/pricing/context",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/common/pricing/lookups.php";
+                $studentData = studentAuthMiddlewareOptional();
+                return publicPricingContext($con, $studentData);
+            },
+        ],
+        [
+            "method" => ["POST", "PUT"],
+            "path" => "/najeh/student/pricing/country",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/common/pricing/lookups.php";
+                $studentData = studentAuthMiddleware();
+                return studentSetPricingCountry($con, $studentData);
+            },
+        ],
+
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/countries",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminListCountries($con);
+            },
+        ],
+        [
+            "method" => ["PUT", "POST"],
+            "path" => "/najeh/admin/countries",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminUpdateCountry($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/currencies",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminListCurrencies($con);
+            },
+        ],
+        [
+            "method" => ["PUT", "POST"],
+            "path" => "/najeh/admin/currencies",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminUpdateCurrency($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminListItemPrices($con);
+            },
+        ],
+        [
+            "method" => ["POST", "PUT"],
+            "path" => "/najeh/admin/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminSaveItemPrices($con, $adminData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminDeleteItemPrice($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/priced-items",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/pricing/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_pricing');
+                return adminListPricedItems($con);
+            },
+        ],
+
+        // A teacher prices their own work. No permission code: ownership is the permission, and
+        // it is checked inside every one of these against the same rule the discount codes use.
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/pricing/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListItemPrices($con, $teacherData);
+            },
+        ],
+        [
+            "method" => ["POST", "PUT"],
+            "path" => "/najeh/teacher/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/pricing/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherSaveItemPrices($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/teacher/item-prices",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/pricing/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherDeleteItemPrice($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/priced-items",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/pricing/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListPricedItems($con, $teacherData);
             },
         ],
 

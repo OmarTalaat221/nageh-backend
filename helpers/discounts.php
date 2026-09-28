@@ -2,6 +2,7 @@
 require_once __DIR__ . '/entities.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/upload.php';
+require_once __DIR__ . '/pricing.php';
 
 /**
  * Discount codes for course and package subscriptions.
@@ -32,6 +33,11 @@ if (!function_exists('discount_format_row')) {
         $row['id'] = (int)$row['id'];
         $row['discount_value'] = (float)$row['discount_value'];
         $row['max_discount_amount'] = $row['max_discount_amount'] !== null ? (float)$row['max_discount_amount'] : null;
+        // Which currency a fixed amount is in. NULL in the column means the base currency, and it
+        // is resolved here so every reader gets a real code rather than having to know that rule.
+        $row['currency_code'] = !empty($row['currency_code'])
+            ? strtoupper((string)$row['currency_code'])
+            : pricing_base_currency($con);
         $row['max_uses'] = $row['max_uses'] !== null ? (int)$row['max_uses'] : null;
         $row['used_count'] = (int)$row['used_count'];
         $row['once_per_student'] = (int)$row['once_per_student'];
@@ -81,7 +87,11 @@ if (!function_exists('discount_sync_courses')) {
 }
 
 if (!function_exists('discount_compute_amount')) {
-    function discount_compute_amount(array $code, float $amount): array {
+    /**
+     * `$digits` is the currency's own decimal places - three for a dinar, none for a yen. It
+     * defaults to two so every existing caller keeps behaving exactly as it did.
+     */
+    function discount_compute_amount(array $code, float $amount, int $digits = 2): array {
         if ($amount <= 0) {
             return ['discount' => 0.0, 'final' => 0.0];
         }
@@ -99,8 +109,8 @@ if (!function_exists('discount_compute_amount')) {
         $discount = max(0.0, min($discount, $amount));
 
         return [
-            'discount' => round($discount, 2),
-            'final' => round($amount - $discount, 2),
+            'discount' => round($discount, $digits),
+            'final' => round($amount - $discount, $digits),
         ];
     }
 }
@@ -213,21 +223,57 @@ if (!function_exists('discount_validate_code')) {
             }
         }
 
+        // The prices are read for this student's country, not off the course row, so the figure a
+        // code is checked against is the same one the student is looking at on screen.
         $original = 0.0;
         $items = [];
+        $currencies = [];
         foreach ($courseIds as $courseId) {
             $course = get_course_details($con, $courseId);
             if (!$course) continue;
-            $price = (float)($course['price'] ?? 0);
-            $original += $price;
+            $priced = pricing_for_item($con, 'course', $courseId, (float)($course['price'] ?? 0), (int)$studentId);
+            $original += $priced['price'];
+            $currencies[$priced['currency']['code']] = true;
             $items[] = [
                 'course_id' => $courseId,
                 'name' => $course['name'] ?? ('#' . $courseId),
-                'price' => $price,
+                'price' => $priced['price'],
+                'currency_code' => $priced['currency']['code'],
             ];
         }
 
-        $computed = discount_compute_amount($code, $original);
+        // Several courses at once, priced in different currencies, cannot be added up - one has a
+        // price entered for this country and another falls back to the base. Rather than print a
+        // total that is the sum of pounds and dollars, everything reverts to the base currency and
+        // the base prices, which is a set of figures that at least mean one thing.
+        $quoteCurrency = count($currencies) === 1 ? array_key_first($currencies) : pricing_base_currency($con);
+        if (count($currencies) > 1) {
+            $original = 0.0;
+            foreach ($items as $index => $item) {
+                $course = get_course_details($con, $item['course_id']);
+                $basePrice = (float)($course['price'] ?? 0);
+                $items[$index]['price'] = $basePrice;
+                $items[$index]['currency_code'] = $quoteCurrency;
+                $original += $basePrice;
+            }
+        }
+
+        // "50 off" is meaningless until you know 50 of what. A fixed-amount code carries its own
+        // currency; subtracting it from a price in another one would hand out a discount roughly
+        // fifty times too big in either direction. A percentage code has no such problem - 20% is
+        // 20% in every currency - so it is left alone.
+        if ($code['discount_type'] === 'fixed' && $code['currency_code'] !== $quoteCurrency) {
+            $codeCurrency = currency_info($con, $code['currency_code']);
+            $quoteInfo = currency_info($con, $quoteCurrency);
+            return ['valid' => false, 'message' => app_text(
+                $con,
+                "الكود ده بيخصم مبلغ ثابت بـ{$codeCurrency['name']}، والسعر هنا بـ{$quoteInfo['name']}.",
+                "This code takes a fixed amount off in {$codeCurrency['name']}, and this price is in {$quoteInfo['name']}."
+            )];
+        }
+
+        $quoteInfo = currency_info($con, $quoteCurrency);
+        $computed = discount_compute_amount($code, $original, (int)$quoteInfo['decimal_digits']);
 
         return [
             'valid' => true,
@@ -238,6 +284,7 @@ if (!function_exists('discount_validate_code')) {
                 'title' => $code['title'],
                 'discount_type' => $code['discount_type'],
                 'discount_value' => $code['discount_value'],
+                'currency_code' => $code['currency_code'],
                 'max_discount_amount' => $code['max_discount_amount'],
                 'applies_to' => $code['applies_to'],
                 'remaining_uses' => $code['remaining_uses'],
@@ -246,10 +293,12 @@ if (!function_exists('discount_validate_code')) {
                 'created_by_id' => $code['created_by_id'],
             ],
             'items' => $items,
-            'original_amount' => round($original, 2),
+            'original_amount' => round($original, (int)$quoteInfo['decimal_digits']),
             'discount_amount' => $computed['discount'],
             'final_amount' => $computed['final'],
-            'currency' => 'USD',
+            // Was hardcoded 'USD'. It is now whichever currency the prices above are actually in.
+            'currency' => $quoteCurrency,
+            'currency_info' => $quoteInfo,
         ];
     }
 }
