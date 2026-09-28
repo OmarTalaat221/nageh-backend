@@ -16,7 +16,13 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 // `Accept` and `Accept-Language` are safelisted and would pass without being named, but listing
 // everything the clients actually send means the list can be checked against them rather than
 // reasoned about.
-header('Access-Control-Allow-Headers: Content-Type, Authorization, Accept, X-Requested-With, X-Device-Id, Accept-Language, Lang, X-Lang, Language, X-HTTP-Method-Override');
+//
+// `X-Country` is the currency switcher, and it is sent on EVERY request by the student app for the
+// same reason `X-Device-Id` is. It is named here in the same commit that starts sending it,
+// because leaving a request header out of this list does not break one feature - the browser
+// refuses the request before it is sent, and the whole app goes dark with no server log to show
+// for it.
+header('Access-Control-Allow-Headers: Content-Type, Authorization, Accept, X-Requested-With, X-Device-Id, X-Country, Accept-Language, Lang, X-Lang, Language, X-HTTP-Method-Override');
 
 // Without this the browser preflights again for every single request, doubling the round trips on
 // a connection that is often a phone on mobile data. 24 hours is the maximum Chrome honours.
