@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/video_source.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 require_once __DIR__ . '/../../../admin/content/units.php';
@@ -262,9 +263,10 @@ if (!function_exists('studentGetUnitVideosOnly')) {
         $dripEnabled = (int)($uRow['videos_drip_enabled'] ?? 0) === 1;
         $previousVideoCompleted = true;
 
+        $vUrlExpr = video_url_select_expr($con, 'v', 'cv');
         $vSql = "
             SELECT v.id, v.unit_id, v.code, v.duration_seconds, v.publish_status, v.is_active,
-                   COALESCE(cv.video_url, '') AS video_url,
+                   {$vUrlExpr} AS video_url,
                    COALESCE(vt.name, cvt.title, v.code) AS title,
                    COALESCE(vt.description, cvt.description, '') AS description
             FROM videos v

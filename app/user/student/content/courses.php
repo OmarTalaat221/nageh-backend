@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/video_source.php';
 require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
@@ -962,11 +963,22 @@ if (!function_exists('studentGetCourseAllContent')) {
 
                 $overallTotalUnits++;
 
+                // Five of the columns this used to name do not exist on `videos`: course_id,
+                // duration, created_by_type and created_by_id belong to `course_videos`, and
+                // videos_translations has `name`, not `title`. MySQL answers a SELECT naming an
+                // unknown column with error 1054 and no rows, so this query has been returning
+                // nothing since it was written - every course's curriculum, empty, always.
+                $vUrlExpr = video_url_select_expr($con, 'v', 'cv');
                 $vSql = "
-                    SELECT v.id, v.unit_id, v.course_id, v.code, v.duration, v.duration_seconds, v.video_url, v.publish_status, v.is_active, v.created_by_type, v.created_by_id,
-                           COALESCE(vt.title, vt.name, v.code) AS title, vt.description
+                    SELECT v.id, v.unit_id, v.code, v.duration_seconds, v.publish_status, v.is_active,
+                           {$vUrlExpr} AS video_url,
+                           cv.created_by_type, cv.created_by_id,
+                           COALESCE(vt.name, cvt.title, v.code) AS title,
+                           COALESCE(vt.description, cvt.description, '') AS description
                     FROM videos v
+                    LEFT JOIN course_videos cv ON v.id = cv.id
                     LEFT JOIN videos_translations vt ON v.id = vt.video_id AND vt.language_id = {$langId}
+                    LEFT JOIN course_videos_translations cvt ON cv.id = cvt.video_id AND cvt.language_id = {$langId}
                     WHERE v.unit_id = {$uId} AND v.is_active = 1 AND (v.publish_status IS NULL OR v.publish_status = 'published')
                     ORDER BY v.id ASC
                 ";
@@ -1006,7 +1018,7 @@ if (!function_exists('studentGetCourseAllContent')) {
                         $isLocked = !$isSubscribed;
                         $isCompleted = 0;
                         $watchedSeconds = 0;
-                        $totalSeconds = (int)($vRow['duration_seconds'] ?? $vRow['duration'] ?? 0);
+                        $totalSeconds = (int)($vRow['duration_seconds'] ?? 0);
                         $lastPos = 0;
 
                         if ($stId > 0 && $hasVideoProgress) {

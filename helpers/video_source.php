@@ -38,15 +38,21 @@ if (!function_exists('video_parse_source')) {
 
         // ---- Bunny Stream --------------------------------------------------------------------
         //
-        // iframe.mediadelivery.net/play/{library}/{guid}   <- "Copy Video Play Url"
+        // player.mediadelivery.net/play/{library}/{guid}   <- "Copy Video Play Url", the share page
         // iframe.mediadelivery.net/embed/{library}/{guid}  <- what the embed dialog gives
         // video.bunnycdn.com/play/{library}/{guid}         <- the older hostname
+        //
+        // Three hostnames for the same video. The copy button gives the first, the player needs
+        // the second, and they differ by more than the path - which is why this normalises from
+        // the two ids rather than rewriting the string.
         //
         // The guid is a plain UUID. Matching it strictly is what stops a mangled paste being
         // stored as a Bunny link that then fails silently in an iframe.
 
         if (preg_match(
-            '~(?:iframe\.mediadelivery\.net|video\.bunnycdn\.com)/(?:play|embed)/(\d+)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})~i',
+            '~(?:player|iframe)\.mediadelivery\.net|video\.bunnycdn\.com~i', $url)
+            && preg_match(
+            '~/(?:play|embed)/(\d+)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})~i',
             $url,
             $m
         )) {
@@ -130,6 +136,65 @@ if (!function_exists('video_normalize_url')) {
     function video_normalize_url(?string $rawUrl): ?string {
         $parsed = video_parse_source($rawUrl);
         return $parsed['url'];
+    }
+}
+
+if (!function_exists('video_url_column_exists')) {
+
+    /**
+     * Whether migration 078 has been run on this database yet.
+     *
+     * Code reaches the server on a `git pull` and migrations are applied by hand afterwards, so
+     * there is always a window where the new code is live and the new column is not. Referencing
+     * `videos`.`video_url` during that window is not a degraded experience, it is a fatal SQL
+     * error on every lesson listing on the platform.
+     *
+     * Asked once per request and remembered.
+     */
+    function video_url_column_exists($con): bool {
+        static $exists = null;
+
+        if ($exists === null) {
+            $res = mysqli_query($con, "
+                SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'videos'
+                  AND COLUMN_NAME = 'video_url'
+            ");
+            $exists = $res && (int)(mysqli_fetch_assoc($res)['n'] ?? 0) > 0;
+        }
+
+        return $exists;
+    }
+}
+
+if (!function_exists('video_url_select_expr')) {
+
+    /**
+     * The SQL that reads a video's URL, whichever half of the migration this database is in.
+     *
+     * After 078 the column on `videos` wins and `course_videos` is the fallback, so a row the
+     * backfill could not pair still plays. Before 078 only the old table is named, which is
+     * exactly today's behaviour.
+     *
+     * $cvAlias may be null where the caller has no join to `course_videos`.
+     */
+    function video_url_select_expr($con, string $videoAlias = 'v', ?string $cvAlias = 'cv'): string {
+        $parts = [];
+
+        if (video_url_column_exists($con)) {
+            $parts[] = "`{$videoAlias}`.`video_url`";
+        }
+
+        if ($cvAlias !== null) {
+            $parts[] = "`{$cvAlias}`.`video_url`";
+        }
+
+        if (empty($parts)) {
+            return "''";
+        }
+
+        return 'COALESCE(' . implode(', ', $parts) . ", '')";
     }
 }
 

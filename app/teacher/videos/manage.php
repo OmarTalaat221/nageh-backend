@@ -2,13 +2,15 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
+require_once __DIR__ . '/../../../helpers/video_source.php';
 
 if (!function_exists('teacherGetVideoDetails')) {
     function teacherGetVideoDetails($con, $videoId) {
         if (!$videoId) return null;
         $langInfo = get_language_info($con);
 
-        $stmt = mysqli_prepare($con, "SELECT id, unit_id, code, duration_seconds, publish_status, is_active, created_at, updated_at FROM videos WHERE id = ? LIMIT 1");
+        $urlCol = video_url_column_exists($con) ? 'video_url' : "'' AS video_url";
+        $stmt = mysqli_prepare($con, "SELECT id, unit_id, code, {$urlCol}, duration_seconds, publish_status, is_active, created_at, updated_at FROM videos WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $videoId);
         mysqli_stmt_execute($stmt);
@@ -20,8 +22,12 @@ if (!function_exists('teacherGetVideoDetails')) {
         $row['unit_id'] = (int)$row['unit_id'];
         $row['duration_seconds'] = (int)($row['duration_seconds'] ?? 0);
         $row['is_active'] = (int)$row['is_active'];
+        $row['video_url'] = ($row['video_url'] ?? '') !== '' ? $row['video_url'] : null;
+        $row = video_decorate_source($row);
 
-        $tStmt = mysqli_prepare($con, "SELECT vt.language_id, l.code AS language_code, vt.title, vt.description FROM videos_translations vt JOIN languages l ON vt.language_id = l.id WHERE vt.video_id = ?");
+        // `videos_translations` has `name`. `title` is the column on course_videos_translations,
+        // the other table, and naming it here returned nothing at all.
+        $tStmt = mysqli_prepare($con, "SELECT vt.language_id, l.code AS language_code, vt.name AS title, vt.description FROM videos_translations vt JOIN languages l ON vt.language_id = l.id WHERE vt.video_id = ?");
         $translations = [];
         $titleAr = null;
         $titleEn = null;
@@ -162,12 +168,21 @@ if (!function_exists('teacherCreateVideo')) {
         $durationSeconds = (int)($body['duration_seconds'] ?? $body['duration'] ?? 0);
         $publishStatus = in_array(strtolower($body['publish_status'] ?? ''), ['draft', 'published']) ? strtolower($body['publish_status']) : 'published';
         $isActive = 1;
+        $videoUrl = video_normalize_url($body['video_url'] ?? $body['url'] ?? null);
 
-        $stmt = mysqli_prepare($con, "INSERT INTO videos (unit_id, code, duration_seconds, publish_status, is_active) VALUES (?, ?, ?, ?, ?)");
+        if (video_url_column_exists($con)) {
+            $stmt = mysqli_prepare($con, "INSERT INTO videos (unit_id, code, video_url, duration_seconds, publish_status, is_active) VALUES (?, ?, ?, ?, ?, ?)");
+        } else {
+            $stmt = mysqli_prepare($con, "INSERT INTO videos (unit_id, code, duration_seconds, publish_status, is_active) VALUES (?, ?, ?, ?, ?)");
+        }
         if (!$stmt) {
             return ['status' => 'error', 'message' => 'Failed to prepare video insert: ' . mysqli_error($con)];
         }
-        mysqli_stmt_bind_param($stmt, "isisi", $unitId, $code, $durationSeconds, $publishStatus, $isActive);
+        if (video_url_column_exists($con)) {
+            mysqli_stmt_bind_param($stmt, "issisi", $unitId, $code, $videoUrl, $durationSeconds, $publishStatus, $isActive);
+        } else {
+            mysqli_stmt_bind_param($stmt, "isisi", $unitId, $code, $durationSeconds, $publishStatus, $isActive);
+        }
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create video: ' . mysqli_error($con)];
         }
@@ -175,10 +190,10 @@ if (!function_exists('teacherCreateVideo')) {
         $videoId = mysqli_insert_id($con);
 
         if (!empty($titleAr) || !empty($descAr)) {
-            @mysqli_query($con, "INSERT INTO videos_translations (video_id, language_id, title, description) VALUES ({$videoId}, 1, '" . mysqli_real_escape_string($con, $titleAr) . "', '" . mysqli_real_escape_string($con, $descAr) . "') ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description)");
+            @mysqli_query($con, "INSERT INTO videos_translations (video_id, language_id, name, description) VALUES ({$videoId}, 1, '" . mysqli_real_escape_string($con, $titleAr) . "', '" . mysqli_real_escape_string($con, $descAr) . "') ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description)");
         }
         if (!empty($titleEn) || !empty($descEn)) {
-            @mysqli_query($con, "INSERT INTO videos_translations (video_id, language_id, title, description) VALUES ({$videoId}, 2, '" . mysqli_real_escape_string($con, $titleEn) . "', '" . mysqli_real_escape_string($con, $descEn) . "') ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description)");
+            @mysqli_query($con, "INSERT INTO videos_translations (video_id, language_id, name, description) VALUES ({$videoId}, 2, '" . mysqli_real_escape_string($con, $titleEn) . "', '" . mysqli_real_escape_string($con, $descEn) . "') ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description)");
         }
 
         return [

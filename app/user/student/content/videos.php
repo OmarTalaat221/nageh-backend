@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
+require_once __DIR__ . '/../../../../helpers/video_source.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../../../../helpers/auto_reports.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
@@ -42,10 +43,11 @@ if (!function_exists('studentGetVideoDetails')) {
         $langInfo = get_student_request_lang_info($con);
         $langId = (int)($langInfo['id'] ?? 2);
 
+        $vUrlExpr = video_url_select_expr($con, 'v', 'cv');
         $sql = "
-            SELECT 
+            SELECT
                 v.id, v.unit_id, v.code, v.duration_seconds, v.publish_status, v.is_active, v.created_at,
-                COALESCE(cv.video_url, '') AS video_url, COALESCE(cv.course_id, u.course_id) AS course_id, COALESCE(cv.subject_id, u.subject_id) AS subject_id,
+                {$vUrlExpr} AS video_url, COALESCE(cv.course_id, u.course_id) AS course_id, COALESCE(cv.subject_id, u.subject_id) AS subject_id,
                 COALESCE(vt.name, cvt.title, v.code) AS title, COALESCE(vt.description, cvt.description, '') AS description,
                 u.code AS unit_code, COALESCE(ut.name, u.code) AS unit_name, u.is_active AS unit_is_active,
                 c.slug AS course_slug, COALESCE(ct.name, c.slug) AS course_name, c.is_active AS course_is_active, c.teacher_id AS course_teacher_id,

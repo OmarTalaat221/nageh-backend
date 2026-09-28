@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
+require_once __DIR__ . '/../../../helpers/video_source.php';
 
 
 /*
@@ -34,6 +35,7 @@ if (!function_exists('adminGetVideoDetails')) {
                 id,
                 unit_id,
                 code,
+                " . (video_url_column_exists($con) ? 'video_url' : "'' AS video_url") . ",
                 duration_seconds,
                 publish_status,
                 is_active,
@@ -63,6 +65,11 @@ if (!function_exists('adminGetVideoDetails')) {
         $row['unit_id'] = (int)$row['unit_id'];
         $row['duration_seconds'] = (int)($row['duration_seconds'] ?? 0);
         $row['is_active'] = (int)$row['is_active'];
+
+        // `video_provider` beside the URL, so the dashboard can say "this one is on Bunny"
+        // without three JavaScript codebases each re-deriving it from the string.
+        $row['video_url'] = ($row['video_url'] ?? '') !== '' ? $row['video_url'] : null;
+        $row = video_decorate_source($row);
 
 
         /*
@@ -724,6 +731,24 @@ if (!function_exists('adminCreateVideo')) {
 
         /*
         |--------------------------------------------------------------------------
+        | Video URL
+        |--------------------------------------------------------------------------
+        |
+        | The dashboard has always sent this and the backend has always dropped it, because
+        | until migration 078 there was no column on `videos` to hold it. Normalised on the
+        | way in so that a Bunny share link pasted from the "Copy Video Play Url" button is
+        | stored as the embed link the player actually needs.
+        */
+
+        $videoUrl = video_normalize_url(
+            $body['video_url']
+            ?? $body['url']
+            ?? null
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Publish Status
         |--------------------------------------------------------------------------
         */
@@ -790,12 +815,12 @@ if (!function_exists('adminCreateVideo')) {
             INSERT INTO videos
             (
                 unit_id,
-                code,
+                code," . (video_url_column_exists($con) ? "\n                video_url," : '') . "
                 duration_seconds,
                 publish_status,
                 is_active
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, " . (video_url_column_exists($con) ? '?, ' : '') . "?, ?, ?)
             "
         );
 
@@ -811,15 +836,28 @@ if (!function_exists('adminCreateVideo')) {
         }
 
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "isisi",
-            $unitId,
-            $code,
-            $durationSeconds,
-            $publishStatus,
-            $isActive
-        );
+        if (video_url_column_exists($con)) {
+            mysqli_stmt_bind_param(
+                $stmt,
+                "issisi",
+                $unitId,
+                $code,
+                $videoUrl,
+                $durationSeconds,
+                $publishStatus,
+                $isActive
+            );
+        } else {
+            mysqli_stmt_bind_param(
+                $stmt,
+                "isisi",
+                $unitId,
+                $code,
+                $durationSeconds,
+                $publishStatus,
+                $isActive
+            );
+        }
 
 
         if (!mysqli_stmt_execute($stmt)) {
@@ -1088,6 +1126,24 @@ if (!function_exists('adminUpdateVideo')) {
 
         /*
         |--------------------------------------------------------------------------
+        | Video URL
+        |--------------------------------------------------------------------------
+        |
+        | Only touched when the key is actually present, so an editor that saves a video's
+        | name does not blank its URL. Sending an empty string is how a URL is cleared - the
+        | difference between "I am not changing this" and "remove this" has to survive.
+        */
+
+        $videoUrlProvided = array_key_exists('video_url', $body)
+            || array_key_exists('url', $body);
+
+        $videoUrl = $videoUrlProvided
+            ? video_normalize_url($body['video_url'] ?? $body['url'] ?? null)
+            : null;
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Publish Status
         |--------------------------------------------------------------------------
         */
@@ -1192,6 +1248,21 @@ if (!function_exists('adminUpdateVideo')) {
                 $durationSeconds;
 
             $types .= "i";
+        }
+
+
+        if (
+            $videoUrlProvided
+            && video_url_column_exists($con)
+        ) {
+
+            $updateFields[] =
+                "video_url = ?";
+
+            $params[] =
+                $videoUrl;
+
+            $types .= "s";
         }
 
 
