@@ -163,10 +163,25 @@ if (!function_exists('adminListPaymentAccounts')) {
 
 if (!function_exists('payment_account_validate')) {
     function payment_account_validate($con, array $body, bool $isCreate): ?string {
-        $method = strtolower(trim((string)($body['method'] ?? '')));
-        if ($isCreate || array_key_exists('method', $body)) {
+        // Only bank transfer exists, so leaving it out means that. It is still checked when sent,
+        // so a client that invents a method is told rather than silently having it stored.
+        if (array_key_exists('method', $body)) {
+            $method = strtolower(trim((string)$body['method']));
             if (!in_array($method, offline_payment_methods(), true)) {
                 return app_offline_text($con, 'وسيلة الدفع دي مش معروفة.', 'That payment method is not recognised.');
+            }
+        }
+
+        // SWIFT/BIC is 8 or 11 characters by the ISO standard. It is what a bank abroad routes on,
+        // so a mistyped one fails the transfer at the sending bank with no useful explanation.
+        if (array_key_exists('swift_code', $body)) {
+            $swift = strtoupper(trim((string)$body['swift_code']));
+            if ($swift !== '' && !preg_match('/^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$/', $swift)) {
+                return app_offline_text(
+                    $con,
+                    'كود السويفت لازم يكون 8 أو 11 حرف/رقم (مثال: NBEGEGCX).',
+                    'A SWIFT/BIC code is 8 or 11 letters and digits (e.g. NBEGEGCX).'
+                );
             }
         }
 
@@ -201,21 +216,25 @@ if (!function_exists('adminCreatePaymentAccount')) {
         if ($error !== null) return ['status' => 'error', 'message' => $error];
 
         $stmt = mysqli_prepare($con, "INSERT INTO payment_accounts
-            (method, label_ar, label_en, account_name, account_number, instructions_ar, instructions_en, is_active, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (method, label_ar, label_en, bank_name, account_name, account_number, swift_code, instructions_ar, instructions_en, is_active, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmt) return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
 
-        $method = strtolower(trim((string)$body['method']));
+        // Only bank transfers exist today, so an omitted method is that rather than a validation
+        // error - there is nothing else it could have meant.
+        $method = strtolower(trim((string)($body['method'] ?? 'bank'))) ?: 'bank';
         $labelAr = trim((string)$body['label_ar']);
         $labelEn = trim((string)$body['label_en']);
+        $bankName = trim((string)($body['bank_name'] ?? '')) ?: null;
         $accountName = trim((string)($body['account_name'] ?? '')) ?: null;
         $accountNumber = trim((string)$body['account_number']);
+        $swift = strtoupper(trim((string)($body['swift_code'] ?? ''))) ?: null;
         $insAr = trim((string)($body['instructions_ar'] ?? '')) ?: null;
         $insEn = trim((string)($body['instructions_en'] ?? '')) ?: null;
         $isActive = isset($body['is_active']) ? (int)(bool)$body['is_active'] : 1;
         $sortOrder = (int)($body['sort_order'] ?? 0);
 
-        mysqli_stmt_bind_param($stmt, "sssssssii", $method, $labelAr, $labelEn, $accountName, $accountNumber, $insAr, $insEn, $isActive, $sortOrder);
+        mysqli_stmt_bind_param($stmt, "sssssssssii", $method, $labelAr, $labelEn, $bankName, $accountName, $accountNumber, $swift, $insAr, $insEn, $isActive, $sortOrder);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
         }
@@ -253,10 +272,15 @@ if (!function_exists('adminUpdatePaymentAccount')) {
         $types = '';
 
         $map = [
-            'method' => 's', 'label_ar' => 's', 'label_en' => 's', 'account_name' => 's',
-            'account_number' => 's', 'instructions_ar' => 's', 'instructions_en' => 's',
+            'method' => 's', 'label_ar' => 's', 'label_en' => 's', 'bank_name' => 's',
+            'account_name' => 's', 'account_number' => 's', 'swift_code' => 's',
+            'instructions_ar' => 's', 'instructions_en' => 's',
             'is_active' => 'i', 'sort_order' => 'i',
         ];
+
+        // Fields that are genuinely optional: clearing one stores NULL rather than an empty
+        // string, so "no SWIFT code" and "a SWIFT code of nothing" are not two different things.
+        $nullable = ['bank_name', 'account_name', 'swift_code', 'instructions_ar', 'instructions_en'];
 
         foreach ($map as $key => $type) {
             if (!array_key_exists($key, $body)) continue;
@@ -266,7 +290,8 @@ if (!function_exists('adminUpdatePaymentAccount')) {
                 $params[] = (int)$value;
             } else {
                 $trimmed = trim((string)$value);
-                $params[] = ($trimmed === '' && in_array($key, ['account_name', 'instructions_ar', 'instructions_en'], true)) ? null : $trimmed;
+                if ($key === 'swift_code') $trimmed = strtoupper($trimmed);
+                $params[] = ($trimmed === '' && in_array($key, $nullable, true)) ? null : $trimmed;
             }
             $types .= $type;
         }

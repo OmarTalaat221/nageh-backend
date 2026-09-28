@@ -23,13 +23,20 @@
 --
 -- Deactivating beats deleting: a request already filed points at the account it was paid into, and
 -- that trail is the whole point when someone asks three months later where their money went.
+-- Bank transfer only. The local wallets (InstaPay, Vodafone Cash and the rest) were dropped:
+-- they exist in Egypt and nowhere else, and this platform can be sold to run outside it. A bank
+-- account is the one instrument that works from anywhere, which is why the columns below carry
+-- what an INTERNATIONAL transfer needs - the bank's name and its SWIFT/BIC - and not just a
+-- number that is only meaningful to someone already in the same country.
 CREATE TABLE IF NOT EXISTS `payment_accounts` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `method` VARCHAR(40) NOT NULL DEFAULT 'other' COMMENT 'instapay / vodafone_cash / etihad_cash / orange_cash / we_pay / bank / other',
+    `method` VARCHAR(40) NOT NULL DEFAULT 'bank' COMMENT 'bank. Kept as a column so another instrument can be added later without a migration.',
     `label_ar` VARCHAR(150) NOT NULL,
     `label_en` VARCHAR(150) NOT NULL,
+    `bank_name` VARCHAR(191) NULL COMMENT 'The receiving bank',
     `account_name` VARCHAR(191) NULL COMMENT 'The name the transfer should be addressed to',
-    `account_number` VARCHAR(191) NOT NULL COMMENT 'Wallet number, IBAN, InstaPay address',
+    `account_number` VARCHAR(191) NOT NULL COMMENT 'IBAN, or the local account number',
+    `swift_code` VARCHAR(40) NULL COMMENT 'SWIFT / BIC. Without it a transfer from abroad cannot be sent at all.',
     `instructions_ar` TEXT NULL,
     `instructions_en` TEXT NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
@@ -38,6 +45,44 @@ CREATE TABLE IF NOT EXISTS `payment_accounts` (
     `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY `idx_pa_active` (`is_active`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- `CREATE TABLE IF NOT EXISTS` adds nothing to a table that already exists, so anyone who ran an
+-- earlier copy of this migration needs the two new columns added on their own.
+SET @has_bank_name := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payment_accounts' AND COLUMN_NAME = 'bank_name');
+SET @sql := IF(@has_bank_name = 0,
+    'ALTER TABLE `payment_accounts` ADD COLUMN `bank_name` VARCHAR(191) NULL COMMENT ''The receiving bank'' AFTER `label_en`',
+    'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @has_swift := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payment_accounts' AND COLUMN_NAME = 'swift_code');
+SET @sql := IF(@has_swift = 0,
+    'ALTER TABLE `payment_accounts` ADD COLUMN `swift_code` VARCHAR(40) NULL COMMENT ''SWIFT / BIC'' AFTER `account_number`',
+    'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- A sample row so the screen is not empty on the first visit, seeded INACTIVE on purpose.
+--
+-- These are placeholder numbers. An active account is shown to students as somewhere to send real
+-- money, and seeding one that looks real but is not would invite exactly that. It stays hidden
+-- until someone puts the true details in and switches it on - which is also the moment a person
+-- has actually checked them.
+INSERT INTO `payment_accounts`
+    (`method`, `label_ar`, `label_en`, `bank_name`, `account_name`, `account_number`, `swift_code`, `instructions_ar`, `instructions_en`, `is_active`, `sort_order`)
+SELECT
+    'bank',
+    'حساب بنكي (بيانات تجريبية - عدّلها قبل التفعيل)',
+    'Bank account (sample data - edit before enabling)',
+    'Sample Bank',
+    'NAJEH EDUCATION',
+    'EG000000000000000000000000',
+    'SMPLEGCXXXX',
+    'حوّل المبلغ على الحساب ده وارفق صورة الإيصال. اكتب اسمك ورقم العملية في التحويل.',
+    'Transfer the amount to this account and attach the receipt. Include your name and the reference in the transfer.',
+    0,
+    0
+WHERE NOT EXISTS (SELECT 1 FROM `payment_accounts`);
 
 -- ---------------------------------------------------------------------------------------------
 -- 2. The requests themselves.

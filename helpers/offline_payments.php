@@ -17,9 +17,16 @@ require_once __DIR__ . '/admin_notifications.php';
  * anything - it is shown next to the price so a person can compare them.
  */
 
+/**
+ * Bank transfer only. The Egyptian wallets this started with do not exist outside Egypt, and the
+ * platform can be run from anywhere - a bank account is the one instrument that travels.
+ *
+ * Still a list rather than a constant so adding another instrument later is one line here and a
+ * label in the dashboards, with no migration.
+ */
 if (!function_exists('offline_payment_methods')) {
     function offline_payment_methods(): array {
-        return ['instapay', 'vodafone_cash', 'etihad_cash', 'orange_cash', 'we_pay', 'bank', 'other'];
+        return ['bank'];
     }
 }
 
@@ -35,8 +42,10 @@ if (!function_exists('payment_account_format')) {
             'id' => (int)$row['id'],
             'method' => $row['method'],
             'label' => $isEnglish ? ($row['label_en'] ?: $row['label_ar']) : ($row['label_ar'] ?: $row['label_en']),
+            'bank_name' => $row['bank_name'] ?? null,
             'account_name' => $row['account_name'],
             'account_number' => $row['account_number'],
+            'swift_code' => $row['swift_code'] ?? null,
             'instructions' => $isEnglish
                 ? ($row['instructions_en'] ?: $row['instructions_ar'])
                 : ($row['instructions_ar'] ?: $row['instructions_en']),

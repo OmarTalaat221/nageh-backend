@@ -15364,7 +15364,7 @@
           "Student - Payments"
         ],
         "summary": "update-4 (NEW): Where to send the money",
-        "description": "update-4 (NEW). The accounts the platform can receive an offline transfer on - wallet numbers, InstaPay addresses, bank accounts - with the instructions for each.\n\nUnauthenticated, because a student has to be able to see how payment works before committing to anything. Only active accounts are returned, and `label` and `instructions` arrive already resolved to the request language.\n\nAn empty array means nobody has configured an account yet: show the student that offline payment is unavailable rather than an empty list.",
+        "description": "update-4 (NEW). The bank accounts the platform can receive a transfer into, each with its `bank_name`, `account_number`, `swift_code`, `account_name` and instructions - everything a student needs to fill in a transfer form, including one sent from another country.\n\nUnauthenticated, because a student has to be able to see how payment works before committing to anything. Only active accounts are returned, and `label` and `instructions` arrive already resolved to the request language.\n\nAn empty array means nobody has configured an account yet: show the student that offline payment is unavailable rather than an empty list.",
         "security": [],
         "responses": {
           "200": {
@@ -15662,7 +15662,7 @@
           "Admin - Payments"
         ],
         "summary": "update-4 (NEW): Add an account",
-        "description": "update-4 (NEW). Body: `method` (instapay / vodafone_cash / etihad_cash / orange_cash / we_pay / bank / other), `label_ar`, `label_en`, `account_number` (all required), plus optional `account_name`, `instructions_ar`, `instructions_en`, `is_active`, `sort_order`.\n\n`account_number` is required because it IS the feature: an account row without one tells a student to transfer money to nowhere. Requires `manage_payments`.",
+        "description": "update-4 (NEW). BANK TRANSFER ONLY. The local wallets this shipped with (InstaPay, Vodafone Cash and the rest) were dropped: they exist in Egypt and nowhere else, and this platform can be run from outside it. A bank account is the one instrument that travels.\n\nBody: `label_ar`, `label_en`, `account_number` (required), plus optional `bank_name`, `swift_code`, `account_name`, `instructions_ar`, `instructions_en`, `is_active`, `sort_order`. `method` may be omitted; 'bank' is the only accepted value.\n\n`account_number` is required because it IS the feature: an account row without one tells a student to transfer money to nowhere. `swift_code`, when given, must be a valid 8 or 11 character BIC - it is what a bank abroad routes on, and a mistyped one fails at the sending bank with no useful explanation.\n\nThe migration seeds one sample account INACTIVE. An active account is shown to students as somewhere to send real money, so placeholder details stay hidden until a person has replaced them and switched it on. Requires `manage_payments`.",
         "security": [
           {
             "AdminAuth": []
