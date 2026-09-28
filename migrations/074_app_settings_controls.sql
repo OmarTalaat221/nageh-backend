@@ -32,7 +32,13 @@ VALUES (
     'app_settings',
     'Edit contact details, social links, registration and login protection'
 )
-ON DUPLICATE KEY UPDATE `code` = `code`;
+-- The wording is ours, not the user's data, so a re-run refreshes it. An earlier draft of this
+-- migration described a maintenance-mode switch that was dropped before release; a plain no-op
+-- here would have left that stale sentence sitting in any database the draft had already reached.
+ON DUPLICATE KEY UPDATE
+    `name` = VALUES(`name`),
+    `module` = VALUES(`module`),
+    `description` = VALUES(`description`);
 
 INSERT INTO `permissions_translations` (`permission_id`, `language_id`, `name`, `description`)
 SELECT p.id, l.id, 'إدارة إعدادات التطبيق', 'تعديل بيانات التواصل وروابط التواصل الاجتماعي والتسجيل وحماية تسجيل الدخول'
