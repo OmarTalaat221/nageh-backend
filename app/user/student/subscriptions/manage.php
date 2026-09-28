@@ -22,20 +22,30 @@ if (!function_exists('get_student_course_progress_stats')) {
         $cId = (int)$cId;
         $stId = (int)$stId;
 
+        // Driven from `units`, not from `videos`.
+        //
+        // The old form joined the other way round, so a course with units and no videos in them
+        // yet counted as zero of everything - and the catalogue card had nothing to say about it
+        // but "0 lessons", which is true and useless. Counting the units as well lets a client
+        // say "7 units" instead. `COUNT(v.id)` still counts only real rows, so the lesson count
+        // and the duration are unchanged for every course that has videos.
         $totalVidRes = mysqli_query($con, "
-            SELECT 
+            SELECT
                 COUNT(v.id) AS total_lessons,
-                COALESCE(SUM(v.duration_seconds), 0) AS total_duration
-            FROM videos v 
-            JOIN units u ON v.unit_id = u.id 
-            WHERE u.course_id = {$cId} AND u.is_active = 1 AND v.is_active = 1
+                COALESCE(SUM(v.duration_seconds), 0) AS total_duration,
+                COUNT(DISTINCT u.id) AS total_units
+            FROM units u
+            LEFT JOIN videos v ON v.unit_id = u.id AND v.is_active = 1
+            WHERE u.course_id = {$cId} AND u.is_active = 1
         ");
 
         $totalLessons = 0;
         $totalDuration = 0;
+        $totalUnits = 0;
         if ($totalVidRes && $row = mysqli_fetch_assoc($totalVidRes)) {
             $totalLessons = (int)($row['total_lessons'] ?? 0);
             $totalDuration = (int)($row['total_duration'] ?? 0);
+            $totalUnits = (int)($row['total_units'] ?? 0);
         }
 
         $completedLessons = 0;
@@ -71,6 +81,7 @@ if (!function_exists('get_student_course_progress_stats')) {
 
         return [
             'total_lessons_count' => $totalLessons,
+            'units_count' => $totalUnits,
             'completed_lessons_count' => $completedLessons,
             'total_duration_seconds' => $totalDuration,
             'watched_duration_seconds' => $watchedDuration,
@@ -827,6 +838,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
 
                 $stats = get_student_course_progress_stats($con, $stId, $cId);
                 $row['total_lessons_count'] = $stats['total_lessons_count'];
+                $row['units_count'] = $stats['units_count'];
                 $row['completed_lessons_count'] = $stats['completed_lessons_count'];
                 $row['progress_percentage'] = $stats['progress_percentage'];
 
@@ -1308,11 +1320,13 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
                 if ($stId > 0 && $isOwn) {
                     $stats = get_student_course_progress_stats($con, $stId, $cId);
                     $row['total_lessons_count'] = $stats['total_lessons_count'];
+                    $row['units_count'] = $stats['units_count'];
                     $row['completed_lessons_count'] = $stats['completed_lessons_count'];
                     $row['progress_percentage'] = $stats['progress_percentage'];
                 } else {
                     $stats = get_student_course_progress_stats($con, 0, $cId);
                     $row['total_lessons_count'] = $stats['total_lessons_count'];
+                    $row['units_count'] = $stats['units_count'];
                     $row['completed_lessons_count'] = 0;
                     $row['progress_percentage'] = 0.00;
                 }

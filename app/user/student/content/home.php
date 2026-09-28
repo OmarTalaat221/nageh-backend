@@ -174,6 +174,7 @@ if (!function_exists('studentHome')) {
                     $stats = get_student_course_progress_stats($con, $stId, $cId);
                     $progressPct = $stats['progress_percentage'];
                     $row['total_lessons_count'] = $stats['total_lessons_count'];
+                    $row['units_count'] = $stats['units_count'];
                     $row['completed_lessons_count'] = $stats['completed_lessons_count'];
                     $row['progress_percentage'] = $progressPct;
 
@@ -186,6 +187,7 @@ if (!function_exists('studentHome')) {
                 } else {
                     $stats = get_student_course_progress_stats($con, 0, $cId);
                     $row['total_lessons_count'] = $stats['total_lessons_count'];
+                    $row['units_count'] = $stats['units_count'];
                     $row['completed_lessons_count'] = 0;
                     $row['progress_percentage'] = 0.00;
                 }

@@ -100,6 +100,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
 
                 $stats = get_student_course_progress_stats($con, $isOwn ? $stId : 0, $cId);
                 $row['total_lessons_count'] = $stats['total_lessons_count'];
+                $row['units_count'] = $stats['units_count'];
                 $row['completed_lessons_count'] = $stats['completed_lessons_count'];
                 $row['progress_percentage'] = $isOwn ? $stats['progress_percentage'] : 0.00;
 
@@ -199,6 +200,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
 
                 $stats = get_student_course_progress_stats($con, $stId, $cId);
                 $row['total_lessons_count'] = $stats['total_lessons_count'];
+                $row['units_count'] = $stats['units_count'];
                 $row['completed_lessons_count'] = $stats['completed_lessons_count'];
                 $row['progress_percentage'] = $stats['progress_percentage'];
 
@@ -495,6 +497,10 @@ if (!function_exists('studentGetCourseDetails')) {
             'reviews_count' => $totalReviews,
             'students_count' => $studentsCount,
             'lessons_count' => $totalLessons,
+            // The curriculum is a unit per entry, so this is the number of units - sent because a
+            // course can have units with no videos in them yet, and "0 lessons" on its own tells
+            // a student nothing about a course that plainly has content being built.
+            'units_count' => count($curriculum),
             'total_duration_hours' => $totalHours,
             'has_certificate' => true,
             'access_type' => 'وصول كامل',
