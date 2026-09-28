@@ -46,9 +46,12 @@ if (!function_exists('sendPasswordResetOtp')) {
             mysqli_stmt_execute($invStmt);
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO password_reset_codes (user_type, user_id, email, code, reset_token, expires_at) VALUES (?, ?, ?, ?, ?, ?)");
+        // Written by the database in UTC, and read back the same way - see the note in
+        // email_verification.php. Comparing a PHP-written local time against NOW() made every
+        // reset code expire the moment it was issued for the whole DST season.
+        $stmt = mysqli_prepare($con, "INSERT INTO password_reset_codes (user_type, user_id, email, code, reset_token, expires_at) VALUES (?, ?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 MINUTE))");
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sissss", $userType, $userId, $email, $code, $resetToken, $expiresAt);
+            mysqli_stmt_bind_param($stmt, "sisss", $userType, $userId, $email, $code, $resetToken);
             mysqli_stmt_execute($stmt);
         }
 
@@ -91,7 +94,7 @@ if (!function_exists('verifyPasswordResetOtp')) {
             return ['status' => 'error', 'message' => trans('email_password_required')];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, reset_token FROM password_reset_codes WHERE email = ? AND code = ? AND user_type = ? AND is_used = 0 AND expires_at >= NOW() ORDER BY id DESC LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, reset_token FROM password_reset_codes WHERE email = ? AND code = ? AND user_type = ? AND is_used = 0 AND expires_at >= UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1");
         if (!$stmt) return ['status' => 'error', 'message' => trans('invalid_otp_code')];
 
         mysqli_stmt_bind_param($stmt, "sss", $email, $code, $userType);
@@ -130,7 +133,7 @@ if (!function_exists('resetPasswordWithCodeOrToken')) {
             return ['status' => 'error', 'message' => trans('short_password')];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, user_id FROM password_reset_codes WHERE email = ? AND (code = ? OR reset_token = ?) AND user_type = ? AND is_used = 0 AND expires_at >= NOW() ORDER BY id DESC LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, user_id FROM password_reset_codes WHERE email = ? AND (code = ? OR reset_token = ?) AND user_type = ? AND is_used = 0 AND expires_at >= UTC_TIMESTAMP() ORDER BY id DESC LIMIT 1");
         if (!$stmt) return ['status' => 'error', 'message' => trans('invalid_otp_code')];
 
         mysqli_stmt_bind_param($stmt, "ssss", $email, $codeOrToken, $codeOrToken, $userType);

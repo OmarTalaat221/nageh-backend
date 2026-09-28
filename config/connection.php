@@ -61,6 +61,22 @@ if ($timezone === "Africa/Cairo") {
     // Replace whatever (stale, DST-blind) offset the system database gave us with the correct one.
     $correctOffsetSeconds = cairo_utc_offset_seconds();
     $currentDate->modify(sprintf('%+d seconds', $correctOffsetSeconds - $offsetSeconds));
+
+    // PHP's own clock has to move with it. Correcting only MySQL below left the two an hour apart
+    // for the whole DST season: anything PHP wrote with date() landed an hour in the past, and
+    // anything compared against NOW() read an hour ahead. An email verification code was expired
+    // 45 minutes before it was created, so every correct code was rejected as expired.
+    //
+    // Set as a fixed offset rather than a name, because the name is precisely what this server's
+    // tzdata gets wrong. PHP rejects "+03:00" as an identifier; Etc/GMT-N is the spelling it takes,
+    // and its sign is inverted by POSIX convention - Etc/GMT-3 means UTC+3.
+    if ($correctOffsetSeconds !== $offsetSeconds) {
+        $etcZone = 'Etc/GMT' . ($correctOffsetSeconds >= 0 ? '-' : '+') . intdiv(abs($correctOffsetSeconds), 3600);
+        if (@date_default_timezone_set($etcZone) === false) {
+            date_default_timezone_set($timezone);
+        }
+    }
+
     $offsetSeconds = $correctOffsetSeconds;
 }
 
