@@ -3705,6 +3705,142 @@ $routes = [
             },
         ],
 
+        // Offline payments (the student transfers the money; a reviewer confirms it) ----------
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/payment-accounts",
+            "handler" => function ($con) {
+                include_once "./app/user/student/payments/offline.php";
+                return studentListPaymentAccounts($con);
+            },
+        ],
+        [
+            "method" => ["POST", "GET"],
+            "path" => "/najeh/student/offline-payments/quote",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/payments/offline.php";
+                $studentData = studentAuthMiddleware();
+                return studentQuoteOfflinePayment($con, $studentData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/student/offline-payments",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/payments/offline.php";
+                $studentData = studentAuthMiddleware();
+                return studentCreateOfflinePayment($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/student/offline-payments",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/payments/offline.php";
+                $studentData = studentAuthMiddleware();
+                return studentListMyOfflinePayments($con, $studentData);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/student/offline-payments",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/payments/offline.php";
+                $studentData = studentAuthMiddleware();
+                return studentCancelOfflinePayment($con, $studentData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/offline-payments",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminListOfflinePayments($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/offline-payments/review",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminReviewOfflinePayment($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/payment-accounts",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminListPaymentAccounts($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/payment-accounts",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminCreatePaymentAccount($con);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/payment-accounts",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminUpdatePaymentAccount($con);
+            },
+        ],
+        [
+            "method" => "DELETE",
+            "path" => "/najeh/admin/payment-accounts",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/payments/offline.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_payments');
+                return adminDeletePaymentAccount($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/teacher/offline-payments",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/payments/offline.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherListOfflinePayments($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/offline-payments/review",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/payments/offline.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherReviewOfflinePayment($con, $teacherData);
+            },
+        ],
+
         // Discount codes (reduce a price; they never grant access) ----------
         [
             "method" => "GET",
