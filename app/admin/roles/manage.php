@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../../../helpers/permissions_registry.php';
 
 if (!function_exists('adminListRoles')) {
     function adminListRoles($con) {
@@ -225,6 +226,11 @@ if (!function_exists('adminDeleteRole')) {
 
 if (!function_exists('adminListPermissions')) {
     function adminListPermissions($con) {
+        // The catalogue in helpers/permissions_registry.php is the source of truth; this makes the
+        // table match it. Cheap when nothing has changed - one SELECT of a stored hash - and it
+        // runs here because this is the screen where being out of date actually matters.
+        permissions_sync($con);
+
         $langInfo = get_language_info($con);
         $langId = $langInfo['id'];
 
