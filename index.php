@@ -4464,6 +4464,64 @@ $routes = [
                 return adminLiftTeacherAttendanceSuspension($con);
             },
         ],
+        // Excel exports for the money-and-attendance screens. Each one honours the same filters
+        // as the list it belongs to, so what downloads is what the admin is looking at.
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/teacher-wallets/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/hr_export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_wallets');
+                adminExportTeacherWallets($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/teacher-wallets/transactions/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/hr_export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_wallets');
+                adminExportWalletTransactions($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/deduction-appeals/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/hr_export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_wallets');
+                adminExportDeductionAppeals($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/attendance/exceptions/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/hr_export.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_attendance');
+                adminExportAttendanceExceptions($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/reports/export",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/export/hr_export.php";
+                // GET /admin/reports itself requires only an admin session, so gating the export
+                // any harder would mean an admin who can read the reports cannot download them.
+                adminAuthMiddleware();
+                adminExportReports($con);
+            },
+        ],
         [
             "method" => "GET",
             "path" => "/najeh/admin/deduction-appeals",
