@@ -3192,7 +3192,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminListCourses($con);
             },
         ],
@@ -3203,7 +3203,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminGetCourse($con);
             },
         ],
@@ -3214,7 +3214,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminCreateCourse($con);
             },
         ],
@@ -3225,7 +3225,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminUpdateCourse($con);
             },
         ],
@@ -3236,7 +3236,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminDeleteCourse($con);
             },
         ],
@@ -3247,7 +3247,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminLinkTeacherToCourse($con);
             },
         ],
@@ -3258,7 +3258,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminUnlinkTeacherFromCourse($con);
             },
         ],
@@ -3269,7 +3269,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminSeedCourses($con);
             },
         ],
@@ -3282,7 +3282,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminListUnits($con);
             },
         ],
@@ -3293,7 +3293,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminGetUnit($con);
             },
         ],
@@ -3304,7 +3304,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminCreateUnit($con);
             },
         ],
@@ -3315,7 +3315,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminUpdateUnit($con);
             },
         ],
@@ -3326,7 +3326,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminDeleteUnit($con);
             },
         ],
@@ -3337,7 +3337,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminReorderUnits($con);
             },
         ],
@@ -3350,7 +3350,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminListVideos($con);
             },
         ],
@@ -3361,7 +3361,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminGetVideo($con);
             },
         ],
@@ -3372,7 +3372,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminCreateVideo($con);
             },
         ],
@@ -3383,7 +3383,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminUpdateVideo($con);
             },
         ],
@@ -3394,7 +3394,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_courses');
                 return adminDeleteVideo($con);
             },
         ],
@@ -3407,7 +3407,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminListBooks($con);
             },
         ],
@@ -3418,7 +3418,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminGetBook($con);
             },
         ],
@@ -3429,7 +3429,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminCreateBook($con);
             },
         ],
@@ -3440,7 +3440,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminUpdateBook($con);
             },
         ],
@@ -3451,7 +3451,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminDeleteBook($con);
             },
         ],
@@ -3462,7 +3462,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminGrantBookAccessToStudent($con);
             },
         ],
@@ -3473,7 +3473,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/books/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_books');
                 return adminListBookPurchaseRequests($con);
             },
         ],
@@ -3496,7 +3496,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminListExams($con);
             },
         ],
@@ -3507,7 +3507,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminGetExam($con);
             },
         ],
@@ -3518,7 +3518,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminCreateExam($con);
             },
         ],
@@ -3529,7 +3529,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminUpdateExam($con);
             },
         ],
@@ -3540,7 +3540,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminDeleteExam($con);
             },
         ],
@@ -3553,7 +3553,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminListQuestions($con);
             },
         ],
@@ -3564,7 +3564,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminGetQuestion($con);
             },
         ],
@@ -3575,7 +3575,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminCreateQuestion($con);
             },
         ],
@@ -3586,7 +3586,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminUpdateQuestion($con);
             },
         ],
@@ -3597,7 +3597,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminDeleteQuestion($con);
             },
         ],
@@ -3608,7 +3608,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminReorderQuestions($con);
             },
         ],
@@ -3621,7 +3621,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminListCertificates($con);
             },
         ],
@@ -3632,7 +3632,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminGetCertificate($con);
             },
         ],
@@ -3643,7 +3643,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminCreateCertificate($con);
             },
         ],
@@ -3654,7 +3654,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminUpdateCertificate($con);
             },
         ],
@@ -3665,7 +3665,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/courses/content.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminDeleteCertificate($con);
             },
         ],
@@ -3678,7 +3678,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/content/certificates/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminListStudentCertificates($con);
             },
         ],
@@ -3689,7 +3689,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/content/certificates/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminAddStudentCertificate($con, $adminData);
             },
         ],
@@ -3700,7 +3700,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/content/certificates/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_certificates');
                 return adminRevokeStudentCertificate($con);
             },
         ],
@@ -4218,7 +4218,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminListSubscriptionCodes($con);
             },
         ],
@@ -4229,7 +4229,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminGetSubscriptionCode($con);
             },
         ],
@@ -4240,7 +4240,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminCreateSubscriptionCode($con);
             },
         ],
@@ -4251,7 +4251,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminUpdateSubscriptionCode($con);
             },
         ],
@@ -4262,7 +4262,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminDeleteSubscriptionCode($con);
             },
         ],
@@ -4273,7 +4273,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminListStudentSubscriptions($con);
             },
         ],
@@ -4284,7 +4284,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminCreateStudentSubscription($con, $adminData);
             },
         ],
@@ -4297,7 +4297,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/subscriptions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_subscriptions');
                 return adminUpdateStudentSubscriptionStatus($con, $adminData);
             },
         ],
@@ -4324,7 +4324,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/teacher/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminListRescheduleRequests($con);
             },
         ],
@@ -4335,7 +4335,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/teacher/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminReviewRescheduleRequest($con);
             },
         ],
@@ -4348,7 +4348,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/hr_settings/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_hr');
                 return adminGetHrPolicySettings($con);
             },
         ],
@@ -4359,7 +4359,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/hr_settings/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_hr');
                 return adminUpdateHrPolicySettings($con);
             },
         ],
@@ -4392,7 +4392,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_attendance');
                 return adminListAttendanceExceptionRequests($con);
             },
         ],
@@ -4403,7 +4403,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_attendance');
                 return adminReviewAttendanceExceptionRequest($con, $adminData);
             },
         ],
@@ -4414,7 +4414,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminListTeacherWallets($con);
             },
         ],
@@ -4425,7 +4425,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminGetTeacherWalletLedger($con);
             },
         ],
@@ -4436,7 +4436,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminAdjustTeacherWallet($con, $adminData);
             },
         ],
@@ -4447,7 +4447,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminLiftTeacherAttendanceSuspension($con);
             },
         ],
@@ -4458,7 +4458,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminListDeductionAppeals($con);
             },
         ],
@@ -4469,7 +4469,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/attendance/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_wallets');
                 return adminReviewDeductionAppeal($con, $adminData);
             },
         ],
@@ -4481,7 +4481,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/consultations/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_consultations');
                 return adminListConsultations($con);
             },
         ],
@@ -4492,7 +4492,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/consultations/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_consultations');
                 return adminUpdateConsultationSlot($con);
             },
         ],
@@ -4503,7 +4503,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/consultations/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_consultations');
                 return adminDeleteConsultationSlot($con);
             },
         ],
@@ -4514,7 +4514,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/consultations/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_consultations');
                 return adminCreateRecurringConsultationSlots($con);
             },
         ],
@@ -4526,7 +4526,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminListSessions($con);
             },
         ],
@@ -4537,7 +4537,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminCreateSession($con);
             },
         ],
@@ -4548,7 +4548,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminUpdateSession($con);
             },
         ],
@@ -4559,7 +4559,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/sessions/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminDeleteSession($con);
             },
         ],
@@ -4573,7 +4573,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminListAvailabilitySlots($con);
             },
         ],
@@ -4584,7 +4584,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminCreateAvailabilitySlot($con, $adminData);
             },
         ],
@@ -4595,7 +4595,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminUpdateAvailabilitySlot($con);
             },
         ],
@@ -4606,7 +4606,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminDeleteAvailabilitySlot($con);
             },
         ],
@@ -4617,7 +4617,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminGenerateAvailabilitySlots($con, $adminData);
             },
         ],
@@ -4628,7 +4628,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminBookStudentIntoSlot($con, $adminData);
             },
         ],
@@ -4639,7 +4639,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminCancelStudentBooking($con, $adminData);
             },
         ],
@@ -4650,7 +4650,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/availability/manage.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_sessions');
                 return adminScheduleStudent($con, $adminData);
             },
         ],
@@ -4837,7 +4837,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/teacher/exams/attempts.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminListExamAttempts($con);
             },
         ],
@@ -4848,7 +4848,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/teacher/exams/attempts.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminGetExamAttemptDetail($con);
             },
         ],
@@ -4859,7 +4859,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/teacher/exams/attempts.php";
                 $adminData = adminAuthMiddleware();
-                requirePermission($con, $adminData, 'manage_teachers');
+                requirePermission($con, $adminData, 'manage_exams');
                 return adminGradeExamAttempt($con, $adminData);
             },
         ],

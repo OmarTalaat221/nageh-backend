@@ -228,10 +228,22 @@ if (!function_exists('adminListPermissions')) {
         $langInfo = get_language_info($con);
         $langId = $langInfo['id'];
 
+        // Only what the dashboard actually has a screen for. Permissions from an earlier design
+        // and ones guarding API routes with no page were being offered as checkboxes, which made
+        // the list describe something other than the platform. Guarded on migration 082 so the
+        // endpoint works before it is applied.
+        $hasVisible = mysqli_num_rows(mysqli_query($con, "
+            SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'permissions' AND COLUMN_NAME = 'is_visible'
+        ")) > 0;
+
+        $visibleWhere = $hasVisible ? "WHERE p.is_visible = 1" : "WHERE p.code NOT LIKE '%.%'";
+
         $res = mysqli_query($con, "
             SELECT p.id, p.code, COALESCE(pt.name, p.name) AS name, p.module, COALESCE(pt.description, p.description) AS description
             FROM permissions p
             LEFT JOIN permissions_translations pt ON p.id = pt.permission_id AND pt.language_id = {$langId}
+            {$visibleWhere}
             ORDER BY p.module ASC, p.id ASC
         ");
 
