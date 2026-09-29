@@ -30,7 +30,7 @@ if (!function_exists('studentProfile')) {
             ensure_affiliate_commissions_extended_columns($con);
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, school_id, city_id, academic_year_id, study_language, affiliate_code, points_balance, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, " . (phone_country_code_column_exists($con) ? "phone_country_code" : "NULL AS phone_country_code") . ", age, school_id, city_id, academic_year_id, study_language, affiliate_code, points_balance, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $studentId);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -114,12 +114,13 @@ if (!function_exists('studentUpdateProfile')) {
         }
 
         if (isset($body['phone'])) {
-            $phoneVal = trim($body['phone']);
+            $dialVal = trim($body['phone_country_code'] ?? $body['country_code'] ?? $body['dial_code'] ?? '');
+            [$phoneVal, $dialVal] = phone_to_international($con, $body['phone'], $dialVal);
 
             // The same rule registration applies. Without it, a student could take a number that
             // is already someone else's and lock both of them out of phone login - registration
             // would be guarded and the back door left open.
-            if ($phoneVal !== '' && phone_find_students($con, $phoneVal, $studentId)) {
+            if ($phoneVal !== null && phone_find_students($con, $phoneVal, $studentId)) {
                 return [
                     'status' => 'error',
                     'message' => trans('phone_already_registered'),
@@ -128,8 +129,14 @@ if (!function_exists('studentUpdateProfile')) {
             }
 
             $updateFields[] = "phone = ?";
-            $params[] = $phoneVal !== '' ? $phoneVal : null;
+            $params[] = $phoneVal;
             $types .= "s";
+
+            if (phone_country_code_column_exists($con)) {
+                $updateFields[] = "phone_country_code = ?";
+                $params[] = $dialVal;
+                $types .= "s";
+            }
         }
 
         if (array_key_exists('age', $body)) {

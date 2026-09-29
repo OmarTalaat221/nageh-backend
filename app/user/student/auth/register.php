@@ -17,7 +17,14 @@ if (!function_exists('studentRegister')) {
         $name = trim($body['name'] ?? '');
         $email = strtolower(trim($body['email'] ?? ''));
         $password = trim($body['password'] ?? '');
-        $phone = !empty(trim($body['phone'] ?? '')) ? trim($body['phone']) : null;
+        // The country picker on the form. A number that already carries its own code wins over it.
+        $phoneDial = trim(
+            $body['phone_country_code']
+            ?? $body['country_code']
+            ?? $body['dial_code']
+            ?? ''
+        );
+        [$phone, $phoneDial] = phone_to_international($con, $body['phone'] ?? null, $phoneDial);
         $age = (isset($body['age']) && is_numeric($body['age']) && (int)$body['age'] > 0) ? (int)$body['age'] : null;
         $schoolId = (isset($body['school_id']) && is_numeric($body['school_id']) && (int)$body['school_id'] > 0) ? (int)$body['school_id'] : null;
         $cityId = (isset($body['city_id']) && is_numeric($body['city_id']) && (int)$body['city_id'] > 0) ? (int)$body['city_id'] : null;
@@ -84,8 +91,18 @@ if (!function_exists('studentRegister')) {
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, age, school_id, city_id, academic_year_id, study_language, is_email_verified, referred_by_student_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)");
-        mysqli_stmt_bind_param($stmt, "sssssiiiisi", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $referredByStudentId);
+        $ccCol = phone_country_code_column_exists($con);
+
+        $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, "
+            . ($ccCol ? "phone_country_code, " : "")
+            . "age, school_id, city_id, academic_year_id, study_language, is_email_verified, referred_by_student_id) "
+            . "VALUES (?, ?, ?, ?, ?, " . ($ccCol ? "?, " : "") . "?, ?, ?, ?, ?, 0, ?)");
+
+        if ($ccCol) {
+            mysqli_stmt_bind_param($stmt, "ssssssiiiisi", $name, $email, $hashedPassword, $image, $phone, $phoneDial, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $referredByStudentId);
+        } else {
+            mysqli_stmt_bind_param($stmt, "sssssiiiisi", $name, $email, $hashedPassword, $image, $phone, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $referredByStudentId);
+        }
 
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create student account: ' . mysqli_error($con)];
