@@ -49,6 +49,7 @@ if (!function_exists('adminGlobalSearch')) {
         $perGroup = max(1, min(10, (int)($_GET['limit'] ?? 5)));
         $like = '%' . admin_search_escape_like($con, $raw) . '%';
 
+
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
 
@@ -67,6 +68,16 @@ if (!function_exists('adminGlobalSearch')) {
             $items = [];
             while ($row = mysqli_fetch_assoc($res)) {
                 $row['id'] = (int)$row['id'];
+
+                // The link carries the row's OWN title, not the term that was typed: searching
+                // "geo" and landing on a page filtered by "geo" just shows every match again,
+                // while filtering by the title shows the one that was actually clicked. Encoded
+                // here rather than in SQL because an Arabic title cannot go into a URL raw.
+                if (!empty($row['link']) && strpos($row['link'], '?q=') !== false) {
+                    [$path, $q] = explode('?q=', $row['link'], 2);
+                    $row['link'] = $q === '' ? $path : $path . '?q=' . rawurlencode($q);
+                }
+
                 $items[] = format_response_images($row);
             }
 
@@ -84,7 +95,7 @@ if (!function_exists('adminGlobalSearch')) {
         $collect('students', 'manage_students', "
             SELECT s.id, s.name AS title,
                    CONCAT_WS(' · ', NULLIF(s.email,''), NULLIF(s.phone,'')) AS subtitle,
-                   s.image, CONCAT('/users?q=', s.id) AS link, s.is_active
+                   s.image, CONCAT('/users?q=', s.name) AS link, s.is_active
             FROM students s
             WHERE s.name LIKE '{$like}' OR s.email LIKE '{$like}' OR s.phone LIKE '{$like}'
             ORDER BY s.id DESC LIMIT {$perGroup}
@@ -93,7 +104,7 @@ if (!function_exists('adminGlobalSearch')) {
         $collect('teachers', 'manage_teachers', "
             SELECT t.id, t.name AS title,
                    CONCAT_WS(' · ', NULLIF(t.email,''), NULLIF(t.specialization,'')) AS subtitle,
-                   t.image, '/teachers' AS link, t.is_active
+                   t.image, CONCAT('/teachers?q=', t.name) AS link, t.is_active
             FROM teachers t
             WHERE t.name LIKE '{$like}' OR t.email LIKE '{$like}' OR t.specialization LIKE '{$like}'
             ORDER BY t.id DESC LIMIT {$perGroup}
@@ -101,7 +112,7 @@ if (!function_exists('adminGlobalSearch')) {
 
         $collect('parents', 'manage_parents', "
             SELECT p.id, p.name AS title, p.email AS subtitle, p.image,
-                   '/parents' AS link, p.is_active
+                   CONCAT('/parents?q=', p.name) AS link, p.is_active
             FROM parents p
             WHERE p.name LIKE '{$like}' OR p.email LIKE '{$like}'
             ORDER BY p.id DESC LIMIT {$perGroup}
@@ -128,7 +139,7 @@ if (!function_exists('adminGlobalSearch')) {
         $collect('packages', 'manage_packages', "
             SELECT c.id, COALESCE(ct.name, c.slug) AS title,
                    COALESCE(ayt.name, '') AS subtitle,
-                   c.image, '/packages' AS link, c.is_active
+                   c.image, CONCAT('/packages?q=', COALESCE(ct.name, c.slug)) AS link, c.is_active
             FROM courses c
             LEFT JOIN courses_translations ct ON ct.course_id = c.id AND ct.language_id = {$langId}
             LEFT JOIN academic_years_translations ayt ON ayt.academic_year_id = c.academic_year_id AND ayt.language_id = {$langId}
@@ -139,7 +150,7 @@ if (!function_exists('adminGlobalSearch')) {
         $collect('books', 'manage_books', "
             SELECT b.id, COALESCE(bt.title, CONCAT('#', b.id)) AS title,
                    COALESCE(bt.description, '') AS subtitle,
-                   b.cover_image AS image, '/books' AS link, b.is_active
+                   b.cover_image AS image, CONCAT('/books?q=', COALESCE(bt.title, '')) AS link, b.is_active
             FROM course_books b
             LEFT JOIN course_books_translations bt ON bt.book_id = b.id AND bt.language_id = {$langId}
             WHERE bt.title LIKE '{$like}' OR bt.description LIKE '{$like}'
@@ -148,7 +159,7 @@ if (!function_exists('adminGlobalSearch')) {
 
         $collect('subjects', 'manage_subjects', "
             SELECT s.id, COALESCE(st.name, s.code) AS title, s.code AS subtitle,
-                   NULL AS image, '/subjects' AS link, s.is_active
+                   NULL AS image, CONCAT('/subjects?q=', COALESCE(st.name, s.code)) AS link, s.is_active
             FROM subjects s
             LEFT JOIN subjects_translations st ON st.subject_id = s.id AND st.language_id = {$langId}
             WHERE st.name LIKE '{$like}' OR s.code LIKE '{$like}'
@@ -157,7 +168,7 @@ if (!function_exists('adminGlobalSearch')) {
 
         $collect('grades', 'manage_academic_years', "
             SELECT a.id, COALESCE(at2.name, a.code) AS title, a.code AS subtitle,
-                   NULL AS image, '/grades' AS link, a.is_active
+                   NULL AS image, CONCAT('/grades?q=', COALESCE(at2.name, a.code)) AS link, a.is_active
             FROM academic_years a
             LEFT JOIN academic_years_translations at2 ON at2.academic_year_id = a.id AND at2.language_id = {$langId}
             WHERE at2.name LIKE '{$like}' OR a.code LIKE '{$like}'
@@ -167,7 +178,7 @@ if (!function_exists('adminGlobalSearch')) {
         $collect('exams', 'manage_exams', "
             SELECT e.id, COALESCE(et.title, CONCAT('#', e.id)) AS title,
                    COALESCE(et.description, '') AS subtitle,
-                   NULL AS image, '/exams' AS link, e.is_active
+                   NULL AS image, CONCAT('/exams?q=', COALESCE(et.title, '')) AS link, e.is_active
             FROM course_exams e
             LEFT JOIN course_exams_translations et ON et.exam_id = e.id AND et.language_id = {$langId}
             WHERE et.title LIKE '{$like}' OR et.description LIKE '{$like}'
