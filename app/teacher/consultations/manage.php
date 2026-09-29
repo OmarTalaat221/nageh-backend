@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
 require_once __DIR__ . '/../../../helpers/admin_notifications.php';
+require_once __DIR__ . '/../../../helpers/consultation_notifications.php';
 
 if (!function_exists('ensure_consultation_slots_type_column')) {
     function ensure_consultation_slots_type_column($con): void {
@@ -409,15 +410,20 @@ if (!function_exists('teacherRespondToConsultationBooking')) {
             return ['status' => 'error', 'message' => trans('consultation_not_found_or_not_booked')];
         }
 
+        // Captured before the reject branch clears it - the student still has to be told.
+        $bookedStudentId = (int)$slot['student_id'];
+
         if (in_array($action, ['approve', 'approved', 'accept', 'accepted'])) {
             $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET status = 'approved' WHERE id = ? AND teacher_id = ?");
             mysqli_stmt_bind_param($stmt, "ii", $slotId, $teacherId);
             mysqli_stmt_execute($stmt);
+            notify_consultation_reviewed($con, $slotId, $bookedStudentId, $teacherId, true);
             $msg = trans('consultation_approved_success');
         } elseif (in_array($action, ['reject', 'rejected', 'decline', 'declined', 'cancel', 'cancelled'])) {
             $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET is_booked = 0, student_id = NULL, booked_at = NULL, status = 'available' WHERE id = ? AND teacher_id = ?");
             mysqli_stmt_bind_param($stmt, "ii", $slotId, $teacherId);
             mysqli_stmt_execute($stmt);
+            notify_consultation_reviewed($con, $slotId, $bookedStudentId, $teacherId, false);
             $msg = trans('consultation_cancelled_restored');
         } else {
             return ['status' => 'error', 'message' => trans('invalid_action_approve_reject')];
@@ -610,6 +616,10 @@ if (!function_exists('studentBookConsultationSlot')) {
 
         $slotDetails = get_consultation_slot_details($con, $slotId);
 
+        // The teacher had no way of learning about this short of opening the bookings screen.
+        $teacherIdForSlot = (int)($slotDetails['teacher_id'] ?? 0);
+        notify_consultation_booked($con, $slotId, $studentId, $teacherIdForSlot, 'student', $studentId);
+
         return [
             'status' => 'success',
             'message' => trans('slot_booked_awaiting_approval'),
@@ -629,6 +639,9 @@ if (!function_exists('studentCancelConsultationBooking')) {
         $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
         if ($slotId <= 0) return ['status' => 'error', 'message' => trans('slot_id_required')];
 
+        // Read before the update clears it - afterwards there is no teacher on the row to tell.
+        $before = mysqli_fetch_assoc(mysqli_query($con, "SELECT teacher_id FROM consultation_slots WHERE id = {$slotId} LIMIT 1"));
+
         $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET is_booked = 0, student_id = NULL, booked_at = NULL, status = 'available' WHERE id = ? AND student_id = ? AND is_booked = 1");
         mysqli_stmt_bind_param($stmt, "ii", $slotId, $studentId);
         mysqli_stmt_execute($stmt);
@@ -636,6 +649,8 @@ if (!function_exists('studentCancelConsultationBooking')) {
         if (mysqli_stmt_affected_rows($stmt) === 0) {
             return ['status' => 'error', 'message' => trans('booking_not_found_or_cancelled')];
         }
+
+        notify_consultation_cancelled($con, $slotId, $studentId, (int)($before['teacher_id'] ?? 0), 'student', $studentId);
 
         return [
             'status' => 'success',

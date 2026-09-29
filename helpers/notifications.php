@@ -91,6 +91,43 @@ if (!function_exists('send_notification_to_users')) {
     }
 }
 
+if (!function_exists('notification_try')) {
+    /**
+     * Run a statement whose failure is expected and harmless.
+     *
+     * These used to be written `@mysqli_query(...)`, which is safe only while mysqli reports
+     * errors as warnings. From PHP 8.1 mysqli throws by default, `@` does not suppress an
+     * exception, and every one of these ALTERs throws the moment the column it adds already
+     * exists - that is, on the second request onwards. The whole request then dies, so the
+     * notification is never written AND the endpoint that was sending it returns nothing at all.
+     */
+    function notification_try($con, string $sql): bool {
+        try {
+            return (bool)mysqli_query($con, $sql);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Adds a column only when it is actually missing, so the common path runs no failing DDL.
+     */
+    function notification_add_column($con, string $table, string $column, string $sql): void {
+        try {
+            $res = mysqli_query($con, "SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = '" . mysqli_real_escape_string($con, $table) . "'
+                  AND COLUMN_NAME = '" . mysqli_real_escape_string($con, $column) . "'");
+            $exists = $res && (int)(mysqli_fetch_assoc($res)['n'] ?? 0) > 0;
+            if ($exists) return;
+        } catch (\Throwable $e) {
+            // Could not look it up; fall through and let the guarded ALTER decide.
+        }
+
+        notification_try($con, $sql);
+    }
+}
+
 if (!function_exists('ensure_notifications_tables')) {
     function ensure_notifications_tables($con): void {
         static $checked = false;
@@ -108,9 +145,9 @@ if (!function_exists('ensure_notifications_tables')) {
             `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        @mysqli_query($con, "ALTER TABLE `notifications` MODIFY COLUMN `target_type` VARCHAR(50) NOT NULL");
-        @mysqli_query($con, "ALTER TABLE `notifications` MODIFY COLUMN `sender_type` VARCHAR(50) NOT NULL DEFAULT 'admin'");
-        @mysqli_query($con, "ALTER TABLE `notifications` ADD COLUMN `channels` VARCHAR(50) NOT NULL DEFAULT 'push' AFTER `target_type`");
+        notification_try($con, "ALTER TABLE `notifications` MODIFY COLUMN `target_type` VARCHAR(50) NOT NULL");
+        notification_try($con, "ALTER TABLE `notifications` MODIFY COLUMN `sender_type` VARCHAR(50) NOT NULL DEFAULT 'admin'");
+        notification_add_column($con, 'notifications', 'channels', "ALTER TABLE `notifications` ADD COLUMN `channels` VARCHAR(50) NOT NULL DEFAULT 'push' AFTER `target_type`");
 
         @mysqli_query($con, "CREATE TABLE IF NOT EXISTS `notification_recipients` (
             `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -126,9 +163,9 @@ if (!function_exists('ensure_notifications_tables')) {
             CONSTRAINT `fk_nr_notification` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        @mysqli_query($con, "ALTER TABLE `notification_recipients` MODIFY COLUMN `user_type` VARCHAR(50) NOT NULL");
-        @mysqli_query($con, "ALTER TABLE `notification_recipients` ADD COLUMN `is_email_sent` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_sent`");
-        @mysqli_query($con, "ALTER TABLE `notification_recipients` ADD COLUMN `email_error` VARCHAR(500) NULL AFTER `error`");
+        notification_try($con, "ALTER TABLE `notification_recipients` MODIFY COLUMN `user_type` VARCHAR(50) NOT NULL");
+        notification_add_column($con, 'notification_recipients', 'is_email_sent', "ALTER TABLE `notification_recipients` ADD COLUMN `is_email_sent` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_sent`");
+        notification_add_column($con, 'notification_recipients', 'email_error', "ALTER TABLE `notification_recipients` ADD COLUMN `email_error` VARCHAR(500) NULL AFTER `error`");
     }
 }
 

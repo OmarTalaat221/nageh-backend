@@ -4521,6 +4521,18 @@ $routes = [
             },
         ],
         [
+            // The admin books a slot on a student's behalf, and both of them are notified.
+            "method" => "POST",
+            "path" => "/najeh/admin/consultations/book",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/consultations/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_consultations');
+                return adminBookConsultationForStudent($con, $adminData);
+            },
+        ],
+        [
             "method" => "POST",
             "path" => "/najeh/admin/consultations/recurring",
             "handler" => function ($con) {

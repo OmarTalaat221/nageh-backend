@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../../../helpers/consultation_notifications.php';
 require_once __DIR__ . '/../../teacher/consultations/manage.php';
 
 if (!function_exists('adminListConsultations')) {
@@ -234,5 +235,67 @@ if (!function_exists('adminCreateRecurringConsultationSlots')) {
         }
 
         return create_recurring_consultation_slots_core($con, $teacherId, $body);
+    }
+}
+
+if (!function_exists('adminBookConsultationForStudent')) {
+    /**
+     * The admin books a slot on a student's behalf.
+     *
+     * Until now the only way to do this was to edit the slot and set its student, which left
+     * `booked_at` empty, left the status on whatever it was, and told nobody. Booking is its own
+     * action because it is not an edit: it involves two people who both need to hear about it.
+     *
+     * The booking is created already approved. An admin booking that still waited on the teacher's
+     * approval would not be a booking, it would be a request - and the admin is the one place on
+     * the platform that does not need to ask.
+     */
+    function adminBookConsultationForStudent($con, $adminData = null) {
+        $body = read_json_body();
+        $slotId = (int)($body['slot_id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+        $studentId = (int)($body['student_id'] ?? 0);
+
+        if ($slotId <= 0) {
+            return ['status' => 'error', 'message' => trans('slot_id_required')];
+        }
+        if ($studentId <= 0) {
+            return ['status' => 'error', 'message' => 'student_id is required'];
+        }
+
+        $slot = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, teacher_id, student_id, is_booked, is_active, slot_date, slot_time FROM consultation_slots WHERE id = {$slotId} LIMIT 1"));
+        if (!$slot) {
+            return ['status' => 'error', 'message' => trans('consultation_not_found_or_not_booked')];
+        }
+        if ((int)$slot['is_active'] !== 1) {
+            return ['status' => 'error', 'message' => trans('slot_no_longer_available')];
+        }
+        // Already held by somebody else. Re-booking the same student onto the same slot is allowed
+        // and simply refreshes it, so a double click is not an error.
+        if ((int)$slot['is_booked'] === 1 && (int)$slot['student_id'] > 0 && (int)$slot['student_id'] !== $studentId) {
+            return ['status' => 'error', 'message' => trans('slot_no_longer_available')];
+        }
+
+        $student = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, is_active FROM students WHERE id = {$studentId} LIMIT 1"));
+        if (!$student) {
+            return ['status' => 'error', 'message' => 'Student not found'];
+        }
+        if ((int)$student['is_active'] !== 1) {
+            return ['status' => 'error', 'message' => 'This student account is not active'];
+        }
+
+        $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET is_booked = 1, student_id = ?, booked_at = NOW(), status = 'approved' WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "ii", $studentId, $slotId);
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['status' => 'error', 'message' => 'Failed to book this consultation'];
+        }
+
+        $adminId = is_array($adminData) ? (int)($adminData['id'] ?? 0) : 0;
+        notify_consultation_booked($con, $slotId, $studentId, (int)$slot['teacher_id'], 'admin', $adminId ?: null);
+
+        return [
+            'status' => 'success',
+            'message' => trans('slot_booked_for_student'),
+            'data' => get_consultation_slot_details($con, $slotId)
+        ];
     }
 }

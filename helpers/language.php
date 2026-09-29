@@ -356,6 +356,8 @@ function trans(string $key, ?string $lang = null, $con = null): string {
             'consultation_deleted_success' => 'تم حذف موعد الاستشارة بنجاح',
             'slot_no_longer_available' => 'عذراً، هذا الموعد لم يعد متاحاً للحجز',
             'slot_booked_awaiting_approval' => 'تم طلب حجز الاستشارة بنجاح وفي انتظار موافقة المعلم',
+            // An admin booking is not awaiting anyone, so it must not say that it is.
+            'slot_booked_for_student' => 'تم حجز الموعد للطالب وإرسال إشعار له وللمعلم',
             'booking_not_found_or_cancelled' => 'الحجز غير موجود أو تم إلغاؤه بالفعل',
             'consultation_cancelled_success' => 'تم إلغاء حجز الاستشارة بنجاح',
             'consultation_slot_not_found' => 'موعد الاستشارة غير موجود',
@@ -560,6 +562,7 @@ function trans(string $key, ?string $lang = null, $con = null): string {
             'consultation_deleted_success' => 'Consultation slot deleted successfully',
             'slot_no_longer_available' => 'Slot is no longer available',
             'slot_booked_awaiting_approval' => 'Slot booked successfully, awaiting teacher approval',
+            'slot_booked_for_student' => 'Slot booked for the student; the student and the teacher have been notified',
             'booking_not_found_or_cancelled' => 'Booking not found or already cancelled',
             'consultation_cancelled_success' => 'Consultation booking cancelled successfully',
             'consultation_slot_not_found' => 'Consultation slot not found',
