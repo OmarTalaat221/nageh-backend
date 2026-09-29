@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 require_once __DIR__ . '/../../../helpers/entities.php';
+require_once __DIR__ . '/../../../helpers/certificate_types.php';
 require_once __DIR__ . '/../helpers.php';
 
 if (!function_exists('get_certificate_details')) {
@@ -458,6 +459,34 @@ if (!function_exists('adminAddStudentCertificate')) {
 
         $certificateId = (int)($body['certificate_id'] ?? 0);
 
+        // Awarding by type: the admin picks تميز / إجتياز / تفوق / عامة and nothing else. The
+        // course-less template for that type is found, or created the first time it is needed, so
+        // the caller never has to hunt for a template built around some particular course.
+        if ($certificateId <= 0 && isset($body['certificate_type'])) {
+            $requestedType = certificate_type_normalize($body['certificate_type']);
+            if ($requestedType === '') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Unknown certificate type'
+                ];
+            }
+
+            $creatorType = 'admin';
+            $creatorId = 1;
+            if (is_array($creatorData)) {
+                $creatorType = !empty($creatorData['teacher_id']) || ($creatorData['user_type'] ?? '') === 'teacher' ? 'teacher' : 'admin';
+                $creatorId = (int)($creatorData['id'] ?? $creatorData['teacher_id'] ?? 1);
+            }
+
+            $certificateId = certificate_general_template_id($con, $requestedType, $creatorType, $creatorId);
+            if ($certificateId <= 0) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to resolve a certificate for this type'
+                ];
+            }
+        }
+
         $studentIds = $body['student_ids'] ?? [];
 
         // Also support single student_id
@@ -503,7 +532,7 @@ if (!function_exists('adminAddStudentCertificate')) {
         if ($certificateId <= 0) {
             return [
                 'status' => 'error',
-                'message' => 'Certificate ID is required'
+                'message' => 'certificate_id or certificate_type is required'
             ];
         }
 
@@ -577,9 +606,12 @@ if (!function_exists('adminAddStudentCertificate')) {
         if ($examId !== null && $examId > 0) {
             $examStmt = mysqli_prepare(
                 $con,
+                // `exams` is the legacy table the exam endpoints stopped writing to; every exam
+                // lives in `course_exams` (see migration 021), so validating against `exams` here
+                // rejected every real exam id.
                 "
                 SELECT id
-                FROM exams
+                FROM course_exams
                 WHERE id = ?
                 LIMIT 1
                 "

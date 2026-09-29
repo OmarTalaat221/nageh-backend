@@ -140,7 +140,9 @@ if (!function_exists('adminGetQuestionDetails')) {
 
         $row['id'] = (int)$row['id'];
         $row['exam_id'] = (int)$row['exam_id'];
-        $row['course_id'] = (int)$row['course_id'];
+        // A question on a standalone exam has no course, and that must survive a read: casting
+        // NULL to 0 here would make the update below write a course_id of 0 back over it.
+        $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
         $row['question_image'] = $row['question_image'] ?? null;
@@ -308,9 +310,15 @@ if (!function_exists('adminCreateQuestion')) {
         $unitId = isset($input['unit_id']) && $input['unit_id'] !== '' ? (int)$input['unit_id'] : null;
         $subjectId = isset($input['subject_id']) && $input['subject_id'] !== '' ? (int)$input['subject_id'] : null;
 
+        // An exam that belongs to no course is a real exam - it is the standalone kind, open to
+        // every student - and its questions belong to no course either. `questions.course_id` is
+        // nullable, so this is only ever set when the exam itself has a course to inherit.
+        $examHasNoCourse = false;
+
         if ($examId > 0 && ($courseId <= 0 || $unitId === null || $subjectId === null)) {
             $examRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT course_id, unit_id, subject_id FROM course_exams WHERE id = {$examId} LIMIT 1"));
             if ($examRow) {
+                $examHasNoCourse = empty($examRow['course_id']) && empty($examRow['unit_id']) && empty($examRow['subject_id']);
                 if ($unitId === null && !empty($examRow['unit_id'])) {
                     $unitId = (int)$examRow['unit_id'];
                 }
@@ -327,9 +335,13 @@ if (!function_exists('adminCreateQuestion')) {
             }
         }
 
-        if ($courseId <= 0) {
+        // Still refused when there is no course AND no standalone exam to hang the question on -
+        // that request names nothing at all, and the question would be unreachable.
+        if ($courseId <= 0 && !$examHasNoCourse) {
             return json_error('Unable to resolve the course for this question', 422);
         }
+
+        $courseId = $courseId > 0 ? $courseId : null;
 
         $qType = trim($input['question_type'] ?? 'mcq');
         $questionImage = handle_question_image_upload($input);
@@ -455,9 +467,11 @@ if (!function_exists('adminUpdateQuestion')) {
         if (!$existing) return json_error('Question not found', 404);
 
         $examId = isset($input['exam_id']) ? (int)$input['exam_id'] : $existing['exam_id'];
-        $courseId = isset($input['course_id']) ? (int)$input['course_id'] : $existing['course_id'];
-        $unitId = isset($input['unit_id']) ? (int)$input['unit_id'] : $existing['unit_id'];
-        $subjectId = isset($input['subject_id']) ? (int)$input['subject_id'] : $existing['subject_id'];
+        // 0 and NULL mean the same thing for all three - not attached - and NULL is what the
+        // column holds, so a question on a standalone exam stays detached across an edit.
+        $courseId = isset($input['course_id']) ? ((int)$input['course_id'] ?: null) : $existing['course_id'];
+        $unitId = isset($input['unit_id']) ? ((int)$input['unit_id'] ?: null) : $existing['unit_id'];
+        $subjectId = isset($input['subject_id']) ? ((int)$input['subject_id'] ?: null) : $existing['subject_id'];
         $qType = trim($input['question_type'] ?? $existing['question_type']);
         $questionImage = handle_question_image_upload($input, $existing['question_image'] ?? '');
         $orderNum = isset($input['order_num']) ? (int)$input['order_num'] : $existing['order_num'];

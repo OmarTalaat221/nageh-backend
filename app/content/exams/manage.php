@@ -22,6 +22,13 @@ if (!function_exists('adminGetExamDetails')) {
         $row['subject_id'] = !empty($row['subject_id']) ? (int)$row['subject_id'] : null;
         $row['course_id'] = !empty($row['course_id']) ? (int)$row['course_id'] : null;
         $row['duration_minutes'] = (int)$row['duration_minutes'];
+        // A duration of 0 means the exam is open-ended: no countdown is shown and it is never
+        // auto-submitted when the clock runs out, because there is no clock. Sent as its own flag
+        // so no client has to know that 0 carries that meaning.
+        $row['has_time_limit'] = $row['duration_minutes'] > 0 ? 1 : 0;
+        // An exam attached to no course, no unit and no subject stands on its own: it is offered
+        // to every student, subscribed or not.
+        $row['is_public'] = (!$row['course_id'] && !$row['unit_id'] && !$row['subject_id']) ? 1 : 0;
         $row['total_marks'] = (int)$row['total_marks'];
         $row['pass_marks'] = (int)$row['pass_marks'];
         $row['is_active'] = (int)$row['is_active'];
@@ -174,7 +181,9 @@ if (!function_exists('adminCreateExam')) {
         $courseId = isset($body['course_id']) && (int)$body['course_id'] > 0 ? (int)$body['course_id'] : null;
         $unitId = isset($body['unit_id']) && (int)$body['unit_id'] > 0 ? (int)$body['unit_id'] : null;
         $subjectId = isset($body['subject_id']) && (int)$body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
-        $durationMinutes = isset($body['duration_minutes']) ? (int)$body['duration_minutes'] : 30;
+        // 0 = no time limit. Clamped rather than rejected so a negative number cannot be stored as
+        // a duration that no client knows how to render.
+        $durationMinutes = isset($body['duration_minutes']) ? max(0, (int)$body['duration_minutes']) : 30;
         $totalMarks = isset($body['total_marks']) ? (int)$body['total_marks'] : 100;
         $passMarks = isset($body['pass_marks']) ? (int)$body['pass_marks'] : 50;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
@@ -223,7 +232,7 @@ if (!function_exists('adminUpdateExam')) {
 
         $updateFields = [];
         if (isset($body['duration_minutes'])) {
-            $updateFields[] = "duration_minutes = " . (int)$body['duration_minutes'];
+            $updateFields[] = "duration_minutes = " . max(0, (int)$body['duration_minutes']);
         }
         if (isset($body['total_marks'])) {
             $updateFields[] = "total_marks = " . (int)$body['total_marks'];

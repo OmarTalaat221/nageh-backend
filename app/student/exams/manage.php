@@ -16,6 +16,14 @@ if (!function_exists('get_exam_summary')) {
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
         $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
         $row['unit_id'] = $row['unit_id'] ? (int)$row['unit_id'] : null;
+        $row['duration_minutes'] = (int)$row['duration_minutes'];
+        // 0 minutes means the exam is open-ended - no countdown, and it is never auto-submitted
+        // when time runs out, because there is no time. The flag spares every client from having
+        // to know that 0 is special.
+        $row['has_time_limit'] = $row['duration_minutes'] > 0 ? 1 : 0;
+        // An exam attached to no course, no unit and no subject stands on its own and is open to
+        // every student, whether or not they are subscribed to anything.
+        $row['is_public'] = (!$row['course_id'] && !$row['unit_id'] && !$row['subject_id']) ? 1 : 0;
         $row['is_active'] = (int)$row['is_active'];
         // Same "show exam to students" toggle as the admin/teacher side (adminGetExamDetails) -
         // always 1 here in practice, since this function is only ever reached for exams that
@@ -139,11 +147,11 @@ if (!function_exists('studentListAvailableExams')) {
         $sortParam = strtolower(trim((string)($_GET['sort'] ?? $_GET['sort_by'] ?? $_GET['order'] ?? 'newest')));
         $sortDir = in_array($sortParam, ['oldest', 'asc', 'created_at_asc', 'id_asc'], true) ? 'ASC' : 'DESC';
 
-        if (empty($subjectIds) && empty($courseIds)) {
-            return ['status' => 'success', 'data' => []];
-        }
-
-        $whereParts = [];
+        // A standalone exam - no course, no unit, no subject - belongs to nobody in particular and
+        // is offered to every student. It is listed unconditionally, which is also why the old
+        // early return for a student with no subscriptions at all is gone: that student now still
+        // has the public exams to sit.
+        $whereParts = ["(course_id IS NULL AND unit_id IS NULL AND subject_id IS NULL)"];
         $params = [];
         $types = "";
         if (!empty($subjectIds)) {
@@ -185,11 +193,22 @@ if (!function_exists('studentListAvailableExams')) {
             $types .= "i";
         }
 
+        // `public=1` narrows the list to the standalone exams alone, so a client can show them as
+        // their own section instead of mixed in with the ones that came with a subscription.
+        $publicParam = strtolower(trim((string)($_GET['public'] ?? $_GET['only_public'] ?? '')));
+        if (in_array($publicParam, ['1', 'true', 'yes', 'only'], true)) {
+            $extraConditions[] = "course_id IS NULL AND unit_id IS NULL AND subject_id IS NULL";
+        }
+
         $extraSql = !empty($extraConditions) ? " AND " . implode(" AND ", $extraConditions) : "";
 
         $sql = "SELECT id FROM course_exams WHERE is_active = 1 AND (" . implode(" OR ", $whereParts) . ")" . $extraSql . " ORDER BY created_at {$sortDir}, id {$sortDir}";
         $stmt = mysqli_prepare($con, $sql);
-        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        // A student with no subscriptions leaves nothing to bind - only the public-exam condition
+        // is left, and it carries no placeholder. bind_param with an empty type string is an error.
+        if (!empty($params)) {
+            mysqli_stmt_bind_param($stmt, $types, ...$params);
+        }
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
 
@@ -228,7 +247,10 @@ if (!function_exists('studentStartExamAttempt')) {
 
         $subjectIds = get_student_subscribed_subject_ids($con, $studentId);
         $courseIds = get_student_subscribed_course_ids($con, $studentId);
-        $allowed = ($exam['course_id'] && in_array((int)$exam['course_id'], $courseIds)) || ($exam['subject_id'] && in_array((int)$exam['subject_id'], $subjectIds));
+        // A standalone exam is open to every student; there is no subscription to check it against.
+        $allowed = (int)($exam['is_public'] ?? 0) === 1
+            || ($exam['course_id'] && in_array((int)$exam['course_id'], $courseIds))
+            || ($exam['subject_id'] && in_array((int)$exam['subject_id'], $subjectIds));
         if (!$allowed) {
             return ['status' => 'error', 'message' => 'You are not subscribed to this exam\'s subject/course'];
         }
