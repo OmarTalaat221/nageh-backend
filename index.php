@@ -4288,6 +4288,19 @@ $routes = [
                 return adminCreateStudentSubscription($con, $adminData);
             },
         ],
+        [
+            // Pause, resume or cancel. Not a DELETE: cancelling keeps the row, with who did it
+            // and why, because a student asking why their access stopped needs an answer.
+            "method" => "PUT",
+            "path" => "/najeh/admin/subscriptions/status",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/subscriptions/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_teachers');
+                return adminUpdateStudentSubscriptionStatus($con, $adminData);
+            },
+        ],
 
         // Admin: Session Reschedule Requests
         [

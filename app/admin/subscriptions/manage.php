@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/upload.php';
 require_once __DIR__ . '/../../content/helpers.php';
 require_once __DIR__ . '/../../../helpers/admin_notifications.php';
+require_once __DIR__ . '/../../../helpers/pricing.php';
 
 if (!function_exists('generate_unique_subscription_code_string')) {
     function generate_unique_subscription_code_string($con, string $prefix = ''): string {
@@ -480,10 +481,75 @@ if (!function_exists('adminDeleteSubscriptionCode')) {
 }
 
 if (!function_exists('get_student_subscription_details')) {
+    /**
+     * The one word describing where a subscription stands.
+     *
+     * `is_active` and `end_date` decide access and are not changed by this; the columns from
+     * migration 081 only say WHICH of the two ways it stopped. A row from before that migration
+     * has neither, and falls back to 'paused' - which is what an inactive, unexpired subscription
+     * has always meant.
+     */
+    function subscription_status(array $row): string {
+        if (!empty($row['cancelled_at'])) return 'cancelled';
+        if ((int)$row['is_active'] === 1) return $row['is_expired'] ? 'expired' : 'active';
+        if ($row['is_expired']) return 'expired';
+        return 'paused';
+    }
+
+    /**
+     * Whether migration 081 has been applied. Code lands on a `git pull`, migrations are run by
+     * hand afterwards, and naming a column that is not there yet turns the subscriptions screen
+     * into a 500 rather than a screen missing one column.
+     */
+    function subscription_status_columns_exist($con): bool {
+        static $exists = null;
+        if ($exists === null) {
+            $res = mysqli_query($con, "SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student_subscriptions'
+                  AND COLUMN_NAME = 'cancelled_at'");
+            $exists = $res && (int)(mysqli_fetch_assoc($res)['n'] ?? 0) > 0;
+        }
+        return $exists;
+    }
+
+    /**
+     * What a subscription is worth: the sum of what its courses are priced at for this student.
+     *
+     * Kept as a formatted string as well as a number, because the number on its own is meaningless
+     * - 1500 is either pounds or riyals and the difference is a factor of thirteen.
+     *
+     * Courses with a price of zero are counted as zero and still listed, so a total that looks low
+     * can be explained by opening the drawer rather than doubted.
+     */
+    function subscription_pricing_summary($con, array $courses): array {
+        $total = 0.0;
+        $currency = null;
+
+        foreach ($courses as $course) {
+            $total += (float)($course['price'] ?? 0);
+            if ($currency === null && is_array($course['currency'] ?? null)) {
+                $currency = $course['currency'];
+            }
+        }
+
+        $total = round($total, 2);
+
+        return [
+            'items_count' => count($courses),
+            'total' => $total,
+            'currency' => $currency,
+            'total_formatted' => $currency ? pricing_format_amount($con, $total, $currency) : null,
+        ];
+    }
+
     function get_student_subscription_details($con, int $subId) {
         if ($subId <= 0) return null;
 
-        $stmt = mysqli_prepare($con, "SELECT ss.id, ss.student_id, ss.subscription_code_id, ss.subscription_type, ss.start_date, ss.end_date, ss.is_active, ss.created_at, sc.code AS code_string FROM student_subscriptions ss LEFT JOIN subscription_codes sc ON ss.subscription_code_id = sc.id WHERE ss.id = ? LIMIT 1");
+        $extra = subscription_status_columns_exist($con)
+            ? ", ss.paused_at, ss.cancelled_at, ss.status_reason, ss.status_changed_by"
+            : ", NULL AS paused_at, NULL AS cancelled_at, NULL AS status_reason, NULL AS status_changed_by";
+
+        $stmt = mysqli_prepare($con, "SELECT ss.id, ss.student_id, ss.subscription_code_id, ss.subscription_type, ss.start_date, ss.end_date, ss.is_active{$extra}, ss.created_at, sc.code AS code_string FROM student_subscriptions ss LEFT JOIN subscription_codes sc ON ss.subscription_code_id = sc.id WHERE ss.id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $subId);
         mysqli_stmt_execute($stmt);
@@ -501,6 +567,11 @@ if (!function_exists('get_student_subscription_details')) {
         $row['is_currently_valid'] = ($row['is_active'] === 1 && !$row['is_expired']);
         $row['is_frozen'] = ($row['is_active'] === 0 && !$row['is_expired']);
         $row['freeze_reason'] = $row['is_frozen'] ? trans('student_subscription_frozen_reason') : null;
+
+        // One word for the row, so the dashboard does not have to re-derive it from two columns
+        // and three booleans - and so "cancelled by us" and "reached its end date" stay distinct.
+        $row['status'] = subscription_status($row);
+        $row['status_reason'] = $row['status_reason'] ?? null;
 
         $stStmt = mysqli_prepare($con, "SELECT id, name, email, phone, is_active FROM students WHERE id = ? LIMIT 1");
         if ($stStmt) {
@@ -535,7 +606,7 @@ if (!function_exists('get_student_subscription_details')) {
         $row['teachers'] = $teachers;
 
         $courses = [];
-        $cRes = mysqli_query($con, "SELECT c.id, c.slug, c.price, c.image, ct.name FROM student_subscription_courses ssc JOIN courses c ON ssc.course_id = c.id LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1 WHERE ssc.student_subscription_id = {$subId}");
+        $cRes = mysqli_query($con, "SELECT c.id, c.slug, c.price, c.kind, c.image, ct.name FROM student_subscription_courses ssc JOIN courses c ON ssc.course_id = c.id LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1 WHERE ssc.student_subscription_id = {$subId}");
         if ($cRes) {
             while ($cRow = mysqli_fetch_assoc($cRes)) {
                 $cRow['id'] = (int)$cRow['id'];
@@ -543,7 +614,14 @@ if (!function_exists('get_student_subscription_details')) {
                 $courses[] = format_response_images($cRow);
             }
         }
+
+        // Priced for THIS student's country, not in the base currency. An Egyptian student's
+        // subscription adding up to a number of dollars they were never charged is worse than no
+        // number at all - support would quote it back to them.
+        pricing_decorate_rows($con, $courses, 'course', $row['student_id']);
         $row['courses'] = $courses;
+
+        $row['pricing'] = subscription_pricing_summary($con, $courses);
 
         return format_response_images($row);
     }
@@ -851,6 +929,100 @@ if (!function_exists('adminCreateStudentSubscription')) {
             'message' => 'Student subscription created successfully',
             'data' => get_student_subscription_details($con, $subId),
             'discount' => $discount
+        ];
+    }
+}
+
+if (!function_exists('adminUpdateStudentSubscriptionStatus')) {
+    /**
+     * Pause, resume or cancel a student's subscription.
+     *
+     * Access is still decided by `is_active` and `end_date`, exactly as every other part of the
+     * platform reads them - see migration 081 for why this does not introduce a status column
+     * those places would not know to check:
+     *
+     *     pause    is_active = 0                    the student loses access, the dates stand
+     *     resume   is_active = 1                    back as it was
+     *     cancel   is_active = 0, end_date = now    over, and the end date says when
+     *
+     * Cancelling is not a delete. The row stays, with who did it and why, because a student who
+     * calls about a subscription that stopped working deserves an answer better than "there is no
+     * record of it".
+     */
+    function adminUpdateStudentSubscriptionStatus($con, $adminData = null) {
+        $body = read_json_body();
+
+        $subId = (int)($_GET['id'] ?? $body['id'] ?? $body['subscription_id'] ?? 0);
+        if ($subId <= 0) {
+            return ['status' => 'error', 'message' => 'id is required'];
+        }
+
+        $action = strtolower(trim($body['action'] ?? $_GET['action'] ?? ''));
+        if (!in_array($action, ['pause', 'resume', 'cancel'], true)) {
+            return ['status' => 'error', 'message' => 'action must be pause, resume or cancel'];
+        }
+
+        $existing = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, is_active, end_date FROM student_subscriptions WHERE id = {$subId} LIMIT 1"));
+        if (!$existing) {
+            return ['status' => 'error', 'message' => trans('subscription_not_found')];
+        }
+
+        $reason = trim($body['reason'] ?? $body['status_reason'] ?? '');
+        $adminId = 0;
+        if (is_array($adminData)) $adminId = (int)($adminData['id'] ?? 0);
+        elseif (is_object($adminData)) $adminId = (int)($adminData->id ?? 0);
+
+        $hasCols = subscription_status_columns_exist($con);
+        $now = date('Y-m-d H:i:s');
+
+        if ($action === 'resume') {
+            // Resuming something whose end date is already in the past would report success and
+            // change nothing a student could see, so it is refused with the reason.
+            // `<=`, not `<`. Cancelling sets end_date to the current second, so resuming within
+            // that same second would otherwise look like resuming something still in date.
+            if ($existing['end_date'] !== null && $existing['end_date'] <= $now) {
+                return [
+                    'status' => 'error',
+                    'message' => trans('subscription_expired_cannot_resume'),
+                    'error_code' => 'subscription_expired',
+                ];
+            }
+
+            $sql = $hasCols
+                ? "UPDATE student_subscriptions SET is_active = 1, paused_at = NULL, cancelled_at = NULL, status_reason = NULL, status_changed_by = ? WHERE id = ?"
+                : "UPDATE student_subscriptions SET is_active = 1 WHERE id = ?";
+        } elseif ($action === 'pause') {
+            $sql = $hasCols
+                ? "UPDATE student_subscriptions SET is_active = 0, paused_at = '{$now}', cancelled_at = NULL, status_reason = ?, status_changed_by = ? WHERE id = ?"
+                : "UPDATE student_subscriptions SET is_active = 0 WHERE id = ?";
+        } else {
+            $sql = $hasCols
+                ? "UPDATE student_subscriptions SET is_active = 0, end_date = '{$now}', cancelled_at = '{$now}', paused_at = NULL, status_reason = ?, status_changed_by = ? WHERE id = ?"
+                : "UPDATE student_subscriptions SET is_active = 0, end_date = '{$now}' WHERE id = ?";
+        }
+
+        $stmt = mysqli_prepare($con, $sql);
+        if (!$stmt) {
+            return ['status' => 'error', 'message' => 'Failed to prepare update: ' . mysqli_error($con)];
+        }
+
+        if (!$hasCols) {
+            mysqli_stmt_bind_param($stmt, "i", $subId);
+        } elseif ($action === 'resume') {
+            mysqli_stmt_bind_param($stmt, "ii", $adminId, $subId);
+        } else {
+            $reasonParam = $reason !== '' ? $reason : null;
+            mysqli_stmt_bind_param($stmt, "sii", $reasonParam, $adminId, $subId);
+        }
+
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['status' => 'error', 'message' => 'Failed to update subscription: ' . mysqli_error($con)];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => trans('subscription_status_updated'),
+            'data' => get_student_subscription_details($con, $subId),
         ];
     }
 }
