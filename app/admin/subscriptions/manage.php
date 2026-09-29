@@ -1026,3 +1026,138 @@ if (!function_exists('adminUpdateStudentSubscriptionStatus')) {
         ];
     }
 }
+
+if (!function_exists('adminUpdateStudentSubscription')) {
+    /**
+     * Change what a subscription contains: its courses, subjects, teachers and its dates.
+     *
+     * SUPER ADMIN ONLY, and not through the permission system. `manage_teachers` is what gates the
+     * rest of this file and it is grantable to anyone; this is not, because editing a live
+     * subscription moves what a student has already paid for. Adding a course here is giving away
+     * paid content, and removing one takes away content somebody bought - neither leaves a trace
+     * in the payment records, so the two cannot be reconciled afterwards by looking at the money.
+     *
+     * Every list is replaced wholesale rather than merged, and only for the keys that are actually
+     * present in the request: sending `course_ids` sets exactly those courses, and not sending it
+     * leaves the courses alone. Merging would make removal impossible.
+     */
+    function adminUpdateStudentSubscription($con, $adminData = null) {
+        $body = read_json_body();
+
+        $subId = (int)($_GET['id'] ?? $body['id'] ?? $body['subscription_id'] ?? 0);
+        if ($subId <= 0) {
+            return ['status' => 'error', 'message' => 'id is required'];
+        }
+
+        $existing = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, start_date, end_date FROM student_subscriptions WHERE id = {$subId} LIMIT 1"));
+        if (!$existing) {
+            return ['status' => 'error', 'message' => trans('subscription_not_found')];
+        }
+
+        $fields = [];
+        $params = [];
+        $types = '';
+
+        foreach ([['start_date', 'start_date'], ['end_date', 'end_date']] as [$key, $column]) {
+            if (!array_key_exists($key, $body)) continue;
+
+            $value = trim((string)$body[$key]);
+
+            if ($value === '') {
+                // Only the end date may be cleared - a subscription with no start has no meaning.
+                if ($column === 'start_date') {
+                    return ['status' => 'error', 'message' => trans('subscription_start_required')];
+                }
+                $fields[] = "{$column} = NULL";
+                continue;
+            }
+
+            $timestamp = strtotime($value);
+            if ($timestamp === false) {
+                return ['status' => 'error', 'message' => trans('subscription_invalid_date')];
+            }
+
+            $fields[] = "{$column} = ?";
+            $params[] = date('Y-m-d H:i:s', $timestamp);
+            $types .= 's';
+        }
+
+        // Checked against what the row will actually hold, not against what was sent, so that
+        // changing only the end date is still validated against the existing start date.
+        $newStart = null;
+        $newEnd = null;
+        foreach ($fields as $i => $f) {
+            if (strpos($f, 'start_date') === 0) $newStart = $params[$i] ?? null;
+            if (strpos($f, 'end_date') === 0) $newEnd = $params[$i] ?? null;
+        }
+        $finalStart = $newStart ?? $existing['start_date'];
+        $finalEnd = array_key_exists('end_date', $body) ? $newEnd : $existing['end_date'];
+
+        if ($finalEnd !== null && $finalStart !== null && $finalEnd < $finalStart) {
+            return [
+                'status' => 'error',
+                'message' => trans('subscription_end_before_start'),
+                'error_code' => 'end_before_start',
+            ];
+        }
+
+        if ($fields) {
+            $params[] = $subId;
+            $types .= 'i';
+            $stmt = mysqli_prepare($con, "UPDATE student_subscriptions SET " . implode(', ', $fields) . " WHERE id = ?");
+            if (!$stmt) {
+                return ['status' => 'error', 'message' => 'Failed to prepare update: ' . mysqli_error($con)];
+            }
+            mysqli_stmt_bind_param($stmt, $types, ...$params);
+            if (!mysqli_stmt_execute($stmt)) {
+                return ['status' => 'error', 'message' => 'Failed to update subscription: ' . mysqli_error($con)];
+            }
+        }
+
+        // ---- the contents ------------------------------------------------------------------
+        $links = [
+            'course_ids'  => ['student_subscription_courses',  'course_id',  'courses'],
+            'subject_ids' => ['student_subscription_subjects', 'subject_id', 'subjects'],
+            'teacher_ids' => ['student_subscription_teachers', 'teacher_id', 'teachers'],
+        ];
+
+        foreach ($links as $bodyKey => [$table, $column, $existsTable]) {
+            if (!array_key_exists($bodyKey, $body)) continue;
+
+            $ids = array_values(array_unique(array_filter(
+                array_map('intval', (array)$body[$bodyKey]),
+                fn($id) => $id > 0,
+            )));
+
+            // A course id that does not exist would otherwise be stored and then silently vanish
+            // from the drawer, which reads as the edit having been ignored.
+            if ($ids) {
+                $list = implode(',', $ids);
+                $found = mysqli_query($con, "SELECT COUNT(*) AS n FROM {$existsTable} WHERE id IN ({$list})");
+                if (!$found || (int)mysqli_fetch_assoc($found)['n'] !== count($ids)) {
+                    return [
+                        'status' => 'error',
+                        'message' => trans('subscription_unknown_item'),
+                        'error_code' => 'unknown_item',
+                    ];
+                }
+            }
+
+            mysqli_query($con, "DELETE FROM {$table} WHERE student_subscription_id = {$subId}");
+
+            foreach ($ids as $id) {
+                $ins = mysqli_prepare($con, "INSERT INTO {$table} (student_subscription_id, {$column}) VALUES (?, ?) ON DUPLICATE KEY UPDATE {$column} = {$column}");
+                if ($ins) {
+                    mysqli_stmt_bind_param($ins, "ii", $subId, $id);
+                    mysqli_stmt_execute($ins);
+                }
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'message' => trans('subscription_updated'),
+            'data' => get_student_subscription_details($con, $subId),
+        ];
+    }
+}

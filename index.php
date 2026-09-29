@@ -4301,6 +4301,20 @@ $routes = [
                 return adminUpdateStudentSubscriptionStatus($con, $adminData);
             },
         ],
+        [
+            // Super admin only, and deliberately not behind a grantable permission: editing a
+            // live subscription moves content a student has already paid for, in a way the
+            // payment records will not show.
+            "method" => "PUT",
+            "path" => "/najeh/admin/subscriptions",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/subscriptions/manage.php";
+                $adminData = adminAuthMiddleware();
+                requireSuperAdmin($con, $adminData);
+                return adminUpdateStudentSubscription($con, $adminData);
+            },
+        ],
 
         // Admin: Session Reschedule Requests
         [

@@ -46,3 +46,42 @@ if (!function_exists('requirePermission')) {
         }
     }
 }
+
+if (!function_exists('isSuperAdmin')) {
+    /**
+     * Whether this admin is a super admin.
+     *
+     * Not the same question as hasPermission(): that one answers true for a super admin AND for
+     * anyone granted the permission, which is the right rule for almost everything. A few actions
+     * are not grantable at all - editing what a paid subscription contains is one, because it
+     * moves what a student has already paid for - and those need to ask specifically.
+     *
+     * The token is trusted only as a hint. The role is read from the database, so that revoking
+     * somebody's super admin does not wait for their token to expire.
+     */
+    function isSuperAdmin($con, array $adminData): bool {
+        $adminId = (int)($adminData['id'] ?? 0);
+        if ($adminId <= 0) return false;
+
+        $stmt = mysqli_prepare($con, "SELECT role FROM admins WHERE id = ? AND is_active = 1 LIMIT 1");
+        if (!$stmt) return false;
+
+        mysqli_stmt_bind_param($stmt, "i", $adminId);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+
+        return $row && strtolower($row['role'] ?? '') === 'super_admin';
+    }
+}
+
+if (!function_exists('requireSuperAdmin')) {
+    function requireSuperAdmin($con, array $adminData): void {
+        if (!isSuperAdmin($con, $adminData)) {
+            json_response([
+                'status' => 'error',
+                'message' => trans('super_admin_only'),
+                'error_code' => 'super_admin_only',
+            ], 403);
+        }
+    }
+}
