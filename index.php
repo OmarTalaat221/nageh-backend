@@ -4302,6 +4302,19 @@ $routes = [
             },
         ],
         [
+            // The header search box. No permission of its own - each group inside is filtered by
+            // the permission of the screen it links to, so the results are whatever this admin
+            // could have found by opening those pages themselves.
+            "method" => "GET",
+            "path" => "/najeh/admin/search",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/search/manage.php";
+                $adminData = adminAuthMiddleware();
+                return adminGlobalSearch($con, $adminData);
+            },
+        ],
+        [
             // Super admin only, and deliberately not behind a grantable permission: editing a
             // live subscription moves content a student has already paid for, in a way the
             // payment records will not show.
