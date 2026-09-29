@@ -172,14 +172,22 @@ if (!function_exists('adminCreateSubject')) {
         $body = read_json_body();
         $code = strtolower(trim($body['code'] ?? ''));
         $nameAr = trim($body['name_ar'] ?? '');
-        $nameEn = trim($body['name_en'] ?? $nameAr);
+        // Falls back to the Arabic name rather than being demanded - a subject named only in
+        // Arabic is a real subject.
+        $nameEn = trim($body['name_en'] ?? '') !== '' ? trim($body['name_en']) : $nameAr;
         $descAr = trim($body['description_ar'] ?? '');
         $descEn = trim($body['description_en'] ?? $descAr);
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
         $academicYearIds = $body['academic_year_ids'] ?? $body['academic_years'] ?? $body['academic_year_id'] ?? null;
 
-        if (empty($code) || empty($nameAr)) {
-            return ['status' => 'error', 'message' => 'Subject code and name_ar are required'];
+        if (empty($nameAr)) {
+            return ['status' => 'error', 'message' => trans('subject_name_required')];
+        }
+
+        // `code` is NOT NULL UNIQUE and the form no longer asks for it, so it is derived here
+        // rather than rejected.
+        if ($code === '') {
+            $code = generate_entity_code($con, 'subjects', $nameEn, 'subject');
         }
 
         $stmt = mysqli_prepare($con, "INSERT INTO subjects (code, is_active) VALUES (?, ?)");

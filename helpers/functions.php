@@ -331,3 +331,46 @@ if (!function_exists('get_allowed_session_file_types')) {
         return ['exam', 'homework', 'task', 'explanation', 'other'];
     }
 }
+if (!function_exists('generate_entity_code')) {
+    /**
+     * A unique `code` for a row whose form no longer asks for one.
+     *
+     * Grades and subjects both have `code varchar(100) NOT NULL UNIQUE`, so making the field
+     * optional on the screen without filling it here would simply fail the insert - and the
+     * admin would be told "code is required" about a box that is no longer on the form.
+     *
+     * Built from the English name when there is one, since a code is an internal handle that
+     * people type into URLs and exports. An Arabic-only name leaves nothing usable after
+     * stripping non-ASCII, so those fall back to the prefix and a number.
+     */
+    function generate_entity_code($con, string $table, string $from, string $prefix): string {
+        $base = strtolower(trim($from));
+        $base = preg_replace('/[^a-z0-9]+/', '-', $base);
+        $base = trim((string)$base, '-');
+        $base = substr((string)$base, 0, 60);
+
+        if ($base === '') {
+            $base = $prefix;
+        }
+
+        $safeTable = preg_replace('/[^a-z_]/', '', $table);
+        $candidate = $base;
+        $suffix = 1;
+
+        // Bounded: after a hundred collisions something else is wrong, and a random tail is a
+        // better answer than a loop that does not end.
+        while ($suffix <= 100) {
+            $escaped = mysqli_real_escape_string($con, $candidate);
+            $res = mysqli_query($con, "SELECT id FROM `{$safeTable}` WHERE code = '{$escaped}' LIMIT 1");
+
+            if (!$res || !mysqli_fetch_assoc($res)) {
+                return $candidate;
+            }
+
+            $suffix++;
+            $candidate = $base . '-' . $suffix;
+        }
+
+        return $base . '-' . substr(bin2hex(random_bytes(4)), 0, 6);
+    }
+}

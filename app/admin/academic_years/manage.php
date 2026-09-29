@@ -121,12 +121,21 @@ if (!function_exists('adminCreateAcademicYear')) {
         $body = read_json_body();
         $code = strtolower(trim($body['code'] ?? ''));
         $nameAr = trim($body['name_ar'] ?? '');
-        $nameEn = trim($body['name_en'] ?? $nameAr);
-        $number = isset($body['number']) ? (int)$body['number'] : null;
+        // The English name falls back to the Arabic one rather than being demanded. A grade named
+        // only in Arabic is a real grade, and blocking it over a second label helps nobody.
+        $nameEn = trim($body['name_en'] ?? '') !== '' ? trim($body['name_en']) : $nameAr;
+        $number = isset($body['number']) && $body['number'] !== '' ? (int)$body['number'] : null;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
 
-        if (empty($code) || empty($nameAr)) {
-            return ['status' => 'error', 'message' => 'Academic year code and name_ar are required'];
+        if (empty($nameAr)) {
+            return ['status' => 'error', 'message' => trans('academic_year_name_required')];
+        }
+
+        // `code` is NOT NULL UNIQUE, so it cannot simply be left empty now that the form no
+        // longer asks for it - it is derived instead. Telling an admin "code is required" about
+        // a box that is not on the screen is the worst of both.
+        if ($code === '') {
+            $code = generate_entity_code($con, 'academic_years', $nameEn, 'grade');
         }
 
         $stmt = mysqli_prepare($con, "INSERT INTO academic_years (code, number, is_active) VALUES (?, ?, ?)");
