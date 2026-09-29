@@ -319,7 +319,9 @@ if (!function_exists('dashboard_course_sales')) {
                 'is_active' => isset($course['is_active']) ? (int)$course['is_active'] : null,
                 'sales_count' => $stats['sales_count'],
                 'revenue' => round($stats['revenue'], 2),
-                'link' => '/courses/' . $courseId,
+                // The course's units page: that is what "open this course" means everywhere else in the
+                // dashboard. /courses/{id} on its own only redirects there.
+                'link' => '/courses/' . $courseId . '/units',
             ];
         }
         return format_response_images($out);
@@ -422,7 +424,7 @@ if (!function_exists('dashboard_recent_activity')) {
                 'description_en' => trim($who . ' - ' . $money),
                 'amount' => (float)$r['amount'],
                 'created_at' => $r['created_at'],
-                'link' => $isBook ? '/books' : ('/courses/' . (int)$r['item_id']),
+                'link' => $isBook ? '/books' : ('/courses/' . (int)$r['item_id'] . '/units'),
                 'entity_id' => (int)$r['id'],
             ];
         });
@@ -463,7 +465,7 @@ if (!function_exists('dashboard_recent_activity')) {
                 'description_ar' => $r['name'] ?? '',
                 'description_en' => $r['name'] ?? '',
                 'created_at' => $r['created_at'],
-                'link' => '/courses/' . (int)$r['id'],
+                'link' => '/courses/' . (int)$r['id'] . '/units',
                 'entity_id' => (int)$r['id'],
             ];
         });
