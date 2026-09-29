@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../helpers/functions.php';
 require_once __DIR__ . '/../../../helpers/language.php';
 require_once __DIR__ . '/../../../helpers/notifications.php';
 require_once __DIR__ . '/../../../helpers/admin_logs.php';
+require_once __DIR__ . '/../../../helpers/points.php';
 
 require_once __DIR__ . '/../../user/student/affiliate/manage.php';
 
@@ -109,6 +110,10 @@ if (!function_exists('adminApproveAffiliateRequest')) {
 
         $body = read_json_body();
         $commissionId = (int)($body['commission_id'] ?? $body['id'] ?? 0);
+        // An amount sent explicitly still wins - an admin overruling the rule for one request is a
+        // real need. Omitting it now means "use the rule" rather than "award zero", which is what
+        // an empty box used to mean.
+        $amountWasGiven = isset($body['amount']) || isset($body['reward_amount']) || isset($body['points']);
         $amount = (float)($body['amount'] ?? $body['reward_amount'] ?? $body['points'] ?? 0.00);
         $notes = trim($body['notes'] ?? '');
 
@@ -116,12 +121,12 @@ if (!function_exists('adminApproveAffiliateRequest')) {
             return ['status' => 'error', 'message' => 'Valid commission_id is required'];
         }
 
-        if ($amount < 0) {
+        if ($amountWasGiven && $amount < 0) {
             return ['status' => 'error', 'message' => 'Amount/points cannot be negative'];
         }
 
         // Fetch request
-        $stmt = mysqli_prepare($con, "SELECT ac.id, ac.affiliate_id, ac.referred_student_id, ac.item_type, ac.item_id, ac.purchase_amount, ac.status, a.student_id AS referrer_student_id, st_target.name AS referred_name
+        $stmt = mysqli_prepare($con, "SELECT ac.id, ac.affiliate_id, ac.referred_student_id, ac.item_type, ac.item_id, ac.purchase_amount, ac.status, a.student_id AS referrer_student_id, a.commission_type, a.commission_value, st_target.name AS referred_name
             FROM affiliate_commissions ac
             JOIN affiliates a ON ac.affiliate_id = a.id
             LEFT JOIN students st_target ON ac.referred_student_id = st_target.id
@@ -145,6 +150,15 @@ if (!function_exists('adminApproveAffiliateRequest')) {
 
         $referrerStudentId = (int)$req['referrer_student_id'];
         $referredName = $req['referred_name'] ?? 'طالب';
+
+        // No amount sent: work it out from the code's own rule, falling back to the platform
+        // default. Before this the box was simply left empty and the referral earned nothing.
+        if (!$amountWasGiven) {
+            $amount = points_earned_for_purchase($con, [
+                'commission_type' => $req['commission_type'] ?? null,
+                'commission_value' => $req['commission_value'] ?? null,
+            ], (float)$req['purchase_amount']);
+        }
 
         // Update commission record
         $upd = mysqli_prepare($con, "UPDATE affiliate_commissions SET amount = ?, status = 'approved', notes = ?, approved_by_admin_id = ?, updated_at = NOW() WHERE id = ?");
@@ -346,3 +360,140 @@ if (!function_exists('adminDeductStudentPoints')) {
     }
 }
 
+
+if (!function_exists('adminGetPointsSettings')) {
+    /**
+     * Everything that decides what a referral earns and what a point buys, in one payload.
+     */
+    function adminGetPointsSettings($con) {
+        $rules = points_rules($con);
+
+        $values = [];
+        $res = mysqli_query($con, "
+            SELECT c.code, c.name_ar, c.name_en, c.symbol_ar, c.symbol_en, c.decimal_digits,
+                   p.point_value, p.is_active
+            FROM currencies c
+            LEFT JOIN point_currency_values p ON p.currency_code = c.code
+            WHERE c.is_active = 1
+            ORDER BY c.sort_order ASC, c.code ASC");
+        if ($res) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                $values[] = [
+                    'currency_code' => $row['code'],
+                    'name_ar' => $row['name_ar'],
+                    'name_en' => $row['name_en'],
+                    'symbol' => $row['symbol_ar'] ?: $row['symbol_en'],
+                    'decimal_digits' => (int)$row['decimal_digits'],
+                    // Null means nobody has priced points in this currency, which is different
+                    // from pricing them at zero - the client shows an empty box, not a 0.
+                    'point_value' => $row['point_value'] !== null ? (float)$row['point_value'] : null,
+                    'is_active' => $row['is_active'] !== null ? (int)$row['is_active'] : 0,
+                ];
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'data' => [
+                'commission_type' => $rules['commission_type'],
+                'commission_value' => $rules['commission_value'],
+                'redeem_enabled' => $rules['redeem_enabled'] ? 1 : 0,
+                'min_redeem' => $rules['min_redeem'],
+                'base_currency' => pricing_base_currency($con),
+                'currency_values' => $values,
+            ],
+        ];
+    }
+}
+
+if (!function_exists('adminUpdatePointsSettings')) {
+    function adminUpdatePointsSettings($con, $adminData = null) {
+        $body = read_json_body();
+
+        $pairs = [];
+
+        if (isset($body['commission_type'])) {
+            $type = strtolower(trim((string)$body['commission_type']));
+            if (!in_array($type, ['percent', 'fixed'], true)) {
+                return ['status' => 'error', 'message' => 'commission_type must be percent or fixed'];
+            }
+            $pairs['referral_commission_type'] = $type;
+        }
+
+        if (isset($body['commission_value'])) {
+            $value = (float)$body['commission_value'];
+            if ($value < 0) {
+                return ['status' => 'error', 'message' => 'commission_value cannot be negative'];
+            }
+            // A percentage over 100 would pay a referrer more than the purchase was worth.
+            $type = $pairs['referral_commission_type'] ?? points_rules($con)['commission_type'];
+            if ($type === 'percent' && $value > 100) {
+                return ['status' => 'error', 'message' => 'A percentage commission cannot exceed 100'];
+            }
+            $pairs['referral_commission_value'] = (string)$value;
+        }
+
+        if (isset($body['redeem_enabled'])) {
+            $pairs['points_redeem_enabled'] = ((int)$body['redeem_enabled'] === 1 || $body['redeem_enabled'] === true) ? '1' : '0';
+        }
+
+        if (isset($body['min_redeem'])) {
+            $min = (float)$body['min_redeem'];
+            if ($min < 0) {
+                return ['status' => 'error', 'message' => 'min_redeem cannot be negative'];
+            }
+            $pairs['points_min_redeem'] = (string)$min;
+        }
+
+        foreach ($pairs as $key => $value) {
+            $stmt = mysqli_prepare($con, "INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+            mysqli_stmt_bind_param($stmt, "ss", $key, $value);
+            mysqli_stmt_execute($stmt);
+        }
+
+        // Per-currency point values. Sent as a list so several can move at once - a rate change is
+        // usually a repricing across currencies, not one number.
+        $currencyValues = $body['currency_values'] ?? null;
+        $touched = 0;
+        if (is_array($currencyValues)) {
+            foreach ($currencyValues as $entry) {
+                $code = strtoupper(trim((string)($entry['currency_code'] ?? '')));
+                if ($code === '') continue;
+
+                $exists = mysqli_fetch_assoc(mysqli_query($con,
+                    "SELECT id FROM currencies WHERE code = '" . mysqli_real_escape_string($con, $code) . "' LIMIT 1"));
+                if (!$exists) continue;
+
+                $value = isset($entry['point_value']) && $entry['point_value'] !== '' ? (float)$entry['point_value'] : null;
+                if ($value !== null && $value < 0) {
+                    return ['status' => 'error', 'message' => "point_value for {$code} cannot be negative"];
+                }
+                $isActive = array_key_exists('is_active', $entry) ? ((int)$entry['is_active'] === 1 ? 1 : 0) : 1;
+
+                if ($value === null) {
+                    // Cleared: points stop being spendable in this currency, and the row is
+                    // deactivated rather than deleted so the number that was there is recoverable.
+                    mysqli_query($con, "UPDATE point_currency_values SET is_active = 0
+                        WHERE currency_code = '" . mysqli_real_escape_string($con, $code) . "'");
+                    $touched++;
+                    continue;
+                }
+
+                $stmt = mysqli_prepare($con, "INSERT INTO point_currency_values (currency_code, point_value, is_active)
+                    VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE point_value = VALUES(point_value), is_active = VALUES(is_active)");
+                mysqli_stmt_bind_param($stmt, "sdi", $code, $value, $isActive);
+                mysqli_stmt_execute($stmt);
+                $touched++;
+            }
+        }
+
+        $admId = is_array($adminData) ? (int)($adminData['id'] ?? 0) : 0;
+        if ($admId > 0) {
+            log_admin_action($con, $admId, 'UPDATE_POINTS_SETTINGS',
+                'Updated referral/point settings: ' . implode(', ', array_keys($pairs)) . "; currencies touched: {$touched}");
+        }
+
+        return adminGetPointsSettings($con);
+    }
+}

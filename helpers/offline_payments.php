@@ -4,6 +4,7 @@ require_once __DIR__ . '/language.php';
 require_once __DIR__ . '/payments_grant.php';
 require_once __DIR__ . '/discounts.php';
 require_once __DIR__ . '/pricing.php';
+require_once __DIR__ . '/points.php';
 require_once __DIR__ . '/admin_notifications.php';
 
 /**
@@ -123,7 +124,7 @@ if (!function_exists('payment_account_find')) {
  * actually granted, so a request that is never approved costs the student nothing.
  */
 if (!function_exists('offline_payment_quote')) {
-    function offline_payment_quote($con, int $studentId, string $itemType, int $itemId, string $code = ''): array {
+    function offline_payment_quote($con, int $studentId, string $itemType, int $itemId, string $code = '', float $usePoints = 0.0): array {
         $item = payments_resolve_purchasable_item($con, $itemType, $itemId);
         if (!$item) {
             return ['ok' => false, 'message' => app_offline_text($con, 'العنصر ده مش موجود.', 'That item does not exist.')];
@@ -167,7 +168,26 @@ if (!function_exists('offline_payment_quote')) {
         }
 
         $digits = (int)$currency['decimal_digits'];
-        $final = max(0.0, round($price - $discountAmount, $digits));
+        $afterDiscount = max(0.0, round($price - $discountAmount, $digits));
+
+        // Points come off AFTER the discount code, against what is actually left to pay. Applying
+        // them to the pre-discount price would let a student spend points on money they were never
+        // going to be charged.
+        $pointsSpent = 0.00;
+        $pointsDiscount = 0.00;
+        $pointsMessage = '';
+        $pointsBalance = points_balance_of($con, $studentId);
+
+        if ($usePoints > 0) {
+            $redeem = points_redeem_quote($con, $studentId, $usePoints, $currency, $afterDiscount);
+            $pointsSpent = (float)$redeem['points'];
+            $pointsDiscount = (float)$redeem['discount'];
+            $pointsMessage = (string)$redeem['message'];
+        }
+
+        $final = max(0.0, round($afterDiscount - $pointsDiscount, $digits));
+
+        $pointValue = points_value_for_currency($con, (string)$currency['code']);
 
         return [
             'ok' => true,
@@ -177,6 +197,16 @@ if (!function_exists('offline_payment_quote')) {
             'discount_amount' => round($discountAmount, $digits),
             'discount_code_id' => $discountCodeId,
             'discount_message' => $discountMessage,
+            // What the student has, what one is worth here, and what spending them did to this
+            // bill. `point_value` of null means points cannot be spent in this currency at all.
+            'points_balance' => round($pointsBalance, 2),
+            'point_value' => $pointValue,
+            'points_spent' => round($pointsSpent, 2),
+            'points_discount' => round($pointsDiscount, $digits),
+            'points_message' => $pointsMessage,
+            'max_points_usable' => $pointValue !== null && $pointValue > 0
+                ? round(min($pointsBalance, $afterDiscount / $pointValue), 2)
+                : 0.0,
             'amount_due' => $final,
             // Everything a reviewer and a student need to agree on what was quoted: which
             // currency, which country it was quoted for, and whether it was a country price at
@@ -461,6 +491,20 @@ if (!function_exists('offline_payment_reject')) {
                 'الطلب ده اتراجع عليه بالفعل.',
                 'This request has already been reviewed.'
             )];
+        }
+
+        // Points spent on a request that is refused have to come back. Done only after the UPDATE
+        // reported a row, so a second reviewer racing the first cannot refund the same points
+        // twice - the second UPDATE matches nothing and returns above.
+        $pointsSpent = (float)($request['points_spent'] ?? 0);
+        if ($pointsSpent > 0) {
+            $itemType = (string)($request['item_type'] ?? '');
+            points_refund(
+                $con, (int)$request['student_id'], $pointsSpent,
+                'استرجاع نقاط بعد رفض طلب الدفع',
+                in_array($itemType, ['course', 'book'], true) ? $itemType : 'other',
+                (int)($request['item_id'] ?? 0)
+            );
         }
 
         return ['ok' => true, 'message' => app_offline_text($con, 'تم رفض الطلب.', 'The request was rejected.')];

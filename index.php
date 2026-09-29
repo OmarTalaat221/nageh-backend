@@ -6184,6 +6184,28 @@ $routes = [
                 return adminRejectAffiliateRequest($con, $adminData);
             },
         ],
+        // What a referral earns, and what a point is worth in each currency.
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/points/settings",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/affiliates/manage.php";
+                $adminData = adminAuthMiddleware();
+                return adminGetPointsSettings($con);
+            },
+        ],
+        [
+            "method" => "PUT",
+            "path" => "/najeh/admin/points/settings",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/affiliates/manage.php";
+                $adminData = adminAuthMiddleware();
+                requireSuperAdmin($con, $adminData);
+                return adminUpdatePointsSettings($con, $adminData);
+            },
+        ],
         [
             "method" => "POST",
             "path" => "/najeh/admin/affiliates/deduct-points",

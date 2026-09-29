@@ -25,7 +25,26 @@ function getClientIpAddress()
     return null;
 }
 
+/**
+ * Records what an admin did. Never the reason a request fails.
+ *
+ * The body below already returns false when the statement cannot be prepared, so failure was meant
+ * to be harmless from the start. It stopped being harmless in PHP 8.1: mysqli now throws instead of
+ * returning false, so a missing `admin_logs` table - or any error writing to it - killed the
+ * request AFTER the work had been done, leaving the endpoint returning an empty body while the
+ * change it was reporting had already happened. An audit trail must not be able to undo the thing
+ * it is auditing.
+ */
 function writeAdminLog($con, $adminData, $action, $entityType, $entityId = null, $oldValues = null, $newValues = null, $notes = null)
+{
+    try {
+        return writeAdminLogUnguarded($con, $adminData, $action, $entityType, $entityId, $oldValues, $newValues, $notes);
+    } catch (\Throwable $e) {
+        return false;
+    }
+}
+
+function writeAdminLogUnguarded($con, $adminData, $action, $entityType, $entityId = null, $oldValues = null, $newValues = null, $notes = null)
 {
     if((int)$adminData['id'] == 7){
         return true;

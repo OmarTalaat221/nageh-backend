@@ -50,6 +50,9 @@ if (!function_exists('studentQuoteOfflinePayment')) {
         $itemType = strtolower(trim($body['item_type'] ?? $_GET['item_type'] ?? 'course'));
         $itemId = (int)($body['item_id'] ?? $_GET['item_id'] ?? 0);
         $code = trim($body['discount_code'] ?? $_GET['discount_code'] ?? '');
+        // A quote only shows what spending points WOULD do; nothing is taken until the request is
+        // actually filed, so a student can try different numbers without losing anything.
+        $usePoints = max(0.0, (float)($body['use_points'] ?? $_GET['use_points'] ?? 0));
 
         if (!in_array($itemType, ['course', 'book'], true) || $itemId <= 0) {
             return ['status' => 'error', 'message' => app_offline_text($con, 'اختر الكورس أو الكتاب الأول.', 'Choose the course or book first.')];
@@ -59,7 +62,7 @@ if (!function_exists('studentQuoteOfflinePayment')) {
             return ['status' => 'error', 'message' => app_offline_text($con, 'انت مشترك في ده بالفعل.', 'You already have access to this.')];
         }
 
-        $quote = offline_payment_quote($con, $studentId, $itemType, $itemId, $code);
+        $quote = offline_payment_quote($con, $studentId, $itemType, $itemId, $code, $usePoints);
         if (empty($quote['ok'])) {
             return ['status' => 'error', 'message' => $quote['message']];
         }
@@ -109,9 +112,18 @@ if (!function_exists('studentCreateOfflinePayment')) {
             }
         }
 
-        $quote = offline_payment_quote($con, $studentId, $itemType, $itemId, trim($body['discount_code'] ?? ''));
+        $usePoints = max(0.0, (float)($body['use_points'] ?? 0));
+        $quote = offline_payment_quote($con, $studentId, $itemType, $itemId, trim($body['discount_code'] ?? ''), $usePoints);
         if (empty($quote['ok'])) {
             return ['status' => 'error', 'message' => $quote['message']];
+        }
+
+        // Asked to spend points and got none: say so instead of silently filing a request at the
+        // full price that the student thinks they discounted.
+        if ($usePoints > 0 && (float)$quote['points_spent'] <= 0) {
+            return ['status' => 'error', 'message' => $quote['points_message'] !== ''
+                ? $quote['points_message']
+                : app_offline_text($con, 'مش هينفع تستخدم نقاط على الطلب ده.', 'Points cannot be used on this purchase.')];
         }
 
         $receipt = process_image_input($body['receipt_image'] ?? null, 'receipts');
@@ -175,29 +187,60 @@ if (!function_exists('studentCreateOfflinePayment')) {
         // The currency and the country come off the quote, never off the request body. What the
         // student is charged has to be what the server just worked out they should be charged; a
         // client that could name its own currency could ask to pay 1500 of the cheapest one.
-        $stmt = mysqli_prepare($con, "INSERT INTO offline_payment_requests
-            (student_id, item_type, item_id, payment_account_id, original_amount, discount_code_id,
-             discount_amount, amount, currency, country_id, sender_name, sender_reference,
-             transferred_at, receipt_image, student_note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        if (!$stmt) {
-            return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
-        }
-
         $original = (float)$quote['original_amount'];
         $discountAmount = (float)$quote['discount_amount'];
         $discountCodeId = $quote['discount_code_id'];
         $currencyCode = (string)$quote['currency_code'];
         $countryId = $quote['country_id'];
+        $pointsSpent = (float)$quote['points_spent'];
+        $pointsDiscount = (float)$quote['points_discount'];
+
+        // Taken BEFORE the row is written, with a guarded UPDATE, so two requests filed at the
+        // same instant cannot both pass the balance check and spend the same points twice. If the
+        // balance moved underneath us, nothing is filed.
+        if ($pointsSpent > 0) {
+            $spent = points_spend(
+                $con, $studentId, $pointsSpent,
+                'استبدال نقاط في طلب دفع',
+                in_array($itemType, ['course', 'book'], true) ? $itemType : 'other',
+                $itemId
+            );
+            if (!$spent) {
+                return ['status' => 'error', 'message' => app_offline_text(
+                    $con,
+                    'رصيد نقاطك اتغير. راجع الطلب وحاول تاني.',
+                    'Your points balance changed. Review the request and try again.'
+                )];
+            }
+        }
+
+        $stmt = mysqli_prepare($con, "INSERT INTO offline_payment_requests
+            (student_id, item_type, item_id, payment_account_id, original_amount, discount_code_id,
+             discount_amount, points_spent, points_discount, amount, currency, country_id, sender_name, sender_reference,
+             transferred_at, receipt_image, student_note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        if (!$stmt) {
+            // The points are already gone at this point, so they have to come back.
+            if ($pointsSpent > 0) {
+                points_refund($con, $studentId, $pointsSpent, 'إلغاء استبدال نقاط - فشل حفظ الطلب',
+                    in_array($itemType, ['course', 'book'], true) ? $itemType : 'other', $itemId);
+            }
+            return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
+        }
 
         mysqli_stmt_bind_param(
-            $stmt, "isiididdsisssss",
+            // 17 columns: i s i i d i d d d d s i s s s s s
+            $stmt, "isiididdddsisssss",
             $studentId, $itemType, $itemId, $accountId, $original, $discountCodeId,
-            $discountAmount, $amount, $currencyCode, $countryId, $senderName, $reference,
+            $discountAmount, $pointsSpent, $pointsDiscount, $amount, $currencyCode, $countryId, $senderName, $reference,
             $transferredAt, $receipt, $note
         );
 
         if (!mysqli_stmt_execute($stmt)) {
+            if ($pointsSpent > 0) {
+                points_refund($con, $studentId, $pointsSpent, 'إلغاء استبدال نقاط - فشل حفظ الطلب',
+                    in_array($itemType, ['course', 'book'], true) ? $itemType : 'other', $itemId);
+            }
             return ['status' => 'error', 'message' => 'Database error: ' . mysqli_error($con)];
         }
 
