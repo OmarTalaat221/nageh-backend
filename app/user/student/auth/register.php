@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../../helpers/email_verification.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../../../../helpers/admin_notifications.php';
 require_once __DIR__ . '/../../../../helpers/app_settings.php';
+require_once __DIR__ . '/../../../../helpers/phone.php';
 
 if (!function_exists('studentRegister')) {
     function studentRegister($con) {
@@ -44,6 +45,17 @@ if (!function_exists('studentRegister')) {
         $res = mysqli_stmt_get_result($checkStmt);
         if (mysqli_fetch_assoc($res)) {
             return ['status' => 'error', 'message' => trans('email_already_registered')];
+        }
+
+        // A phone number is now something you can log in with, so it has to identify one account.
+        // Two numbers were already on two accounts each when this check was added; those are left
+        // alone and handled at login. This is what stops a third pair ever being created.
+        if ($phone !== null && phone_find_students($con, $phone)) {
+            return [
+                'status' => 'error',
+                'message' => trans('phone_already_registered'),
+                'error_code' => 'phone_already_registered',
+            ];
         }
 
         $referralCode = trim($body['referral_code'] ?? $body['affiliate_code'] ?? $body['ref'] ?? '');

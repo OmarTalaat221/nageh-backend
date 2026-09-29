@@ -183,11 +183,16 @@ function trans(string $key, ?string $lang = null, $con = null): string {
     $messages = [
         'ar' => [
             'invalid_json' => 'بيانات JSON غير صالحة',
-            'email_password_required' => 'البريد الإلكتروني وكلمة المرور مطلوبان',
+            // Neutral since migration 079: a student may log in with a phone number, and being
+            // told "email is required" after typing a phone number reads as a rejection of the
+            // phone number itself.
+            'email_password_required' => 'البريد الإلكتروني أو رقم الهاتف وكلمة المرور مطلوبان',
+            'phone_on_multiple_accounts' => 'رقم الهاتف ده مسجّل على أكثر من حساب. سجّل الدخول بالبريد الإلكتروني.',
+            'phone_already_registered' => 'رقم الهاتف ده مسجّل على حساب آخر بالفعل.',
             'name_email_password_required' => 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة',
             'invalid_email' => 'صيغة البريد الإلكتروني غير صالحة',
             'short_password' => 'كلمة المرور يجب أن لا تقل عن 6 أحرف',
-            'invalid_credentials' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+            'invalid_credentials' => 'بيانات الدخول أو كلمة المرور غير صحيحة',
             'account_inactive' => 'الحساب غير مفعل، يرجى التواصل مع الدعم الفني',
             'teacher_suspension_reason' => 'تم إيقاف حسابك تلقائيًا لتجاوزك الحد المسموح به من الغياب بدون إذن. تواصل مع الإدارة عبر المحادثة لمزيد من التفاصيل.',
             'student_subscription_frozen_reason' => 'تم تجميد اشتراكك تلقائيًا لتجاوزك الحد المسموح به من الغياب بدون إذن. تواصل مع الإدارة عبر المحادثة لمزيد من التفاصيل.',
@@ -373,11 +378,13 @@ function trans(string $key, ?string $lang = null, $con = null): string {
         ],
         'en' => [
             'invalid_json' => 'Invalid JSON data',
-            'email_password_required' => 'Email and password are required',
+            'email_password_required' => 'Email or phone number and password are required',
+            'phone_on_multiple_accounts' => 'This phone number is on more than one account. Please sign in with your email.',
+            'phone_already_registered' => 'This phone number is already registered to another account.',
             'name_email_password_required' => 'Name, email, and password are required',
             'invalid_email' => 'Invalid email format',
             'short_password' => 'Password must be at least 6 characters long',
-            'invalid_credentials' => 'Invalid email or password',
+            'invalid_credentials' => 'Invalid credentials or password',
             'account_inactive' => 'Account is inactive. Please contact support.',
             'teacher_suspension_reason' => 'Your account was automatically suspended for exceeding the allowed number of unauthorized absences. Contact the administration via chat for more details.',
             'student_subscription_frozen_reason' => 'Your subscription was automatically frozen for exceeding the allowed number of unauthorized absences. Contact the administration via chat for more details.',

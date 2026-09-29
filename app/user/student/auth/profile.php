@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../../helpers/entities.php';
 require_once __DIR__ . '/../../../../helpers/upload.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
 require_once __DIR__ . '/../../../../helpers/notifications.php';
+require_once __DIR__ . '/../../../../helpers/phone.php';
 
 if (!function_exists('studentProfile')) {
     function studentProfile($con, $studentData = null) {
@@ -114,6 +115,18 @@ if (!function_exists('studentUpdateProfile')) {
 
         if (isset($body['phone'])) {
             $phoneVal = trim($body['phone']);
+
+            // The same rule registration applies. Without it, a student could take a number that
+            // is already someone else's and lock both of them out of phone login - registration
+            // would be guarded and the back door left open.
+            if ($phoneVal !== '' && phone_find_students($con, $phoneVal, $studentId)) {
+                return [
+                    'status' => 'error',
+                    'message' => trans('phone_already_registered'),
+                    'error_code' => 'phone_already_registered',
+                ];
+            }
+
             $updateFields[] = "phone = ?";
             $params[] = $phoneVal !== '' ? $phoneVal : null;
             $types .= "s";
