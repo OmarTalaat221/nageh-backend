@@ -283,7 +283,15 @@ if (!function_exists('adminListCourses')) {
         // used to always count the whole `courses` table regardless of any filter, which showed
         // e.g. 27 "active" packages in the stat cards while the (correctly filtered) table below
         // was empty.
-        $statSql = "SELECT COUNT(DISTINCT c.id) AS total, SUM(CASE WHEN c.is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN c.is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM courses c {$joinCt} LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id {$whereClause}";
+        // COUNT(DISTINCT c.id) for the total but a bare SUM(CASE...) for the breakdown: the join
+        // to courses_translations yields one row per language, so the total was right and the
+        // active and inactive counts were multiplied by the number of translations. That is how a
+        // screen came to read "87 courses, 174 active" - and 4 packages, 8 active. Every count
+        // here now collapses the duplicate rows the same way.
+        $statSql = "SELECT COUNT(DISTINCT c.id) AS total,
+            COUNT(DISTINCT CASE WHEN c.is_active = 1 THEN c.id END) AS active_count,
+            COUNT(DISTINCT CASE WHEN c.is_active = 0 THEN c.id END) AS inactive_count
+            FROM courses c {$joinCt} LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id {$whereClause}";
         $statStmt = mysqli_prepare($con, $statSql);
         $totalRecords = 0;
         $statistics = [
