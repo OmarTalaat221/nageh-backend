@@ -8526,7 +8526,7 @@
           "Admin / Consultations (NEW - update-2)"
         ],
         "summary": "update-2 (NEW): Admin creates a repeating weekly consultation slot on behalf of any teacher",
-        "description": "update-2 (Admin): identical behavior and validation to POST /teacher/consultations/recurring (same shared core function under the hood, so the two routes cannot drift out of sync), except the target teacher is chosen by the admin via `teacher_id` in the body instead of being taken from the caller's own auth token. Returns an error if teacher_id doesn't reference an existing teacher.",
+        "description": "update-2 (Admin): identical behavior and validation to POST /teacher/consultations/recurring (same shared core function under the hood, so the two routes cannot drift out of sync), except the target teacher is chosen by the admin via `teacher_id` in the body instead of being taken from the caller's own auth token. Returns an error if teacher_id doesn't reference an existing teacher.\n\nupdate-4: accepts an optional `student_id`. With it, the whole run is created already booked for that student and both sides get one summary notification; the response then also carries `booked_for_student_id` and `booked_count`. Without it, nothing changes.",
         "security": [
           {
             "AdminAuth": []
@@ -8592,6 +8592,10 @@
                   },
                   "notes": {
                     "type": "string"
+                  },
+                  "student_id": {
+                    "type": "integer",
+                    "description": "OPTIONAL (update-4). Name a student and EVERY slot this call creates is booked for them straight away - is_booked = 1, status = approved, booked_at stamped - and one summary notification goes to the student and one to the teacher, rather than one per generated date. Only the dates this call actually created are booked; dates that already existed are skipped as duplicates and may belong to somebody else. The student must exist and be active, and is validated BEFORE any slot is created, so a bad id creates nothing. Omit it to create the slots free for any student to book, exactly as before."
                   }
                 }
               },

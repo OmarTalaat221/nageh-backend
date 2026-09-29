@@ -4540,7 +4540,7 @@ $routes = [
                 include_once "./app/admin/consultations/manage.php";
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_consultations');
-                return adminCreateRecurringConsultationSlots($con);
+                return adminCreateRecurringConsultationSlots($con, $adminData);
             },
         ],
 

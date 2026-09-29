@@ -220,7 +220,7 @@ if (!function_exists('adminDeleteConsultationSlot')) {
 }
 
 if (!function_exists('adminCreateRecurringConsultationSlots')) {
-    function adminCreateRecurringConsultationSlots($con) {
+    function adminCreateRecurringConsultationSlots($con, $adminData = null) {
         $body = read_json_body();
         $teacherId = (int)($body['teacher_id'] ?? 0);
         if ($teacherId <= 0) {
@@ -234,7 +234,48 @@ if (!function_exists('adminCreateRecurringConsultationSlots')) {
             return ['status' => 'error', 'message' => trans('teacher_not_found')];
         }
 
-        return create_recurring_consultation_slots_core($con, $teacherId, $body);
+        // Optional: create the run already booked for one student. Without this the admin had to
+        // create the slots, then find each generated date in the table and book it separately -
+        // which for a weekly slot over a term is a dozen trips through the same dialog.
+        $studentId = isset($body['student_id']) && (int)$body['student_id'] > 0 ? (int)$body['student_id'] : 0;
+        if ($studentId > 0) {
+            $student = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, is_active FROM students WHERE id = {$studentId} LIMIT 1"));
+            if (!$student) {
+                return ['status' => 'error', 'message' => 'Student not found'];
+            }
+            if ((int)$student['is_active'] !== 1) {
+                return ['status' => 'error', 'message' => 'This student account is not active'];
+            }
+        }
+
+        $result = create_recurring_consultation_slots_core($con, $teacherId, $body);
+
+        if ($studentId <= 0 || ($result['status'] ?? '') !== 'success') {
+            return $result;
+        }
+
+        // Only the dates this call actually created are booked. Dates that already existed are
+        // skipped by the core as duplicates, and they may well belong to somebody else.
+        $created = $result['data']['slots'] ?? [];
+        $ids = array_values(array_filter(array_map(fn($s) => (int)($s['id'] ?? 0), $created)));
+        if (empty($ids)) {
+            return $result;
+        }
+
+        $idList = implode(',', $ids);
+        mysqli_query($con, "UPDATE consultation_slots SET is_booked = 1, student_id = {$studentId}, booked_at = NOW(), status = 'approved' WHERE id IN ({$idList})");
+
+        $dates = array_map(fn($s) => (string)($s['slot_date'] ?? ''), $created);
+        sort($dates);
+
+        $adminId = is_array($adminData) ? (int)($adminData['id'] ?? 0) : 0;
+        notify_consultation_series_booked($con, $studentId, $teacherId, count($ids), reset($dates) ?: '', end($dates) ?: '', $adminId ?: null);
+
+        $result['data']['booked_for_student_id'] = $studentId;
+        $result['data']['booked_count'] = count($ids);
+        $result['message'] = trans('slot_booked_for_student');
+
+        return $result;
     }
 }
 

@@ -65,6 +65,35 @@ if (!function_exists('notify_consultation_booked')) {
     }
 }
 
+if (!function_exists('notify_consultation_series_booked')) {
+    /**
+     * A whole run of repeating slots was booked for one student in a single go.
+     *
+     * One summary notification per side rather than one per date: a weekly slot booked for three
+     * months is a dozen rows, and a dozen near-identical alerts is not news, it is noise.
+     */
+    function notify_consultation_series_booked($con, int $studentId, int $teacherId, int $count, string $firstDate, string $lastDate, ?int $actorId = null): void {
+        if ($count <= 0) return;
+
+        $studentName = consultation_person_name($con, 'students', $studentId);
+        $teacherName = consultation_person_name($con, 'teachers', $teacherId);
+        $range = $firstDate === $lastDate ? $firstDate : "{$firstDate} إلى {$lastDate}";
+        $data = ['type' => 'consultation_booked', 'booked_by' => 'admin', 'count' => $count];
+
+        if ($studentId > 0) {
+            @send_notification_to_users($con, 'student', [$studentId], 'مواعيد استشارة',
+                "تم حجز {$count} موعد استشارة لك مع {$teacherName} ({$range}).",
+                $data, 'admin', $actorId, ['push']);
+        }
+
+        if ($teacherId > 0) {
+            @send_notification_to_users($con, 'teacher', [$teacherId], 'حجز استشارات جديد',
+                "حجزت الإدارة {$count} موعد استشارة لك مع الطالب {$studentName} ({$range}).",
+                $data, 'admin', $actorId, ['push']);
+        }
+    }
+}
+
 if (!function_exists('notify_consultation_reviewed')) {
     /**
      * The teacher accepted or refused a booking. Only the student needs telling - the teacher just
