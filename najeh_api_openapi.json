@@ -1629,6 +1629,93 @@
             }
           }
         }
+      },
+      "SalesOverview": {
+        "type": "object",
+        "description": "Same shape as DashboardSales, with one addition: a new 'offline_payments' source covering APPROVED bank-transfer course purchases (offline_payment_requests). Before this, an approved offline course payment granted access through student_subscriptions - which has no price column at all - so that money was invisible in every total on the platform. Offline BOOK payments were already counted under 'offline_book_grants', since both paths write the same student_book_subscriptions row.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardSales"
+          }
+        ],
+        "properties": {
+          "range": {
+            "type": "object",
+            "nullable": true,
+            "description": "Present only when date_from/date_to were sent. today/this_month/this_year stay fixed reference points regardless of this filter.",
+            "properties": {
+              "date_from": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "date_to": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "total": {
+                "type": "number",
+                "format": "float"
+              },
+              "orders": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SalesItem": {
+        "type": "object",
+        "description": "One course, package or book's sales, aggregated across every revenue channel.",
+        "properties": {
+          "course_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Present when kind is course or package."
+          },
+          "book_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Present when kind is book."
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "package"
+            ],
+            "description": "Course/package rows only."
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "Current list price, not what was earned."
+          },
+          "is_active": {
+            "type": "integer",
+            "nullable": true
+          },
+          "sales_count": {
+            "type": "integer"
+          },
+          "revenue": {
+            "type": "number",
+            "format": "float"
+          },
+          "link": {
+            "type": "string",
+            "description": "Admin-dashboard route to open this item."
+          }
+        }
       }
     }
   },
@@ -17494,6 +17581,201 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/admin/sales/overview": {
+      "get": {
+        "tags": [
+          "Admin / Sales"
+        ],
+        "summary": "update-4 (NEW): Sales overview - the dedicated Sales page's stat cards",
+        "description": "Everything DashboardSales already gives the home widget, plus an optional `range` total when a date filter is applied. This is the page the 'Course sales' card on the home dashboard now links to, instead of opening a course's lessons.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SalesOverview"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sales/items": {
+      "get": {
+        "tags": [
+          "Admin / Sales"
+        ],
+        "summary": "update-4 (NEW): Sales by course, package or book - searchable, paginated, date-filterable",
+        "description": "The Sales page's three tabs (Courses / Packages / Books) are one endpoint switched by `kind`. Unlike the home dashboard's fixed top-10 widget, this has no limit besides pagination, and includes the 'offline_payments' channel for courses and packages (see SalesOverview).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "course",
+                "package",
+                "book"
+              ],
+              "default": "course"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Alias `q`. Matches the item's name, case-insensitive."
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SalesItem"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    },
+                    "statistics": {
+                      "type": "object",
+                      "properties": {
+                        "items_count": {
+                          "type": "integer"
+                        },
+                        "sales_count": {
+                          "type": "integer"
+                        },
+                        "revenue": {
+                          "type": "number",
+                          "format": "float"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sales/trend": {
+      "get": {
+        "tags": [
+          "Admin / Sales"
+        ],
+        "summary": "update-4 (NEW): Monthly sales trend for the Sales page's chart",
+        "description": "Identical to the home dashboard's chart data - always exactly 12 months, January to December, including months with no data.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Defaults to the current server year."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }

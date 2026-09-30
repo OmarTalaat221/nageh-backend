@@ -52,6 +52,7 @@ if (!function_exists('permissions_catalogue')) {
             'manage_books'             => ['إدارة الكتب وطلبات الشراء', 'Manage Books & Purchase Requests', 'books'],
 
             // ---- money ----------------------------------------------------------------------
+            'view_sales'           => ['المبيعات', 'Sales', 'sales'],
             'manage_subscriptions' => ['إدارة اشتراكات الطلاب وأكواد الاشتراك', 'Manage Subscriptions & Codes', 'subscriptions'],
             'manage_discounts'     => ['إدارة أكواد الخصم', 'Manage Discount Codes', 'discounts'],
             'manage_payments'      => ['إدارة المدفوعات اليدوية', 'Manage Offline Payments', 'payments'],

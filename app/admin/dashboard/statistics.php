@@ -52,6 +52,10 @@ if (!function_exists('dashboard_month_labels')) {
  * - a book bought online writes BOTH a payment_transactions row and a student_book_subscriptions
  *   row, linked by payment_transactions.granted_ref_id, so offline_book_grants excludes any
  *   student_book_subscriptions row that a paid payment_transactions row points at.
+ * - an APPROVED offline_payment_requests row for a book is the same kind of manual grant as
+ *   offline_book_grants above (offline_payments.php calls the same payments_grant_access() that
+ *   writes student_book_subscriptions, and never touches payment_transactions), so it is already
+ *   counted there and is deliberately not repeated in offline_payments below.
  * - legacy_transactions is the old, no-longer-written `transactions` ledger. Nothing in the
  *   current codebase inserts into it, so it cannot collide with the live channels, but any
  *   historical rows sitting in it still count as real money that was taken.
@@ -82,6 +86,16 @@ if (!function_exists('dashboard_revenue_sources')) {
                 )",
                 'amount' => "sbs.price",
                 'date' => "sbs.created_at",
+            ],
+            // A course bought this way grants access through student_subscriptions, which has no
+            // price column at all - unlike the book path, there was NOWHERE this money was ever
+            // visible before. This is the only source of truth for it.
+            'offline_payments' => [
+                'label_ar' => 'دفع يدوي (تحويل بنكي)',
+                'from' => "offline_payment_requests opr",
+                'where' => "opr.status = 'approved' AND opr.item_type = 'course'",
+                'amount' => "opr.amount",
+                'date' => "COALESCE(opr.reviewed_at, opr.created_at)",
             ],
             'legacy_transactions' => [
                 'label_ar' => 'معاملات قديمة',
@@ -283,6 +297,17 @@ if (!function_exists('dashboard_course_sales')) {
             JOIN transactions tr ON tr.id = ti.transaction_id
             WHERE tr.direction = 'incoming' AND tr.status = 'paid' AND ti.item_type = 'course'
             GROUP BY ti.item_id
+        ") as $row) {
+            $add((int)$row['course_id'], (int)$row['sales_count'], (float)$row['revenue']);
+        }
+
+        // Approved bank-transfer requests - see dashboard_revenue_sources() for why this is the
+        // only place this money is recorded at all.
+        foreach (dashboard_fetch_all($con, "
+            SELECT item_id AS course_id, COUNT(*) AS sales_count, SUM(amount) AS revenue
+            FROM offline_payment_requests
+            WHERE status = 'approved' AND item_type = 'course'
+            GROUP BY item_id
         ") as $row) {
             $add((int)$row['course_id'], (int)$row['sales_count'], (float)$row['revenue']);
         }

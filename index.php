@@ -4241,6 +4241,41 @@ $routes = [
             },
         ],
 
+        // Admin: Sales (overview, per-kind breakdown, trend) ----------------
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/sales/overview",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/sales/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'view_sales');
+                return adminSalesOverview($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/sales/items",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/sales/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'view_sales');
+                return adminSalesItems($con);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/sales/trend",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/sales/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'view_sales');
+                return adminSalesTrend($con);
+            },
+        ],
+
         // Subscriptions & Subscription Codes CRUD (Admin)
         [
             "method" => "GET",
