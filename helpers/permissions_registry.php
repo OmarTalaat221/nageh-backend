@@ -62,7 +62,26 @@ if (!function_exists('permissions_catalogue')) {
             'manage_sessions'      => ['إدارة الحصص المباشرة والمواعيد', 'Manage Live Sessions & Availability', 'sessions'],
             'manage_consultations' => ['إدارة الاستشارات', 'Manage Consultations', 'consultations'],
             'manage_attendance'    => ['إدارة الحضور والاستثناءات', 'Manage Attendance & Exceptions', 'attendance'],
-            'manage_hr'            => ['إدارة إعدادات الموارد البشرية', 'Manage HR Settings', 'hr'],
+            // Renamed from "إدارة إعدادات الموارد البشرية" / "Manage HR Settings" - that named a
+            // subject (human resources) this screen has nothing to do with. The sidebar's own
+            // label for /settings is "إعدادات الحضور والرواتب"; the checkbox now says the same thing.
+            'manage_hr'            => ['إدارة إعدادات الحضور والرواتب', 'Manage Attendance & Salary Settings', 'hr'],
+
+            // ---- communication ----------------------------------------------------------------
+            'manage_reports'       => ['إدارة التقارير', 'Manage Reports', 'reports'],
+            'manage_notifications' => ['إدارة الإشعارات', 'Manage Notifications', 'notifications'],
+            // Deliberately narrower than "manage": every admin already reads their OWN notification
+            // inbox regardless of this permission - it gates only the broadcast/history screen
+            // (/najeh/admin/notifications, the send+history route), never /notifications/inbox.
+            'manage_chat'          => ['إدارة المحادثات', 'Manage Chat', 'chat'],
+            // Chat has no backend route of its own - the dashboard talks to Firebase directly, so
+            // nothing here has ever mediated who could open it. /admin/chat/access and
+            // /admin/chat/monitor/access exist solely to give these two codes something real to
+            // check, matching the module's own rule that a permission must be enforced by a route.
+            // NOTE the residual gap this does not close: Firebase's rules are not scoped per
+            // permission, so this stops the dashboard UI path, not a client that talks to Firebase
+            // directly with valid credentials. Real closure needs Firebase custom claims + rules.
+            'monitor_chat'         => ['مراقبة المحادثات', 'Monitor Chat', 'chat_monitor'],
 
             // ---- platform settings ----------------------------------------------------------
             'manage_cities'    => ['إدارة المناطق', 'Manage Regions', 'cities'],

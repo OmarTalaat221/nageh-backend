@@ -2261,6 +2261,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/notifications/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_notifications');
                 return adminSendNotification($con, $adminData);
             },
         ],
@@ -2270,7 +2271,8 @@ $routes = [
             "handler" => function ($con) {
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/notifications/manage.php";
-                adminAuthMiddleware();
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_notifications');
                 return adminListNotifications($con);
             },
         ],
@@ -2383,6 +2385,30 @@ $routes = [
             },
         ],
 
+        // Admin: chat access gate (chat itself is Firebase, not this API) --
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/chat/access",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/chat/access.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_chat');
+                return adminCheckChatAccess($con, $adminData);
+            },
+        ],
+        [
+            "method" => "GET",
+            "path" => "/najeh/admin/chat/monitor/access",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/chat/access.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'monitor_chat');
+                return adminCheckChatMonitorAccess($con, $adminData);
+            },
+        ],
+
         // Admin Student Reports Routes --------------------------------
         [
             "method" => "GET",
@@ -2391,6 +2417,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/reports/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_reports');
                 return adminListStudentReports($con);
             },
         ],
@@ -2401,6 +2428,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/reports/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_reports');
                 return adminGetStudentReport($con);
             },
         ],
@@ -2411,6 +2439,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/reports/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_reports');
                 return adminCreateStudentReport($con, $adminData);
             },
         ],
@@ -2421,6 +2450,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/reports/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_reports');
                 return adminUpdateStudentReport($con);
             },
         ],
@@ -2431,6 +2461,7 @@ $routes = [
                 include_once "./middlewares/adminauthmiddleware.php";
                 include_once "./app/admin/reports/manage.php";
                 $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_reports');
                 return adminDeleteStudentReport($con);
             },
         ],
