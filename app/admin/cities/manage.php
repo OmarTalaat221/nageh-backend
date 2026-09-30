@@ -7,6 +7,19 @@ if (!function_exists('adminListCities')) {
         $page = max(1, (int)($_GET['page'] ?? 1));
         $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
         $offset = ($page - 1) * $limit;
+        // The search box on this screen sent `search` to the API from the day it was built, and
+        // nothing here ever read it - every keystroke fetched the exact same unfiltered page.
+        $search = trim($_GET['search'] ?? $_GET['q'] ?? $_GET['query'] ?? '');
+
+        $whereClause = "";
+        $params = [];
+        $types = "";
+        if (!empty($search)) {
+            $searchPattern = '%' . $search . '%';
+            $whereClause = "WHERE (c.code LIKE ? OR ct.name LIKE ?)";
+            $params = [$searchPattern, $searchPattern];
+            $types = "ss";
+        }
 
         $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM cities");
         $statRow = mysqli_fetch_assoc($statRes);
@@ -17,8 +30,23 @@ if (!function_exists('adminListCities')) {
             'inactive_count' => (int)($statRow['inactive_count'] ?? 0)
         ];
 
-        $stmt = mysqli_prepare($con, "SELECT id, code, is_active, created_at, updated_at FROM cities ORDER BY id DESC LIMIT ? OFFSET ?");
-        mysqli_stmt_bind_param($stmt, "ii", $limit, $offset);
+        if (!empty($whereClause)) {
+            $countSql = "SELECT COUNT(DISTINCT c.id) AS total FROM cities c LEFT JOIN cities_translations ct ON c.id = ct.city_id {$whereClause}";
+            $countStmt = mysqli_prepare($con, $countSql);
+            mysqli_stmt_bind_param($countStmt, $types, ...$params);
+            mysqli_stmt_execute($countStmt);
+            $countRes = mysqli_stmt_get_result($countStmt);
+            $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
+        }
+
+        $sql = "SELECT DISTINCT c.id, c.code, c.is_active, c.created_at, c.updated_at FROM cities c LEFT JOIN cities_translations ct ON c.id = ct.city_id {$whereClause} ORDER BY c.id DESC LIMIT ? OFFSET ?";
+
+        $params[] = $limit;
+        $params[] = $offset;
+        $types .= "ii";
+
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
 
