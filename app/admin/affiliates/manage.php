@@ -45,7 +45,7 @@ if (!function_exists('adminListAffiliateRequests')) {
         }
 
         $query = "SELECT ac.id, ac.affiliate_id, ac.referred_student_id, ac.item_type, ac.item_id, ac.purchase_amount, ac.amount AS reward_amount, ac.status, ac.notes, ac.commission_date, ac.created_at, ac.updated_at,
-                         a.student_id AS referrer_student_id,
+                         a.student_id AS referrer_student_id, a.commission_type, a.commission_value,
                          st_ref.name AS referrer_name, st_ref.email AS referrer_email, st_ref.phone AS referrer_phone, st_ref.points_balance AS referrer_points_balance,
                          st_target.name AS referred_name, st_target.email AS referred_email, st_target.phone AS referred_phone,
                          adm.name AS approved_by_admin_name
@@ -75,6 +75,25 @@ if (!function_exists('adminListAffiliateRequests')) {
                 $row['purchase_amount'] = (float)$row['purchase_amount'];
                 $row['reward_amount'] = (float)$row['reward_amount'];
                 $row['referrer_points_balance'] = (float)($row['referrer_points_balance'] ?? 0);
+
+                // What the rule would award, so the approval box opens on a number instead of on
+                // a zero the admin has to fill in from memory - and so overriding it is visibly an
+                // override rather than the only way to enter anything at all.
+                $row['suggested_amount'] = points_earned_for_purchase($con, [
+                    'commission_type' => $row['commission_type'] ?? null,
+                    'commission_value' => $row['commission_value'] ?? null,
+                ], $row['purchase_amount']);
+
+                // Which rule produced it, so the screen can say "10% of 500" rather than just 50.
+                $platformRules = points_rules($con);
+                $codeType = strtolower(trim((string)($row['commission_type'] ?? '')));
+                $codeValue = (float)($row['commission_value'] ?? 0);
+                $usesOwnRule = in_array($codeType, ['percent', 'fixed'], true) && $codeValue > 0;
+                $row['applied_rule'] = [
+                    'source' => $usesOwnRule ? 'code' : 'platform',
+                    'type' => $usesOwnRule ? $codeType : $platformRules['commission_type'],
+                    'value' => $usesOwnRule ? $codeValue : $platformRules['commission_value'],
+                ];
 
                 // Get Item Title & Included Details
                 $formattedDetails = format_affiliate_item_details($con, $row['item_type'] ?? '', (int)($row['item_id'] ?? 0));
@@ -495,5 +514,67 @@ if (!function_exists('adminUpdatePointsSettings')) {
         }
 
         return adminGetPointsSettings($con);
+    }
+}
+
+if (!function_exists('adminSetAffiliateRule')) {
+    /**
+     * Gives one referral code its own earning rule, overriding the platform default.
+     *
+     * The columns have existed since `affiliates` was created and were never once written after
+     * the row was inserted, so every code has been on ('fixed', 0.00) - which reads as "no rule".
+     * Sending an empty `commission_value` puts a code back on the platform default.
+     */
+    function adminSetAffiliateRule($con, $adminData = null) {
+        $body = read_json_body();
+        $affiliateId = (int)($body['affiliate_id'] ?? $body['id'] ?? 0);
+
+        if ($affiliateId <= 0) {
+            return ['status' => 'error', 'message' => 'affiliate_id is required'];
+        }
+
+        $affiliate = mysqli_fetch_assoc(mysqli_query($con,
+            "SELECT id, affiliate_code FROM affiliates WHERE id = {$affiliateId} LIMIT 1"));
+        if (!$affiliate) {
+            return ['status' => 'error', 'message' => 'Affiliate code not found'];
+        }
+
+        // Cleared: back to the platform rule. 0.00 is what an unset code already looks like, so
+        // this is the same state a code has always started in, not a new one.
+        $clear = !isset($body['commission_value']) || $body['commission_value'] === '' || $body['commission_value'] === null;
+
+        if ($clear) {
+            mysqli_query($con, "UPDATE affiliates SET commission_type = 'fixed', commission_value = 0.00 WHERE id = {$affiliateId}");
+        } else {
+            $type = strtolower(trim((string)($body['commission_type'] ?? 'percent')));
+            if (!in_array($type, ['percent', 'fixed'], true)) {
+                return ['status' => 'error', 'message' => 'commission_type must be percent or fixed'];
+            }
+
+            $value = (float)$body['commission_value'];
+            if ($value < 0) {
+                return ['status' => 'error', 'message' => 'commission_value cannot be negative'];
+            }
+            if ($type === 'percent' && $value > 100) {
+                return ['status' => 'error', 'message' => 'A percentage commission cannot exceed 100'];
+            }
+
+            $stmt = mysqli_prepare($con, "UPDATE affiliates SET commission_type = ?, commission_value = ? WHERE id = ?");
+            mysqli_stmt_bind_param($stmt, "sdi", $type, $value, $affiliateId);
+            mysqli_stmt_execute($stmt);
+        }
+
+        $admId = is_array($adminData) ? (int)($adminData['id'] ?? 0) : 0;
+        if ($admId > 0) {
+            log_admin_action($con, $admId, 'SET_AFFILIATE_RULE',
+                "Affiliate #{$affiliateId} ({$affiliate['affiliate_code']}) rule " . ($clear ? 'cleared to the platform default' : 'set'));
+        }
+
+        $row = mysqli_fetch_assoc(mysqli_query($con,
+            "SELECT id, affiliate_code, commission_type, commission_value FROM affiliates WHERE id = {$affiliateId} LIMIT 1"));
+        $row['commission_value'] = (float)$row['commission_value'];
+        $row['uses_platform_default'] = $row['commission_value'] <= 0;
+
+        return ['status' => 'success', 'message' => trans('saved_successfully') ?: 'Saved', 'data' => $row];
     }
 }

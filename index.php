@@ -6207,6 +6207,18 @@ $routes = [
             },
         ],
         [
+            // One referral code's own earning rule, overriding the platform default.
+            "method" => "PUT",
+            "path" => "/najeh/admin/affiliates/rule",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/affiliates/manage.php";
+                $adminData = adminAuthMiddleware();
+                requireSuperAdmin($con, $adminData);
+                return adminSetAffiliateRule($con, $adminData);
+            },
+        ],
+        [
             "method" => "POST",
             "path" => "/najeh/admin/affiliates/deduct-points",
             "handler" => function ($con) {
