@@ -120,6 +120,29 @@ if (!function_exists('teacherGetSubscribedStudents')) {
                 $row['id'] = (int)$row['id'];
                 $row['academic_year_id'] = $row['academic_year_id'] ? (int)$row['academic_year_id'] : null;
                 $row['is_active'] = (int)$row['is_active'];
+
+                // The package this student and this teacher actually share, if any - so the
+                // teacher's dashboard can offer "schedule this student's sessions" without first
+                // making them re-pick a course they were already looking at.
+                $studentId = $row['id'];
+                $pkgRes = mysqli_query($con, "
+                    SELECT c.id, COALESCE(ct.name, c.slug) AS name
+                    FROM student_subscriptions ss2
+                    JOIN student_subscription_courses ssc2 ON ssc2.student_subscription_id = ss2.id
+                    JOIN courses c ON c.id = ssc2.course_id
+                    LEFT JOIN courses_translations ct ON ct.course_id = c.id AND ct.language_id = 1
+                    WHERE ss2.student_id = {$studentId} AND ss2.is_active = 1
+                      AND c.kind = 'package'
+                      AND (c.teacher_id = {$tId} OR EXISTS (
+                          SELECT 1 FROM course_teachers ctt
+                          WHERE ctt.course_id = c.id AND ctt.teacher_id = {$tId} AND ctt.is_active = 1
+                      ))
+                    LIMIT 1
+                ");
+                $pkgRow = $pkgRes ? mysqli_fetch_assoc($pkgRes) : null;
+                $row['package_course_id'] = $pkgRow ? (int)$pkgRow['id'] : null;
+                $row['package_course_name'] = $pkgRow['name'] ?? null;
+
                 $students[] = format_response_images($row);
             }
         }

@@ -769,6 +769,40 @@ if (!function_exists('get_course_teachers_details')) {
     }
 }
 
+/**
+ * A course's teachers, from BOTH places one can be attached: the single `courses.teacher_id`
+ * column, and the `course_teachers` link table used for co-teaching. Reading only one of the two
+ * silently drops a real teacher whenever a course only used the other - which is exactly what
+ * happened to the package-scheduling flow: a package assigned solely through `course_teachers`
+ * came back with no teacher at all when only `teacher_id` was read.
+ */
+if (!function_exists('course_all_teachers')) {
+    function course_all_teachers($con, int $courseId): array {
+        if ($courseId <= 0) return [];
+
+        $stmt = mysqli_prepare($con, "
+            SELECT DISTINCT t.id, t.name, t.email, t.image, t.specialization
+            FROM teachers t
+            WHERE t.is_active = 1 AND (
+                t.id = (SELECT teacher_id FROM courses WHERE id = ? AND teacher_id IS NOT NULL)
+                OR t.id IN (SELECT teacher_id FROM course_teachers WHERE course_id = ? AND is_active = 1)
+            )
+            ORDER BY t.id ASC
+        ");
+        if (!$stmt) return [];
+        mysqli_stmt_bind_param($stmt, "ii", $courseId, $courseId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $teachers = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $row['id'] = (int)$row['id'];
+            $teachers[] = format_response_images($row);
+        }
+        return $teachers;
+    }
+}
+
 if (!function_exists('get_course_created_by_details')) {
     function get_course_created_by_details($con, ?string $type, ?int $id) {
         $type = strtolower($type ?: 'admin');

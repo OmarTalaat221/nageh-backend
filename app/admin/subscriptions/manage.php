@@ -606,11 +606,22 @@ if (!function_exists('get_student_subscription_details')) {
         $row['teachers'] = $teachers;
 
         $courses = [];
-        $cRes = mysqli_query($con, "SELECT c.id, c.slug, c.price, c.kind, c.image, ct.name FROM student_subscription_courses ssc JOIN courses c ON ssc.course_id = c.id LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1 WHERE ssc.student_subscription_id = {$subId}");
+        // The course's FULL teacher list (course_all_teachers - both the primary teacher_id
+        // column and the course_teachers link table) is what lets the admin jump straight from
+        // this subscription into scheduling the student's sessions: one teacher auto-selects
+        // itself, several are offered as a real choice instead of silently picking the wrong one.
+        $cRes = mysqli_query($con, "
+            SELECT c.id, c.slug, c.price, c.kind, c.image, ct.name
+            FROM student_subscription_courses ssc
+            JOIN courses c ON ssc.course_id = c.id
+            LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = 1
+            WHERE ssc.student_subscription_id = {$subId}
+        ");
         if ($cRes) {
             while ($cRow = mysqli_fetch_assoc($cRes)) {
                 $cRow['id'] = (int)$cRow['id'];
                 $cRow['price'] = (float)$cRow['price'];
+                $cRow['teachers'] = course_all_teachers($con, $cRow['id']);
                 $courses[] = format_response_images($cRow);
             }
         }
