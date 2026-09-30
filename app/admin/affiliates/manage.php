@@ -419,7 +419,9 @@ if (!function_exists('adminGetPointsSettings')) {
                 'redeem_enabled' => $rules['redeem_enabled'] ? 1 : 0,
                 'min_redeem' => $rules['min_redeem'],
                 'base_currency' => pricing_base_currency($con),
-                'currency_values' => $values,
+                // Sorted so the currencies this platform sells in are on the first page rather
+                // than alphabetically behind the Afghani and the Armenian dram.
+                'currency_values' => points_sort_currencies($values),
             ],
         ];
     }
@@ -576,5 +578,109 @@ if (!function_exists('adminSetAffiliateRule')) {
         $row['uses_platform_default'] = $row['commission_value'] <= 0;
 
         return ['status' => 'success', 'message' => trans('saved_successfully') ?: 'Saved', 'data' => $row];
+    }
+}
+
+if (!function_exists('adminGetStudentPointsLedger')) {
+    /**
+     * Everything that has ever happened to one student's points.
+     *
+     * The admin could see a balance - a single number with no story behind it - and could deduct
+     * from it. Where it came from, what was spent and when, and whether anything was refunded were
+     * all invisible, which makes a disputed balance impossible to answer.
+     */
+    function adminGetStudentPointsLedger($con) {
+        $studentId = (int)($_GET['student_id'] ?? $_GET['id'] ?? 0);
+        if ($studentId <= 0) {
+            return ['status' => 'error', 'message' => 'student_id is required'];
+        }
+
+        $student = mysqli_fetch_assoc(mysqli_query($con,
+            "SELECT id, name, email, phone, points_balance FROM students WHERE id = {$studentId} LIMIT 1"));
+        if (!$student) {
+            return ['status' => 'error', 'message' => 'Student not found'];
+        }
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
+        $offset = ($page - 1) * $limit;
+        $type = trim($_GET['type'] ?? '');
+
+        $where = ["t.student_id = {$studentId}"];
+        if (in_array($type, ['earn_referral_purchase', 'redeem', 'refund', 'admin_adjustment'], true)) {
+            $where[] = "t.type = '" . mysqli_real_escape_string($con, $type) . "'";
+        }
+        $whereClause = "WHERE " . implode(" AND ", $where);
+
+        $totalRecords = (int)(mysqli_fetch_assoc(mysqli_query($con,
+            "SELECT COUNT(*) AS total FROM student_point_transactions t {$whereClause}"))['total'] ?? 0);
+
+        // Earned and spent are summed over EVERY row, not the page, so the totals do not change
+        // as the admin pages through the history.
+        $totals = mysqli_fetch_assoc(mysqli_query($con, "
+            SELECT COALESCE(SUM(CASE WHEN points > 0 THEN points END), 0) AS earned,
+                   COALESCE(SUM(CASE WHEN points < 0 THEN -points END), 0) AS spent
+            FROM student_point_transactions t WHERE t.student_id = {$studentId}"));
+
+        $res = mysqli_query($con, "
+            SELECT t.id, t.points, t.type, t.reference_type, t.reference_id, t.referred_student_id,
+                   t.description, t.created_at, ref.name AS referred_name
+            FROM student_point_transactions t
+            LEFT JOIN students ref ON ref.id = t.referred_student_id
+            {$whereClause}
+            ORDER BY t.id DESC
+            LIMIT {$limit} OFFSET {$offset}");
+
+        $items = [];
+        if ($res) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                $items[] = [
+                    'id' => (int)$row['id'],
+                    'points' => (float)$row['points'],
+                    'type' => $row['type'],
+                    'reference_type' => $row['reference_type'],
+                    'reference_id' => $row['reference_id'] ? (int)$row['reference_id'] : null,
+                    'referred_student_id' => $row['referred_student_id'] ? (int)$row['referred_student_id'] : null,
+                    'referred_name' => $row['referred_name'],
+                    'description' => $row['description'],
+                    'created_at' => $row['created_at'],
+                ];
+            }
+        }
+
+        // What the balance is worth, in each currency points can actually be spent in.
+        $valueRows = [];
+        $vRes = mysqli_query($con, "
+            SELECT p.currency_code, p.point_value, c.symbol_ar, c.symbol_en, c.decimal_digits
+            FROM point_currency_values p
+            JOIN currencies c ON c.code = p.currency_code AND c.is_active = 1
+            WHERE p.is_active = 1 AND p.point_value > 0");
+        if ($vRes) {
+            while ($row = mysqli_fetch_assoc($vRes)) {
+                $digits = (int)$row['decimal_digits'];
+                $valueRows[] = [
+                    'currency_code' => $row['currency_code'],
+                    'symbol' => $row['symbol_ar'] ?: $row['symbol_en'],
+                    'point_value' => (float)$row['point_value'],
+                    'balance_worth' => round((float)$student['points_balance'] * (float)$row['point_value'], $digits),
+                ];
+            }
+        }
+
+        $response = build_admin_paginated_response($items, $page, $limit, $totalRecords, [
+            'earned' => round((float)$totals['earned'], 2),
+            'spent' => round((float)$totals['spent'], 2),
+        ]);
+
+        $response['student'] = [
+            'id' => (int)$student['id'],
+            'name' => $student['name'],
+            'email' => $student['email'],
+            'phone' => $student['phone'],
+            'points_balance' => (float)$student['points_balance'],
+        ];
+        $response['balance_values'] = points_sort_currencies($valueRows);
+
+        return $response;
     }
 }

@@ -219,8 +219,110 @@ if (!function_exists('points_refund')) {
     }
 }
 
+if (!function_exists('points_currency_rank')) {
+    /**
+     * The order currencies appear in on the points screen.
+     *
+     * Alphabetical put Afghanis and Armenian drams above the Egyptian pound, so the two currencies
+     * this platform actually sells in were on page 2 of 15. The dollar leads because it is the base
+     * currency, then the Arab currencies, then the ones the rest of the world is priced in, then
+     * everything else alphabetically.
+     */
+    function points_currency_rank(string $code): int {
+        static $order = null;
+        if ($order === null) {
+            $order = [];
+            $rank = 0;
+            foreach ([
+                // The base currency, first because every other figure is reasoned against it.
+                'USD',
+                // Arab currencies.
+                'EGP', 'SAR', 'AED', 'KWD', 'QAR', 'BHD', 'OMR', 'JOD', 'LBP', 'SYP',
+                'IQD', 'YER', 'LYD', 'TND', 'DZD', 'MAD', 'SDG', 'MRU', 'SOS', 'DJF', 'KMF',
+                // The rest of the world's major ones.
+                'EUR', 'GBP', 'TRY', 'CHF', 'CNY', 'JPY', 'CAD', 'AUD', 'INR', 'RUB', 'PKR',
+            ] as $c) {
+                $order[$c] = $rank++;
+            }
+        }
+
+        // Everything unlisted sorts after the lot, and alphabetically among itself.
+        return $order[strtoupper($code)] ?? 9999;
+    }
+}
+
+if (!function_exists('points_sort_currencies')) {
+    function points_sort_currencies(array $rows, string $key = 'currency_code'): array {
+        usort($rows, function ($a, $b) use ($key) {
+            $ra = points_currency_rank((string)($a[$key] ?? ''));
+            $rb = points_currency_rank((string)($b[$key] ?? ''));
+            if ($ra !== $rb) return $ra <=> $rb;
+            return strcmp((string)($a[$key] ?? ''), (string)($b[$key] ?? ''));
+        });
+        return $rows;
+    }
+}
+
 if (!function_exists('app_points_text')) {
     function app_points_text($con, string $ar, string $en): string {
         return strtolower(get_request_lang($con)) === 'en' ? $en : $ar;
+    }
+}
+
+if (!function_exists('student_points_value_summary')) {
+    /**
+     * What a balance is worth, for the student's own screen.
+     *
+     * Their own country's currency leads, because that is the number that means something to
+     * them; the others follow for a student who buys in more than one. `redeem_enabled` and
+     * `min_redeem` come along so the page can say what is possible rather than only what is held.
+     */
+    function student_points_value_summary($con, float $balance, int $studentId = 0): array {
+        $rules = points_rules($con);
+
+        $preferred = '';
+        if (function_exists('pricing_context')) {
+            // Resolved for wherever the student is, the same way a course price is. The context
+            // carries the currency as an array, not a bare code.
+            $context = @pricing_context($con, $studentId);
+            $preferred = strtoupper((string)($context['currency']['code'] ?? ''));
+        }
+        if ($preferred === '') $preferred = strtoupper(pricing_base_currency($con));
+
+        $rows = [];
+        $res = mysqli_query($con, "
+            SELECT p.currency_code, p.point_value, c.symbol_ar, c.symbol_en, c.decimal_digits
+            FROM point_currency_values p
+            JOIN currencies c ON c.code = p.currency_code AND c.is_active = 1
+            WHERE p.is_active = 1 AND p.point_value > 0");
+        if ($res) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                $digits = (int)$row['decimal_digits'];
+                $rows[] = [
+                    'currency_code' => $row['currency_code'],
+                    'symbol' => $row['symbol_ar'] ?: $row['symbol_en'],
+                    'point_value' => (float)$row['point_value'],
+                    'balance_worth' => round($balance * (float)$row['point_value'], $digits),
+                ];
+            }
+        }
+
+        $rows = points_sort_currencies($rows);
+
+        // The student's own currency first, whatever the global order says.
+        usort($rows, function ($a, $b) use ($preferred) {
+            $pa = $a['currency_code'] === $preferred ? 0 : 1;
+            $pb = $b['currency_code'] === $preferred ? 0 : 1;
+            if ($pa !== $pb) return $pa <=> $pb;
+            return points_currency_rank($a['currency_code']) <=> points_currency_rank($b['currency_code']);
+        });
+
+        return [
+            'redeem_enabled' => $rules['redeem_enabled'] ? 1 : 0,
+            'min_redeem' => $rules['min_redeem'],
+            // Null when points are worth nothing anywhere - which is different from being worth 0.
+            'primary' => $rows[0] ?? null,
+            'all' => $rows,
+        ];
     }
 }

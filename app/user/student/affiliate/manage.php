@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../../helpers/functions.php';
 require_once __DIR__ . '/../../../../helpers/language.php';
 require_once __DIR__ . '/../../../../helpers/notifications.php';
+require_once __DIR__ . '/../../../../helpers/points.php';
 
 if (!function_exists('ensure_affiliate_commissions_extended_columns')) {
     function ensure_affiliate_commissions_extended_columns($con): void {
@@ -284,6 +285,10 @@ if (!function_exists('studentGetAffiliateInfo')) {
                 'affiliate_code' => $affiliateCode,
                 'share_link' => $shareLink,
                 'points_balance' => (float)$student['points_balance'],
+                // What the balance is actually worth, and where it can be spent. Without this the
+                // page said "80 points" and nothing else, so a student had to start a purchase
+                // before discovering their points meant anything at all.
+                'points_value' => student_points_value_summary($con, (float)$student['points_balance'], (int)$student['id']),
                 'total_referred_students' => count($referredStudents),
                 'referred_students' => $referredStudents,
                 'affiliate_requests' => $commissions

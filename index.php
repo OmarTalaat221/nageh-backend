@@ -6207,6 +6207,17 @@ $routes = [
             },
         ],
         [
+            // Everything that has ever happened to one student's points, with the balance's worth.
+            "method" => "GET",
+            "path" => "/najeh/admin/students/points",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/affiliates/manage.php";
+                adminAuthMiddleware();
+                return adminGetStudentPointsLedger($con);
+            },
+        ],
+        [
             // One referral code's own earning rule, overriding the platform default.
             "method" => "PUT",
             "path" => "/najeh/admin/affiliates/rule",
