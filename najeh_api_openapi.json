@@ -8525,7 +8525,7 @@
         "tags": [
           "Admin / Consultations (NEW - update-2)"
         ],
-        "summary": "update-2 (NEW): Admin creates a repeating weekly consultation slot on behalf of any teacher",
+        "summary": "update-2 (NEW), update-4 (ENHANCED): Admin creates a repeating weekly consultation slot on behalf of any teacher - optionally already booked for one student",
         "description": "update-2 (Admin): identical behavior and validation to POST /teacher/consultations/recurring (same shared core function under the hood, so the two routes cannot drift out of sync), except the target teacher is chosen by the admin via `teacher_id` in the body instead of being taken from the caller's own auth token. Returns an error if teacher_id doesn't reference an existing teacher.\n\nupdate-4: accepts an optional `student_id`. With it, the whole run is created already booked for that student and both sides get one summary notification; the response then also carries `booked_for_student_id` and `booked_count`. Without it, nothing changes.",
         "security": [
           {
@@ -11396,7 +11396,7 @@
         "tags": [
           "Student / Exams"
         ],
-        "summary": "update-3: List exams available to the student - defaults to WHOLE-COURSE exams only when filtering by course_id; unit exams are opt-in",
+        "summary": "update-3, update-4 (ENHANCED): List exams available to the student - now includes STANDALONE exams (no course/unit/subject) offered to every student, with `is_public` and `has_time_limit` on every row",
         "description": "Every exam in the system always has a non-null `course_id` (the creation UI requires picking a course first, whether the exam is a whole-course exam or a unit exam - `unit_id` is only set for the latter, on top of the same course_id). Because of that, this endpoint treats `course_id` requests differently depending on `include_unit_exams` - READ THIS BEFORE CALLING IT WITH course_id:\n\n1) `course_id` ALONE (default, `include_unit_exams` unset/`0`/`false`) -> returns ONLY whole-course exams for that course (`unit_id IS NULL`). Unit exams belonging to that course are DELIBERATELY excluded - this is the default precisely so a course-details screen doesn't unexpectedly show unit exams mixed in with the course's own exam.\n2) `course_id` + `unit_id` -> returns exams for that ONE specific unit only (existing, unchanged behavior) - `include_unit_exams` is ignored in this case.\n3) `course_id` + `include_unit_exams=1` (alias: `with_unit_exams=1`) -> returns the COMBINED list: the whole-course exam(s) AND every unit exam under that course, mixed together in one array. Use this for an aggregated 'all exams in this course' screen/tab - each item still carries its own `unit_id`/`unit` object (null for the whole-course ones) so the client can group or label them.\n4) `course_id` + `include_unit_exams=only` -> returns UNIT EXAMS ONLY for that course (`unit_id IS NOT NULL`), EXCLUDING the whole-course exam(s) entirely. Use this for a screen that lists only per-unit exams, with no whole-course exam mixed in.\n\n`unit_id` alone (no course_id) and `subject_id` alone keep their original, unrelated behavior - filtering directly on that column, unaffected by any of the above.\n\nAccess control (unrelated to the scoping above): an exam is only returned if the student is subscribed to its subject or its course - a student with no subscriptions at all gets an empty list immediately, before any of the filters run.\n\nupdate-4 (SORTING): results are now explicitly ordered - previously this endpoint had NO ORDER BY at all, so the order was undefined (effectively storage-engine dependent) and could silently change between calls. The default is now NEWEST FIRST (by `created_at` then `id`, descending). Use the `sort` parameter to reverse it.\n\nupdate-4 (VISIBILITY): only exams with `is_active` (= `show_to_students`) equal to 1 are ever returned here - an exam an admin or teacher has hidden via PUT /admin/exams or PUT /teacher/exams (`is_active: 0`) disappears from this list immediately and unconditionally, regardless of any other filter in this request.\n\nSTANDALONE EXAMS: an exam with no course, no unit and no subject is returned to EVERY student, including one with no subscriptions at all, and carries is_public = 1. has_time_limit = 0 means duration_minutes is 0 and the exam has no countdown.",
         "security": [
           {
@@ -16647,6 +16647,854 @@
         },
         "403": {
           "description": "The admin does not hold manage_consultations."
+        }
+      }
+    },
+    "/admin/points/settings": {
+      "get": {
+        "tags": [
+          "Admin / Points & Referrals (NEW - update-4)"
+        ],
+        "summary": "update-4 (NEW): Read the referral commission rule and what a point is worth per currency",
+        "description": "Returns the platform-wide referral earning rule (`commission_type`: percent|fixed, `commission_value`), the redemption switches (`redeem_enabled`, `min_redeem`), the base currency, and `currency_values` - one row per active currency with its `point_value` (null when nobody has priced points in that currency yet, which is different from zero) - so a currency with no rate correctly refuses points rather than guessing 1:1.\n\nThe currency list is ordered base currency first, then Arab currencies, then major world currencies, then the rest alphabetically - not alphabetical, which used to put the Afghani and the Armenian dram ahead of the Egyptian pound and the Saudi riyal.\n\nRequires only an admin session; no specific permission is checked (matches the reading side of most settings screens).",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = { commission_type, commission_value, redeem_enabled, min_redeem, base_currency, currency_values: [{currency_code, name_ar, name_en, symbol, decimal_digits, point_value, is_active}] }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token, or the admin is inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin / Points & Referrals (NEW - update-4)"
+        ],
+        "summary": "update-4 (NEW, SUPER ADMIN ONLY): Change the referral rule, the redemption switches, and per-currency point values",
+        "description": "Body (all optional; only the keys sent are changed): `commission_type` (percent|fixed), `commission_value` (a percent over 100 is refused), `redeem_enabled` (0|1), `min_redeem`, and `currency_values` - a list of `{currency_code, point_value, is_active}`. Sending an empty `point_value` for a currency deactivates points there rather than storing a zero rate, which would mean something different (points spendable for nothing) from points not being spendable at all.\n\nGated by `requireSuperAdmin()`, which reads `admins.role` from the database rather than trusting the token - the same lock used on editing what a subscription contains, for the same reason: changing what a referral is worth, or what a point buys, moves money without a trace in any payment record.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "commission_type": {
+                    "type": "string",
+                    "enum": [
+                      "percent",
+                      "fixed"
+                    ]
+                  },
+                  "commission_value": {
+                    "type": "number"
+                  },
+                  "redeem_enabled": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "min_redeem": {
+                    "type": "number"
+                  },
+                  "currency_values": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "currency_code": {
+                          "type": "string",
+                          "example": "EGP"
+                        },
+                        "point_value": {
+                          "type": "number",
+                          "nullable": true,
+                          "description": "Omit or send empty to deactivate points in this currency."
+                        },
+                        "is_active": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": "{\n  \"commission_type\": \"percent\",\n  \"commission_value\": 10,\n  \"redeem_enabled\": 1,\n  \"min_redeem\": 50,\n  \"currency_values\": [\n    {\"currency_code\": \"EGP\", \"point_value\": 1, \"is_active\": 1},\n    {\"currency_code\": \"SAR\", \"point_value\": 0.25, \"is_active\": 1}\n  ]\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved. Response body is identical in shape to GET /admin/points/settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "commission_type not percent/fixed, a negative value, or a percentage over 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller is not a super admin - checked against `admins.role` in the database, not the token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/affiliates/rule": {
+      "put": {
+        "tags": [
+          "Admin / Points & Referrals (NEW - update-4)"
+        ],
+        "summary": "update-4 (NEW, SUPER ADMIN ONLY): Give one referral code its own commission rule",
+        "description": "Body: `affiliate_id` (required), `commission_type` (percent|fixed) and `commission_value`. Overrides the platform default from GET/PUT /admin/points/settings for this one code only.\n\nSending an empty `commission_value` clears the override and puts the code back on the platform default - `commission_value = 0.00` is how every code has looked since the table was created (written once at insert time and never read by anything before update-4), so a zero is treated as \"no rule set\" rather than \"deliberately worth zero\".\n\nSuper-admin only, for the same reason as PUT /admin/points/settings.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "affiliate_id"
+                ],
+                "properties": {
+                  "affiliate_id": {
+                    "type": "integer"
+                  },
+                  "commission_type": {
+                    "type": "string",
+                    "enum": [
+                      "percent",
+                      "fixed"
+                    ]
+                  },
+                  "commission_value": {
+                    "type": "number",
+                    "nullable": true,
+                    "description": "Empty/omitted clears the override."
+                  }
+                }
+              },
+              "example": "{\n  \"affiliate_id\": 12,\n  \"commission_type\": \"fixed\",\n  \"commission_value\": 7\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`data` = {id, affiliate_code, commission_type, commission_value, uses_platform_default}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing affiliate_id, unknown code, a negative value, or a percentage over 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a super admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/students/points": {
+      "get": {
+        "tags": [
+          "Admin / Points & Referrals (NEW - update-4)"
+        ],
+        "summary": "update-4 (NEW): One student's whole points history",
+        "description": "Query: `student_id` (required), `type` (earn_referral_purchase|redeem|refund|admin_adjustment, optional), `page`, `limit`.\n\nBefore this, the admin could see a balance and deduct from it, with no record anywhere of what produced it - which makes a disputed balance unanswerable. Returns the student's basic info and current balance, every movement paginated (each carrying its `type`, the referred student where there is one, a description and a date), `earned` and `spent` TOTALLED OVER EVERY ROW rather than just the current page, and `balance_values` - what the current balance is worth in each currency it can actually be spent in.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "earn_referral_purchase",
+                "redeem",
+                "refund",
+                "admin_adjustment"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = paginated movements; `student` = {id, name, email, phone, points_balance}; `statistics` = {earned, spent}; `balance_values` = [{currency_code, symbol, point_value, balance_worth}].",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or unknown student_id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "update-4 (NEW): Export teacher wallet balances to .xlsx",
+        "description": "One row per teacher: current balance, total credited and total deducted (SUMMED FROM THE LEDGER rather than read off the cached `teachers.wallet_balance`, so the sheet shows how the balance was arrived at), the number of deductions, and the pay model/rate. Honours the same `search` as GET /admin/teacher-wallets. Requires `manage_wallets`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file, right-to-left when Accept-Language/`lang` resolves to Arabic.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/teacher-wallets/transactions/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "update-4 (NEW): Export every wallet movement to .xlsx",
+        "description": "Every row of `teacher_wallet_transactions` - THIS IS WHERE THE AUTOMATIC LATENESS AND ABSENCE DEDUCTIONS LIVE. A `By` column reads Automatic / Admin / Teacher from `created_by_type`, so a deduction the platform applied on its own is distinguishable from one an admin typed in by hand. Filters: `teacher_id`, `type` (earning|fine|refund|adjustment), `from`, `to` (dates). Requires `manage_wallets`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacher_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "earning",
+                "fine",
+                "refund",
+                "adjustment"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file, right-to-left when Accept-Language/`lang` resolves to Arabic.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/deduction-appeals/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "update-4 (NEW): Export teacher deduction appeals to .xlsx",
+        "description": "Each appeal beside the wallet deduction it disputes: the deducted amount and reason, the appeal reason, its status, the admin note, and both dates. Filter: `status` (pending|approved|rejected). Requires `manage_wallets`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file, right-to-left when Accept-Language/`lang` resolves to Arabic.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/attendance/exceptions/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "update-4 (NEW): Export absence/lateness requests to .xlsx",
+        "description": "Absence-permission and late-notice requests for BOTH teachers and students - the requester name is resolved with two joins because the row may point at either table, so a single join would have blanked half the sheet. Filters: `status`, `requested_by_type` (teacher|student), `request_type` (absence_permission|late_notice). Requires `manage_attendance`.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "requested_by_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "teacher",
+                "student"
+              ]
+            }
+          },
+          {
+            "name": "request_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "absence_permission",
+                "late_notice"
+              ]
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file, right-to-left when Accept-Language/`lang` resolves to Arabic.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reports/export": {
+      "get": {
+        "tags": [
+          "Admin / Export (NEW)"
+        ],
+        "summary": "update-4 (NEW): Export student reports to .xlsx",
+        "description": "Student reports with score, max score, percentage, grade label and rating. Filters: `report_type`, `student_id`, `search`. Requires only an admin session, matching GET /admin/reports, which is not permission-gated either.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "student_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary .xlsx file, right-to-left when Accept-Language/`lang` resolves to Arabic.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscriptions/status": {
+      "put": {
+        "tags": [
+          "Admin / Subscriptions"
+        ],
+        "summary": "update-4 (NEW): Pause, resume, or cancel a student subscription",
+        "description": "Query: `id`. Body: `action` = pause|resume|cancel, optional `reason`. Gated on `manage_teachers`, same as the rest of the subscription routes.\n\nACCESS IS STILL DECIDED BY `is_active` AND `end_date` - the columns every downstream access check already reads. pause sets `is_active = 0`; resume sets `is_active = 1`; cancel sets `is_active = 0` AND `end_date = now`. Migration 081 adds `paused_at`, `cancelled_at`, `status_reason`, `status_changed_by` so a paused subscription and a cancelled one are distinguishable and both say who did it and why - cancelling is NOT a delete, the row stays.\n\nResuming a cancelled or expired subscription is refused with `error_code: subscription_expired` rather than reporting a success that changes nothing the student could see.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "pause",
+                      "resume",
+                      "cancel"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": "{\n  \"action\": \"pause\",\n  \"reason\": \"الطالب مسافر\"\n}"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated subscription, carrying the new `status` (active|paused|cancelled|expired), `status_reason`, `paused_at`, `cancelled_at`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing id/action, or `error_code: subscription_expired` when resuming a cancelled/expired subscription.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/search": {
+      "get": {
+        "tags": [
+          "Admin / Search (NEW - update-4)"
+        ],
+        "summary": "update-4 (NEW): Search across the whole admin dashboard",
+        "description": "Query: `q` (required, at least 2 characters), `limit` (results per group, optional). Returns results grouped by type across students, teachers, parents, courses, packages, books, subjects, grades and exams; each item carries `id`, `title`, `subtitle`, `image`, `is_active` and `link` - the dashboard path that opens it.\n\nThe route itself requires only an admin session; each GROUP inside is gated on the permission of the screen it links to, so results never expose more than this admin could already reach by opening those pages themselves. Courses and packages share one table (split on `kind`) and never overlap between the two groups. `%` and `_` in `q` are escaped before reaching LIKE.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Per-group result limit."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` grouped by type, each group only present if this admin holds the permission for the screen it links to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "q missing or shorter than 2 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/permissions": {
+      "get": {
+        "tags": [
+          "Admin / Roles & Permissions"
+        ],
+        "summary": "update-4 (CHANGED): List assignable permissions - now filtered to what the dashboard actually has a screen for",
+        "description": "Migration 082 added `permissions.is_visible`. This endpoint now returns only VISIBLE permissions - the twelve dotted legacy codes (`courses.manage`, `students.manage`, ...) and the two nonexistent-screen codes (`manage_schools`, `manage_school_types`) are hidden from this list without being revoked from any admin who already holds them. Nine new permissions exist as of the same migration: `manage_packages`, `manage_exams`, `manage_certificates`, `manage_subscriptions`, `manage_sessions`, `manage_consultations`, `manage_attendance`, `manage_wallets`, `manage_hr` - split out of what `manage_teachers` used to gate alone (92 routes, seventeen sidebar sections). Guarded on migration 082 having been applied.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data` = visible permissions only, each with an Arabic name matching its sidebar label.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/cities": {
+      "get": {
+        "tags": [
+          "Admin / Cities"
+        ],
+        "summary": "update-4 (FIXED): List cities - the search box now actually searches",
+        "description": "Query: `search`/`q`/`query`, `page`, `limit`. Before this fix, the parameter was accepted and silently ignored - every keystroke returned every city, unfiltered, and `pagination.total_records` never moved. It now matches the city's own `code` and its translated `name`, exactly like every other searchable list.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`pagination.total_records` now reflects the search; `statistics.total_count` stays platform-wide by design.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/affiliate/info": {
+      "get": {
+        "tags": [
+          "Student / Affiliate & Points (NEW - update-4)"
+        ],
+        "summary": "update-4 (CHANGED): My referral code and points balance - now priced",
+        "description": "Returns `affiliate_code`, `share_link`, `points_balance`, referred students and commission requests, exactly as before, PLUS `points_value` = { redeem_enabled, min_redeem, primary, all }. `primary` is the balance priced in the student's own currency (resolved the same way a course price is); `all` lists every currency points can be spent in. `primary` is `null`, not zero, when no currency has a rate set yet - those mean different things, and the client should show 'points saved, redeemable once a value is set' rather than a value nobody has set.",
+        "security": [
+          {
+            "StudentAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`data.points_value` added; every other field unchanged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
         }
       }
     }
