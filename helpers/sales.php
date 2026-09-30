@@ -215,6 +215,167 @@ if (!function_exists('sales_aggregate_books')) {
     }
 }
 
+/**
+ * The individual sales behind one course/package's aggregate number - who bought it, through
+ * which channel, when, and for how much. Same four channels as sales_aggregate_courses(), just
+ * kept as separate rows instead of summed into one.
+ */
+if (!function_exists('sales_course_transactions')) {
+    function sales_course_transactions($con, int $courseId, ?string $dateFrom, ?string $dateTo): array {
+        $rows = [];
+
+        $onlineDate = sales_date_filter('COALESCE(pt.paid_at, pt.created_at)', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT pt.id, pt.student_id, pt.amount, COALESCE(pt.paid_at, pt.created_at) AS occurred_at,
+                   pt.easykash_ref AS reference, pt.payment_method
+            FROM payment_transactions pt
+            WHERE pt.status = 'paid' AND pt.item_type = 'course' AND pt.item_id = {$courseId} {$onlineDate}
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'online_payment',
+                'source_label_ar' => 'دفع إلكتروني',
+                'source_label_en' => 'Online payment',
+                'student_id' => (int)$row['student_id'],
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'] ?: ($row['payment_method'] ?? null),
+            ];
+        }
+
+        $codeDate = sales_date_filter('r.redeemed_at', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT r.id, r.student_id, r.redeemed_at AS occurred_at, sc.code AS reference,
+                   sc.price / GREATEST((SELECT COUNT(*) FROM subscription_code_courses WHERE subscription_code_id = sc.id), 1) AS amount
+            FROM code_redemptions_log r
+            JOIN subscription_codes sc ON sc.id = r.subscription_code_id
+            JOIN subscription_code_courses scc ON scc.subscription_code_id = sc.id AND scc.course_id = {$courseId}
+            WHERE 1 = 1 {$codeDate}
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'subscription_code',
+                'source_label_ar' => 'كود اشتراك',
+                'source_label_en' => 'Subscription code',
+                'student_id' => (int)$row['student_id'],
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'],
+            ];
+        }
+
+        $offlineDate = sales_date_filter('COALESCE(opr.reviewed_at, opr.created_at)', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT opr.id, opr.student_id, opr.amount, COALESCE(opr.reviewed_at, opr.created_at) AS occurred_at,
+                   opr.sender_reference AS reference
+            FROM offline_payment_requests opr
+            WHERE opr.status = 'approved' AND opr.item_type = 'course' AND opr.item_id = {$courseId} {$offlineDate}
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'offline_payment',
+                'source_label_ar' => 'دفع يدوي (تحويل بنكي)',
+                'source_label_en' => 'Offline (bank transfer)',
+                'student_id' => (int)$row['student_id'],
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'],
+            ];
+        }
+
+        $legacyDate = sales_date_filter('COALESCE(tr.paid_at, tr.created_at)', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT ti.id, tr.student_id, ti.total_amount AS amount, COALESCE(tr.paid_at, tr.created_at) AS occurred_at,
+                   tr.transaction_code AS reference
+            FROM transaction_items ti
+            JOIN transactions tr ON tr.id = ti.transaction_id
+            WHERE tr.direction = 'incoming' AND tr.status = 'paid' AND ti.item_type = 'course' AND ti.item_id = {$courseId} {$legacyDate}
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'legacy_transaction',
+                'source_label_ar' => 'معاملة قديمة',
+                'source_label_en' => 'Legacy transaction',
+                'student_id' => $row['student_id'] ? (int)$row['student_id'] : 0,
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'],
+            ];
+        }
+
+        usort($rows, fn($a, $b) => strcmp((string)$b['occurred_at'], (string)$a['occurred_at']));
+
+        foreach ($rows as &$row) {
+            $student = $row['student_id'] > 0 ? get_student_details($con, $row['student_id']) : null;
+            $row['student_name'] = $student['name'] ?? null;
+            $row['student_image'] = $student['image'] ?? null;
+            $row['amount'] = round($row['amount'], 2);
+        }
+        unset($row);
+
+        return $rows;
+    }
+}
+
+if (!function_exists('sales_book_transactions')) {
+    function sales_book_transactions($con, int $bookId, ?string $dateFrom, ?string $dateTo): array {
+        $rows = [];
+
+        $onlineDate = sales_date_filter('COALESCE(pt.paid_at, pt.created_at)', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT pt.id, pt.student_id, pt.amount, COALESCE(pt.paid_at, pt.created_at) AS occurred_at,
+                   pt.easykash_ref AS reference, pt.payment_method
+            FROM payment_transactions pt
+            WHERE pt.status = 'paid' AND pt.item_type = 'book' AND pt.item_id = {$bookId} {$onlineDate}
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'online_payment',
+                'source_label_ar' => 'دفع إلكتروني',
+                'source_label_en' => 'Online payment',
+                'student_id' => (int)$row['student_id'],
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'] ?: ($row['payment_method'] ?? null),
+            ];
+        }
+
+        $manualDate = sales_date_filter('sbs.created_at', $dateFrom, $dateTo);
+        foreach (dashboard_fetch_all($con, "
+            SELECT sbs.id, sbs.student_id, sbs.price AS amount, sbs.created_at AS occurred_at,
+                   sbs.granted_by_type AS reference
+            FROM student_book_subscriptions sbs
+            WHERE sbs.price > 0 AND sbs.book_id = {$bookId} {$manualDate} AND NOT EXISTS (
+                SELECT 1 FROM payment_transactions pt2
+                WHERE pt2.status = 'paid' AND pt2.item_type = 'book' AND pt2.granted_ref_id = sbs.id
+            )
+            ORDER BY occurred_at DESC
+        ") as $row) {
+            $rows[] = [
+                'source' => 'offline_payment',
+                'source_label_ar' => 'منح يدوي / دفع يدوي',
+                'source_label_en' => 'Manual grant / offline payment',
+                'student_id' => (int)$row['student_id'],
+                'amount' => (float)$row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'reference' => $row['reference'],
+            ];
+        }
+
+        usort($rows, fn($a, $b) => strcmp((string)$b['occurred_at'], (string)$a['occurred_at']));
+
+        foreach ($rows as &$row) {
+            $student = $row['student_id'] > 0 ? get_student_details($con, $row['student_id']) : null;
+            $row['student_name'] = $student['name'] ?? null;
+            $row['student_image'] = $student['image'] ?? null;
+            $row['amount'] = round($row['amount'], 2);
+        }
+        unset($row);
+
+        return $rows;
+    }
+}
+
 if (!function_exists('sales_paginate')) {
     function sales_paginate(array $rows, int $page, int $limit): array {
         $total = count($rows);

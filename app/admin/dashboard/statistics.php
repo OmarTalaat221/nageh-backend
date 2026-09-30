@@ -325,7 +325,7 @@ if (!function_exists('dashboard_course_sales')) {
         $ids = implode(',', array_map('intval', array_keys($top)));
         $courses = [];
         foreach (dashboard_fetch_all($con, "
-            SELECT c.id, c.price, c.image, c.is_active, COALESCE(ct.name, c.slug) AS name
+            SELECT c.id, c.kind, c.price, c.image, c.is_active, COALESCE(ct.name, c.slug) AS name
             FROM courses c
             LEFT JOIN courses_translations ct ON ct.course_id = c.id AND ct.language_id = {$langId}
             WHERE c.id IN ({$ids})
@@ -339,6 +339,7 @@ if (!function_exists('dashboard_course_sales')) {
             $out[] = [
                 'course_id' => $courseId,
                 'name' => $course['name'] ?? ('#' . $courseId),
+                'kind' => $course['kind'] ?? 'normal',
                 'image' => $course['image'] ?? null,
                 'price' => isset($course['price']) ? (float)$course['price'] : null,
                 'is_active' => isset($course['is_active']) ? (int)$course['is_active'] : null,

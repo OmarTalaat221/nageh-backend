@@ -4266,6 +4266,17 @@ $routes = [
         ],
         [
             "method" => "GET",
+            "path" => "/najeh/admin/sales/items/show",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/sales/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'view_sales');
+                return adminSalesItemDetail($con);
+            },
+        ],
+        [
+            "method" => "GET",
             "path" => "/najeh/admin/sales/trend",
             "handler" => function ($con) {
                 include_once "./middlewares/adminauthmiddleware.php";

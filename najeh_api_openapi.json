@@ -1716,6 +1716,51 @@
             "description": "Admin-dashboard route to open this item."
           }
         }
+      },
+      "SalesTransaction": {
+        "type": "object",
+        "description": "One individual sale behind an item's aggregate revenue on the Sales list.",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "online_payment",
+              "subscription_code",
+              "offline_payment",
+              "legacy_transaction"
+            ]
+          },
+          "source_label_ar": {
+            "type": "string"
+          },
+          "source_label_en": {
+            "type": "string"
+          },
+          "student_id": {
+            "type": "integer"
+          },
+          "student_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "student_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "float"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "description": "Whatever identifies this specific sale in its own channel - a payment reference, a subscription code, a bank transfer reference."
+          }
+        }
       }
     }
   },
@@ -17776,6 +17821,122 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/sales/items/show": {
+      "get": {
+        "tags": [
+          "Admin / Sales"
+        ],
+        "summary": "update-4 (NEW): Sales details for one course, package or book",
+        "description": "The drill-down a row on the Sales list was missing: which students bought THIS item, through which channel, and when - instead of opening the course's own content. Every channel counted in /admin/sales/items is broken out here as its own row rather than summed.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "course",
+                "package",
+                "book"
+              ],
+              "default": "course"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The course_id or book_id, matching `kind`."
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "item": {
+                      "type": "object",
+                      "description": "The item's own name/image, so the drawer can render a header without a second request."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SalesTransaction"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object"
+                    },
+                    "statistics": {
+                      "type": "object",
+                      "properties": {
+                        "sales_count": {
+                          "type": "integer"
+                        },
+                        "revenue": {
+                          "type": "number",
+                          "format": "float"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
