@@ -158,6 +158,9 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
         $unitId = (int)($_GET['unit_id'] ?? $_GET['unitId'] ?? $qsParams['unit_id'] ?? $qsParams['unitId'] ?? $body['unit_id'] ?? $body['unitId'] ?? $_REQUEST['unit_id'] ?? $_REQUEST['unitId'] ?? 0);
         $subjectId = (int)($_GET['subject_id'] ?? $_GET['subjectId'] ?? $qsParams['subject_id'] ?? $qsParams['subjectId'] ?? $body['subject_id'] ?? $body['subjectId'] ?? $_REQUEST['subject_id'] ?? $_REQUEST['subjectId'] ?? 0);
         $courseId = (int)($_GET['course_id'] ?? $_GET['courseId'] ?? $qsParams['course_id'] ?? $qsParams['courseId'] ?? $body['course_id'] ?? $body['courseId'] ?? $_REQUEST['course_id'] ?? $_REQUEST['courseId'] ?? 0);
+        $category = in_array(trim($_GET['category'] ?? $qsParams['category'] ?? $body['category'] ?? ''), ['summary', 'exam'], true)
+            ? trim($_GET['category'] ?? $qsParams['category'] ?? $body['category'])
+            : '';
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -165,6 +168,9 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
         $cbWhere = ["b.is_active = 1"];
         if ($unitId > 0) {
             $cbWhere[] = "b.unit_id = {$unitId}";
+        }
+        if ($category !== '') {
+            $cbWhere[] = "b.category = '{$category}'";
         }
         if ($courseId > 0) {
             $cbWhere[] = "(b.course_id = {$courseId} OR b.unit_id IN (SELECT id FROM units WHERE course_id = {$courseId}))";
@@ -187,7 +193,7 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
         $totalRecords = $countRes ? (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0) : 0;
 
         $finalSql = "
-            SELECT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.price, b.allow_download,
+            SELECT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.category, b.extension, b.link, b.file_path, b.price, b.allow_download,
                    b.created_by_type, b.created_by_id, b.is_active, b.created_at,
                    COALESCE(bt.title, b.file_path) AS title, bt.description, 'course_books' AS src_table
             FROM course_books b
@@ -229,6 +235,7 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
             $row['subject_id'] = $sId ?: null;
             $row['course_id'] = $cId ?: null;
             $row['is_active'] = (int)$row['is_active'];
+            $row['category'] = $row['category'] ?: 'summary';
 
             $isDirectSub = false;
             if ($stId > 0) {
@@ -309,6 +316,9 @@ if (!function_exists('studentGetMySubscribedBooks')) {
         $unitId = (int)($_GET['unit_id'] ?? $_GET['unitId'] ?? $qsParams['unit_id'] ?? $qsParams['unitId'] ?? $body['unit_id'] ?? $body['unitId'] ?? $_REQUEST['unit_id'] ?? $_REQUEST['unitId'] ?? 0);
         $subjectId = (int)($_GET['subject_id'] ?? $_GET['subjectId'] ?? $qsParams['subject_id'] ?? $qsParams['subjectId'] ?? $body['subject_id'] ?? $body['subjectId'] ?? $_REQUEST['subject_id'] ?? $_REQUEST['subjectId'] ?? 0);
         $courseId = (int)($_GET['course_id'] ?? $_GET['courseId'] ?? $qsParams['course_id'] ?? $qsParams['courseId'] ?? $body['course_id'] ?? $body['courseId'] ?? $_REQUEST['course_id'] ?? $_REQUEST['courseId'] ?? 0);
+        $category = in_array(trim($_GET['category'] ?? $qsParams['category'] ?? $body['category'] ?? ''), ['summary', 'exam'], true)
+            ? trim($_GET['category'] ?? $qsParams['category'] ?? $body['category'])
+            : '';
 
         $orConditions = [];
         if (!empty($courseIds)) {
@@ -345,6 +355,9 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             $sp = '%' . mysqli_real_escape_string($con, $search) . '%';
             $whereSearch .= " AND (bt.title LIKE '{$sp}' OR bt.description LIKE '{$sp}')";
         }
+        if ($category !== '') {
+            $whereSearch .= " AND b.category = '{$category}'";
+        }
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -362,7 +375,7 @@ if (!function_exists('studentGetMySubscribedBooks')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT DISTINCT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.extension, b.link, b.file_path, b.allow_download, b.created_by_type, b.created_by_id, b.is_active, b.created_at,
+            SELECT DISTINCT b.id, b.unit_id, b.subject_id, b.course_id, b.file_type, b.category, b.extension, b.link, b.file_path, b.allow_download, b.created_by_type, b.created_by_id, b.is_active, b.created_at,
                    COALESCE(bt.title, b.file_path) AS title, bt.description
             FROM course_books b
             LEFT JOIN course_books_translations bt ON b.id = bt.book_id AND bt.language_id = {$langId}
@@ -382,6 +395,7 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
             $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
             $row['is_active'] = (int)$row['is_active'];
+            $row['category'] = $row['category'] ?: 'summary';
             $row['allow_download'] = (int)($row['allow_download'] ?? 1);
             apply_student_book_file_access($row, $row['id']);
             $row['own'] = true;

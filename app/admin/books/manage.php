@@ -15,7 +15,7 @@ if (!function_exists('adminGetBookDetails')) {
         if (!$bookId) return null;
         $langInfo = get_language_info($con);
 
-        $res = mysqli_query($con, "SELECT id, subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, allow_download, order_num, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $res = mysqli_query($con, "SELECT id, subject_id, course_id, unit_id, file_type, category, extension, link, file_path, cover_image, price, allow_download, order_num, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_books WHERE id = {$bookId} LIMIT 1");
         if (!$res || !($row = mysqli_fetch_assoc($res))) {
             return null;
         }
@@ -24,6 +24,7 @@ if (!function_exists('adminGetBookDetails')) {
         $row['unit_id'] = !empty($row['unit_id']) ? (int)$row['unit_id'] : null;
         $row['subject_id'] = !empty($row['subject_id']) ? (int)$row['subject_id'] : null;
         $row['course_id'] = !empty($row['course_id']) ? (int)$row['course_id'] : null;
+        $row['category'] = $row['category'] ?: 'summary';
         $row['price'] = (float)($row['price'] ?? 0.00);
         $row['allow_download'] = (int)($row['allow_download'] ?? 1);
         $row['is_active'] = (int)$row['is_active'];
@@ -85,12 +86,14 @@ if (!function_exists('adminListBooks')) {
         $courseId = isset($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
         $subjectId = isset($_GET['subject_id']) ? (int)$_GET['subject_id'] : 0;
         $teacherId = isset($_GET['teacher_id']) ? (int)$_GET['teacher_id'] : 0;
+        $category = in_array(trim($_GET['category'] ?? ''), ['summary', 'exam'], true) ? trim($_GET['category']) : '';
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
 
         $cbWhere = ["1=1"];
         if ($unitId > 0) $cbWhere[] = "cb.unit_id = {$unitId}";
+        if ($category !== '') $cbWhere[] = "cb.category = '{$category}'";
         if ($courseId > 0) $cbWhere[] = "(cb.course_id = {$courseId} OR cb.unit_id IN (SELECT id FROM units WHERE course_id = {$courseId}))";
         if ($subjectId > 0) $cbWhere[] = "cb.subject_id = {$subjectId}";
         if ($teacherId > 0) {
@@ -184,6 +187,7 @@ if (!function_exists('adminCreateBook')) {
         $link = trim($body['link'] ?? '');
         $coverImage = trim($body['cover_image'] ?? $body['image'] ?? '');
         $fileType = trim($body['file_type'] ?? 'pdf');
+        $category = in_array(trim($body['category'] ?? ''), ['summary', 'exam'], true) ? trim($body['category']) : 'summary';
         $extension = trim($body['extension'] ?? 'pdf');
         $courseId = isset($body['course_id']) && (int)$body['course_id'] > 0 ? (int)$body['course_id'] : null;
         $unitId = isset($body['unit_id']) && (int)$body['unit_id'] > 0 ? (int)$body['unit_id'] : null;
@@ -201,7 +205,7 @@ if (!function_exists('adminCreateBook')) {
         $cbCourse = $courseId ? $courseId : 'NULL';
         $cbUnit = $unitId ? $unitId : 'NULL';
 
-        $cbSql = "INSERT INTO course_books (subject_id, course_id, unit_id, file_type, extension, link, file_path, cover_image, price, allow_download, is_active, created_by_type, created_by_id) VALUES ({$cbSub}, {$cbCourse}, {$cbUnit}, '" . mysqli_real_escape_string($con, $fileType) . "', '" . mysqli_real_escape_string($con, $extension) . "', '" . mysqli_real_escape_string($con, $link) . "', '" . mysqli_real_escape_string($con, $filePath) . "', '" . mysqli_real_escape_string($con, $coverImage) . "', {$price}, {$allowDownload}, {$isActive}, '{$creatorType}', {$creatorId})";
+        $cbSql = "INSERT INTO course_books (subject_id, course_id, unit_id, file_type, category, extension, link, file_path, cover_image, price, allow_download, is_active, created_by_type, created_by_id) VALUES ({$cbSub}, {$cbCourse}, {$cbUnit}, '" . mysqli_real_escape_string($con, $fileType) . "', '" . mysqli_real_escape_string($con, $category) . "', '" . mysqli_real_escape_string($con, $extension) . "', '" . mysqli_real_escape_string($con, $link) . "', '" . mysqli_real_escape_string($con, $filePath) . "', '" . mysqli_real_escape_string($con, $coverImage) . "', {$price}, {$allowDownload}, {$isActive}, '{$creatorType}', {$creatorId})";
         if (!mysqli_query($con, $cbSql)) {
             return ['status' => 'error', 'message' => 'Failed to create book: ' . mysqli_error($con)];
         }
@@ -272,6 +276,9 @@ if (!function_exists('adminUpdateBook')) {
             $ftEsc = mysqli_real_escape_string($con, trim($body['file_type']));
             $updateFields[] = "file_type = '{$ftEsc}'";
             $updateFields[] = "extension = '{$ftEsc}'";
+        }
+        if (in_array(trim($body['category'] ?? ''), ['summary', 'exam'], true)) {
+            $updateFields[] = "category = '" . trim($body['category']) . "'";
         }
         if (isset($body['is_active'])) {
             $act = (int)$body['is_active'];

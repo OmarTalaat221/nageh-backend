@@ -3574,6 +3574,15 @@
                   "file_type": {
                     "type": "string"
                   },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "summary",
+                      "exam"
+                    ],
+                    "default": "summary",
+                    "description": "NEW. 'summary' (the original use) or 'exam' - a distinct PDF exam paper, managed identically but shown and filtered separately everywhere (admin, teacher, student)."
+                  },
                   "extension": {
                     "type": "string"
                   },
@@ -3647,6 +3656,14 @@
                   "price": {
                     "type": "number",
                     "description": "forced to 0 if book is course/unit-linked"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "summary",
+                      "exam"
+                    ],
+                    "description": "NEW. Re-categorize an existing book between a summary and an exam PDF."
                   },
                   "allow_download": {
                     "type": "integer",
@@ -6464,10 +6481,38 @@
         "tags": [
           "Student / Books"
         ],
-        "summary": "List books (NEW allow_download + view_url; view-only books hide file_path/link)",
+        "summary": "List books (NEW allow_download + view_url; view-only books hide file_path/link) [NEW: category filter - summary vs exam PDFs]",
         "security": [
           {
             "StudentAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unit_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "course_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "NEW. Filter to only 'summary' PDFs or only 'exam' PDFs. Omit to get both.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "summary",
+                "exam"
+              ]
+            }
           }
         ],
         "responses": {
@@ -6488,6 +6533,15 @@
                           "items": {
                             "type": "object",
                             "properties": {
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "summary",
+                                  "exam"
+                                ],
+                                "default": "summary",
+                                "description": "NEW"
+                              },
                               "allow_download": {
                                 "type": "integer",
                                 "enum": [
