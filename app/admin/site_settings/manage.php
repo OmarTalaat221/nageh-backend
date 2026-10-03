@@ -141,6 +141,7 @@ if (!function_exists('validate_site_setting')) {
             case 'student_device_limit_enabled':
             case 'country_pricing_enabled':
             case 'geoip_lookup_enabled':
+            case 'announcement_bar_enabled':
                 if (!in_array($value, ['0', '1'], true)) {
                     return $t(
                         'قيمة المفتاح ' . $key . ' لازم تكون 0 أو 1.',
@@ -328,6 +329,11 @@ if (!function_exists('getPublicLandingConfig')) {
         $settings['stats_teachers_label'] = $langCode === 'en' ? ($rawSettings['stats_teachers_label_en'] ?? 'Expert Teachers') : ($rawSettings['stats_teachers_label_ar'] ?? 'مدرّس متخصص');
         $settings['stats_students_label'] = $langCode === 'en' ? ($rawSettings['stats_students_label_en'] ?? 'Enrolled Students') : ($rawSettings['stats_students_label_ar'] ?? 'طالب مسجل');
         $settings['footer_description'] = $langCode === 'en' ? ($rawSettings['footer_description_en'] ?? $rawSettings['footer_description_ar'] ?? '') : ($rawSettings['footer_description_ar'] ?? $rawSettings['footer_description_en'] ?? '');
+
+        // The scrolling announcement bar at the top of the site - off unless an admin both enables
+        // it and fills in text, so an empty/disabled bar never reserves blank space on the page.
+        $settings['announcement_bar_enabled'] = $rawSettings['announcement_bar_enabled'] ?? '0';
+        $settings['announcement_bar_text'] = $langCode === 'en' ? ($rawSettings['announcement_bar_text_en'] ?? $rawSettings['announcement_bar_text_ar'] ?? '') : ($rawSettings['announcement_bar_text_ar'] ?? $rawSettings['announcement_bar_text_en'] ?? '');
 
         $bannersRes = mysqli_query($con, "SELECT id, title_ar, title_en, image_ar, image_en, link, type FROM banners WHERE is_active = 1 ORDER BY id DESC");
         $banners = [];
