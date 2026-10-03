@@ -121,6 +121,7 @@ if (!function_exists('upload_image_file')) {
         }
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         if (empty($ext)) {
             $mimeToExt = [
@@ -130,9 +131,16 @@ if (!function_exists('upload_image_file')) {
                 'image/webp' => 'webp',
                 'image/svg+xml' => 'svg'
             ];
-            $ext = $mimeToExt[$file['type'] ?? ''] ?? 'jpg';
+            $ext = $mimeToExt[$file['type'] ?? ''] ?? '';
         }
         if ($ext === 'jpeg') $ext = 'jpg';
+
+        // $allowedTypes above went unused and this accepted literally any file (a PDF included) as
+        // long as save_moved_file() succeeded - a non-image upload must fall through to
+        // upload_video_file()/upload_document_file() instead of being silently renamed img_*.<ext>.
+        if (!in_array($ext, $allowedExts, true) && !in_array(strtolower($file['type'] ?? ''), $allowedTypes, true)) {
+            return null;
+        }
 
         $fileName = uniqid('img_', true) . '.' . $ext;
 
@@ -159,6 +167,7 @@ if (!function_exists('upload_video_file')) {
             return null;
         }
 
+        $allowedExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'];
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         if (empty($ext)) {
             $mimeToExt = [
@@ -168,7 +177,14 @@ if (!function_exists('upload_video_file')) {
                 'video/quicktime' => 'mov',
                 'video/x-msvideo' => 'avi'
             ];
-            $ext = $mimeToExt[$file['type'] ?? ''] ?? 'mp4';
+            $ext = $mimeToExt[$file['type'] ?? ''] ?? '';
+        }
+
+        // Same mistake as upload_image_file() used to make: accepting any extension here meant a
+        // non-video upload never reached upload_document_file()/upload_audio_file() in the fallback
+        // chain, since this function would already have "succeeded" and renamed it vid_*.<ext>.
+        if (!in_array($ext, $allowedExts, true)) {
+            return null;
         }
 
         $fileName = uniqid('vid_', true) . '.' . $ext;

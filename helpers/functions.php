@@ -252,7 +252,7 @@ if (!function_exists('read_json_body')) {
                         $subfolder = 'banners';
                     } elseif (str_contains($keyLower, 'video')) {
                         $subfolder = 'videos';
-                    } elseif (str_contains($keyLower, 'doc') || str_contains($keyLower, 'pdf') || str_contains($keyLower, 'homework') || str_contains($keyLower, 'book')) {
+                    } elseif (str_contains($keyLower, 'doc') || str_contains($keyLower, 'pdf') || str_contains($keyLower, 'homework') || str_contains($keyLower, 'book') || $keyLower === 'file') {
                         $subfolder = 'documents';
                     } elseif (str_contains($keyLower, 'audio')) {
                         $subfolder = 'audio';
