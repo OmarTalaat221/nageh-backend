@@ -19,12 +19,8 @@ if (!function_exists('studentHome')) {
             $stId = (int)($_GET['student_id'] ?? 0);
         }
 
-        $now = date('Y-m-d H:i:s');
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
-
-        $subCountRes = mysqli_query($con, "SELECT COUNT(*) AS total FROM student_subscriptions WHERE student_id = {$stId} AND is_active = 1 AND (end_date IS NULL OR end_date >= '{$now}')");
-        $subscriptionsCount = (int)(mysqli_fetch_assoc($subCountRes)['total'] ?? 0);
 
         $certCountRes = mysqli_query($con, "SELECT COUNT(*) AS total FROM student_certificates WHERE student_id = {$stId}");
         $certificatesCount = (int)(mysqli_fetch_assoc($certCountRes)['total'] ?? 0);
@@ -200,6 +196,12 @@ if (!function_exists('studentHome')) {
         // yet and those are exactly the ones a country price is for.
         pricing_decorate_rows($con, $subscribedCourses, 'course', $stId);
         pricing_decorate_rows($con, $allCourses, 'course', $stId);
+
+        // Counts the courses actually listed below it, not raw subscription rows - a student can
+        // hold several active subscriptions (course/subject/package/teacher) that, once resolved,
+        // point at the same course, an inactive one, or none at all. Counting the rows directly
+        // produced a number with no relationship to what the page shows under it.
+        $subscriptionsCount = count($subscribedCourses);
 
         $overallProgress = $totalCoursesWithLessons > 0 ? round($totalProgressSum / $totalCoursesWithLessons, 2) : 0.00;
 
