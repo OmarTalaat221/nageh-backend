@@ -196,29 +196,13 @@ if (!function_exists('adminCreateBook')) {
         $descAr = trim($body['description_ar'] ?? $body['description'] ?? '');
         $descEn = trim($body['description_en'] ?? $descAr);
 
-        $filePath = trim($body['file_path'] ?? '');
+        // read_json_body() already uploads any raw $_FILES entry itself and rewrites $body[key] into
+        // a hosted URL (the generic handler further up in helpers/functions.php) - 'cover_image'/
+        // 'image' already relied on that. The PDF upload never worked because nothing here ever read
+        // the uploaded 'file' key the same way, only 'file_path' (which the form never sends).
+        $filePath = trim($body['file_path'] ?? $body['file'] ?? '');
         $link = trim($body['link'] ?? '');
         $coverImage = trim($body['cover_image'] ?? $body['image'] ?? '');
-
-        // A PDF chosen from the admin's device arrives as a real upload ($_FILES), not a body field -
-        // the create form always sends it under 'file'. Without this, "choose file from device"
-        // silently created the book with no file_path/link at all.
-        $uploadedFile = $_FILES['file'] ?? $_FILES['file_path'] ?? null;
-        if ($uploadedFile && isset($uploadedFile['tmp_name']) && !empty($uploadedFile['tmp_name']) && file_exists($uploadedFile['tmp_name'])) {
-            $uploadedPath = upload_document_file($uploadedFile, 'books');
-            if ($uploadedPath) {
-                $filePath = $uploadedPath;
-                $link = '';
-            }
-        }
-
-        $uploadedImage = $_FILES['image'] ?? $_FILES['cover_image'] ?? null;
-        if ($uploadedImage && isset($uploadedImage['tmp_name']) && !empty($uploadedImage['tmp_name']) && file_exists($uploadedImage['tmp_name'])) {
-            $uploadedImagePath = upload_image_file($uploadedImage, 'books');
-            if ($uploadedImagePath) {
-                $coverImage = $uploadedImagePath;
-            }
-        }
 
         $fileType = trim($body['file_type'] ?? 'pdf');
         $category = in_array(trim($body['category'] ?? ''), ['summary', 'exam'], true) ? trim($body['category']) : 'summary';
@@ -324,41 +308,19 @@ if (!function_exists('adminUpdateBook')) {
             $allowDownload = (int)(bool)$body['allow_download'];
             $updateFields[] = "allow_download = {$allowDownload}";
         }
-        // A PDF chosen from the admin's device arrives as a real upload ($_FILES), not a body field -
-        // the create/edit form always sends it under 'file', never 'file_path'. Without this, every
-        // "choose file from device" submission silently kept whatever file_path/link the book
-        // already had (or none at all), regardless of what the admin just picked.
-        $uploadedFile = $_FILES['file'] ?? $_FILES['file_path'] ?? null;
-        $fileWasUploaded = false;
-        if ($uploadedFile && isset($uploadedFile['tmp_name']) && !empty($uploadedFile['tmp_name']) && file_exists($uploadedFile['tmp_name'])) {
-            $uploadedPath = upload_document_file($uploadedFile, 'books');
-            if ($uploadedPath) {
-                $fpEsc = mysqli_real_escape_string($con, $uploadedPath);
-                $updateFields[] = "file_path = '{$fpEsc}'";
-                $updateFields[] = "link = ''";
-                $fileWasUploaded = true;
-            }
-        }
-        if (!$fileWasUploaded && isset($body['file_path'])) {
-            $fpEsc = mysqli_real_escape_string($con, trim($body['file_path']));
+        // read_json_body() already uploads a raw $_FILES entry itself and rewrites $body[key] into a
+        // hosted URL - 'cover_image'/'image' already relied on that below. The PDF upload never
+        // worked because nothing here ever read the uploaded 'file' key, only 'file_path' (which the
+        // edit form never sends).
+        if (isset($body['file_path']) || isset($body['file'])) {
+            $fpEsc = mysqli_real_escape_string($con, trim($body['file_path'] ?? $body['file']));
             $updateFields[] = "file_path = '{$fpEsc}'";
         }
-        if (!$fileWasUploaded && isset($body['link'])) {
+        if (isset($body['link'])) {
             $linkEsc = mysqli_real_escape_string($con, trim($body['link']));
             $updateFields[] = "link = '{$linkEsc}'";
         }
-
-        $uploadedImage = $_FILES['image'] ?? $_FILES['cover_image'] ?? null;
-        $imageWasUploaded = false;
-        if ($uploadedImage && isset($uploadedImage['tmp_name']) && !empty($uploadedImage['tmp_name']) && file_exists($uploadedImage['tmp_name'])) {
-            $uploadedImagePath = upload_image_file($uploadedImage, 'books');
-            if ($uploadedImagePath) {
-                $imgEsc = mysqli_real_escape_string($con, $uploadedImagePath);
-                $updateFields[] = "cover_image = '{$imgEsc}'";
-                $imageWasUploaded = true;
-            }
-        }
-        if (!$imageWasUploaded && (isset($body['cover_image']) || isset($body['image']))) {
+        if (isset($body['cover_image']) || isset($body['image'])) {
             $imgEsc = mysqli_real_escape_string($con, trim($body['cover_image'] ?? $body['image']));
             $updateFields[] = "cover_image = '{$imgEsc}'";
         }
