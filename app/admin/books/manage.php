@@ -199,6 +199,27 @@ if (!function_exists('adminCreateBook')) {
         $filePath = trim($body['file_path'] ?? '');
         $link = trim($body['link'] ?? '');
         $coverImage = trim($body['cover_image'] ?? $body['image'] ?? '');
+
+        // A PDF chosen from the admin's device arrives as a real upload ($_FILES), not a body field -
+        // the create form always sends it under 'file'. Without this, "choose file from device"
+        // silently created the book with no file_path/link at all.
+        $uploadedFile = $_FILES['file'] ?? $_FILES['file_path'] ?? null;
+        if ($uploadedFile && isset($uploadedFile['tmp_name']) && !empty($uploadedFile['tmp_name']) && file_exists($uploadedFile['tmp_name'])) {
+            $uploadedPath = upload_document_file($uploadedFile, 'books');
+            if ($uploadedPath) {
+                $filePath = $uploadedPath;
+                $link = '';
+            }
+        }
+
+        $uploadedImage = $_FILES['image'] ?? $_FILES['cover_image'] ?? null;
+        if ($uploadedImage && isset($uploadedImage['tmp_name']) && !empty($uploadedImage['tmp_name']) && file_exists($uploadedImage['tmp_name'])) {
+            $uploadedImagePath = upload_image_file($uploadedImage, 'books');
+            if ($uploadedImagePath) {
+                $coverImage = $uploadedImagePath;
+            }
+        }
+
         $fileType = trim($body['file_type'] ?? 'pdf');
         $category = in_array(trim($body['category'] ?? ''), ['summary', 'exam'], true) ? trim($body['category']) : 'summary';
         $extension = trim($body['extension'] ?? 'pdf');
@@ -206,6 +227,21 @@ if (!function_exists('adminCreateBook')) {
         $unitId = isset($body['unit_id']) && (int)$body['unit_id'] > 0 ? (int)$body['unit_id'] : null;
         $subjectId = isset($body['subject_id']) && (int)$body['subject_id'] > 0 ? (int)$body['subject_id'] : null;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
+
+        // A unit-scoped book only ever got unit_id from the form - course_id/subject_id were left
+        // NULL on the row forever, resolvable only at read time by whichever endpoint bothered to
+        // join units. Storing the real values here keeps every consumer consistent.
+        if ($unitId !== null && ($courseId === null || $subjectId === null)) {
+            $uRes = mysqli_query($con, "SELECT course_id, subject_id FROM units WHERE id = {$unitId} LIMIT 1");
+            if ($uRes && $uRow = mysqli_fetch_assoc($uRes)) {
+                if ($courseId === null && !empty($uRow['course_id'])) {
+                    $courseId = (int)$uRow['course_id'];
+                }
+                if ($subjectId === null && !empty($uRow['subject_id'])) {
+                    $subjectId = (int)$uRow['subject_id'];
+                }
+            }
+        }
 
         // Books tied to a course/unit are bundled with the course purchase and
         // must never carry their own separate price — only standalone
@@ -263,6 +299,21 @@ if (!function_exists('adminUpdateBook')) {
         $isCourseLinked = ($resolvedCourseId > 0 || $resolvedUnitId > 0);
 
         $updateFields = [];
+
+        // Same backfill as creation: a unit-scoped book must carry its unit's real course_id/
+        // subject_id, not leave them NULL forever just because the form only ever sent unit_id.
+        if ($resolvedUnitId > 0 && (!isset($body['course_id']) || !isset($body['subject_id']))) {
+            $uRes2 = mysqli_query($con, "SELECT course_id, subject_id FROM units WHERE id = {$resolvedUnitId} LIMIT 1");
+            if ($uRes2 && $uRow2 = mysqli_fetch_assoc($uRes2)) {
+                if (!isset($body['course_id']) && !empty($uRow2['course_id'])) {
+                    $updateFields[] = "course_id = " . (int)$uRow2['course_id'];
+                }
+                if (!isset($body['subject_id']) && !empty($uRow2['subject_id'])) {
+                    $updateFields[] = "subject_id = " . (int)$uRow2['subject_id'];
+                }
+            }
+        }
+
         if ($isCourseLinked) {
             $updateFields[] = "price = 0";
         } elseif (isset($body['price'])) {
@@ -273,15 +324,41 @@ if (!function_exists('adminUpdateBook')) {
             $allowDownload = (int)(bool)$body['allow_download'];
             $updateFields[] = "allow_download = {$allowDownload}";
         }
-        if (isset($body['file_path'])) {
+        // A PDF chosen from the admin's device arrives as a real upload ($_FILES), not a body field -
+        // the create/edit form always sends it under 'file', never 'file_path'. Without this, every
+        // "choose file from device" submission silently kept whatever file_path/link the book
+        // already had (or none at all), regardless of what the admin just picked.
+        $uploadedFile = $_FILES['file'] ?? $_FILES['file_path'] ?? null;
+        $fileWasUploaded = false;
+        if ($uploadedFile && isset($uploadedFile['tmp_name']) && !empty($uploadedFile['tmp_name']) && file_exists($uploadedFile['tmp_name'])) {
+            $uploadedPath = upload_document_file($uploadedFile, 'books');
+            if ($uploadedPath) {
+                $fpEsc = mysqli_real_escape_string($con, $uploadedPath);
+                $updateFields[] = "file_path = '{$fpEsc}'";
+                $updateFields[] = "link = ''";
+                $fileWasUploaded = true;
+            }
+        }
+        if (!$fileWasUploaded && isset($body['file_path'])) {
             $fpEsc = mysqli_real_escape_string($con, trim($body['file_path']));
             $updateFields[] = "file_path = '{$fpEsc}'";
         }
-        if (isset($body['link'])) {
+        if (!$fileWasUploaded && isset($body['link'])) {
             $linkEsc = mysqli_real_escape_string($con, trim($body['link']));
             $updateFields[] = "link = '{$linkEsc}'";
         }
-        if (isset($body['cover_image']) || isset($body['image'])) {
+
+        $uploadedImage = $_FILES['image'] ?? $_FILES['cover_image'] ?? null;
+        $imageWasUploaded = false;
+        if ($uploadedImage && isset($uploadedImage['tmp_name']) && !empty($uploadedImage['tmp_name']) && file_exists($uploadedImage['tmp_name'])) {
+            $uploadedImagePath = upload_image_file($uploadedImage, 'books');
+            if ($uploadedImagePath) {
+                $imgEsc = mysqli_real_escape_string($con, $uploadedImagePath);
+                $updateFields[] = "cover_image = '{$imgEsc}'";
+                $imageWasUploaded = true;
+            }
+        }
+        if (!$imageWasUploaded && (isset($body['cover_image']) || isset($body['image']))) {
             $imgEsc = mysqli_real_escape_string($con, trim($body['cover_image'] ?? $body['image']));
             $updateFields[] = "cover_image = '{$imgEsc}'";
         }
