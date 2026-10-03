@@ -150,6 +150,34 @@ if (!function_exists('validate_site_setting')) {
                 }
                 return null;
 
+            // A JSON array of {text_ar, text_en} pairs. Rejected outright rather than silently
+            // dropped, so a malformed payload never results in the admin saving "successfully"
+            // while the bar quietly stops showing anything.
+            case 'announcement_bar_items':
+                if ($value === '') return null;
+                $decoded = json_decode($value, true);
+                if (!is_array($decoded)) {
+                    return $t(
+                        'قائمة الإعلانات غير صالحة.',
+                        'The announcement list is not valid.'
+                    );
+                }
+                if (count($decoded) > 20) {
+                    return $t(
+                        'الحد الأقصى 20 إعلان في نفس الوقت.',
+                        'A maximum of 20 announcements at a time is allowed.'
+                    );
+                }
+                foreach ($decoded as $item) {
+                    if (!is_array($item)) {
+                        return $t(
+                            'قائمة الإعلانات غير صالحة.',
+                            'The announcement list is not valid.'
+                        );
+                    }
+                }
+                return null;
+
             // Both languages are required, not just Arabic. A refused user is served the message
             // in the language they asked for, so leaving one side blank means half the audience
             // reads the wrong language - or, if both were blank, nothing at all.
@@ -331,9 +359,21 @@ if (!function_exists('getPublicLandingConfig')) {
         $settings['footer_description'] = $langCode === 'en' ? ($rawSettings['footer_description_en'] ?? $rawSettings['footer_description_ar'] ?? '') : ($rawSettings['footer_description_ar'] ?? $rawSettings['footer_description_en'] ?? '');
 
         // The scrolling announcement bar at the top of the site - off unless an admin both enables
-        // it and fills in text, so an empty/disabled bar never reserves blank space on the page.
+        // it and has at least one non-empty announcement, so an empty/disabled bar never reserves
+        // blank space on the page. Stored as one JSON array (text_ar/text_en pairs) under a single
+        // key rather than a fixed set of columns, so the admin can list as many as they want.
         $settings['announcement_bar_enabled'] = $rawSettings['announcement_bar_enabled'] ?? '0';
-        $settings['announcement_bar_text'] = $langCode === 'en' ? ($rawSettings['announcement_bar_text_en'] ?? $rawSettings['announcement_bar_text_ar'] ?? '') : ($rawSettings['announcement_bar_text_ar'] ?? $rawSettings['announcement_bar_text_en'] ?? '');
+        $announcementItems = json_decode($rawSettings['announcement_bar_items'] ?? '[]', true);
+        $settings['announcement_bar_items'] = is_array($announcementItems)
+            ? array_values(array_filter(array_map(
+                function ($item) use ($langCode) {
+                    $ar = trim($item['text_ar'] ?? '');
+                    $en = trim($item['text_en'] ?? '');
+                    return $langCode === 'en' ? ($en ?: $ar) : ($ar ?: $en);
+                },
+                $announcementItems
+            )))
+            : [];
 
         $bannersRes = mysqli_query($con, "SELECT id, title_ar, title_en, image_ar, image_en, link, type FROM banners WHERE is_active = 1 ORDER BY id DESC");
         $banners = [];
