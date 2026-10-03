@@ -29,9 +29,22 @@ if (!function_exists('adminGetBookDetails')) {
         $row['allow_download'] = (int)($row['allow_download'] ?? 1);
         $row['is_active'] = (int)$row['is_active'];
         $rawLink = $row['link'];
-        $row['link'] = format_image_url($row['link']);
-        $row['file_path'] = format_image_url($row['file_path'] ?: $rawLink);
         $row['cover_image'] = format_image_url(!empty($row['cover_image']) ? $row['cover_image'] : $rawLink);
+
+        // Admin/teacher open this file the same way a student does: a direct link when it is
+        // downloadable, or - when allow_download was turned off specifically to keep it from
+        // being extracted and shared - only through the authenticated view-only stream, never a
+        // bare public URL. The flag is for the audience it was set for, not just for students.
+        if ($row['allow_download'] === 1) {
+            $row['link'] = format_image_url($row['link']);
+            $row['file_path'] = format_image_url($row['file_path'] ?: $rawLink);
+            $row['view_url'] = $row['file_path'];
+        } else {
+            $row['link'] = null;
+            $row['file_path'] = null;
+            $streamBase = is_teacher_request() ? 'teacher' : 'admin';
+            $row['view_url'] = 'https://camp-coding.online/najeh/' . $streamBase . '/books/stream?book_id=' . $row['id'];
+        }
 
         $translations = [];
         $titleAr = null;
@@ -128,7 +141,7 @@ if (!function_exists('adminListBooks')) {
             FROM course_books cb
             LEFT JOIN course_books_translations cbt ON cb.id = cbt.book_id AND cbt.language_id = {$langId}
             {$cbWhereSql}
-            ORDER BY cb.id DESC
+            ORDER BY cb.order_num ASC, cb.id ASC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);
@@ -334,6 +347,98 @@ if (!function_exists('adminDeleteBook')) {
             return ['status' => 'success', 'message' => 'Book deleted successfully'];
         }
         return ['status' => 'error', 'message' => 'Failed to delete book'];
+    }
+}
+
+if (!function_exists('adminReorderBooks')) {
+    // Persists a manually drag-reordered list of a unit's books/exam PDFs. Scoped to one
+    // unit + category at a time, same as the Units reorder - the two categories are always
+    // browsed as separate lists, so their order_num sequences are independent of each other.
+    // Body: { unit_id, category, ordered_ids: [book_id, book_id, ...] } - the new order, top to bottom.
+    function adminReorderBooks($con) {
+        $body = read_json_body();
+        $unitId = (int)($body['unit_id'] ?? 0);
+        $category = in_array(trim($body['category'] ?? ''), ['summary', 'exam'], true) ? trim($body['category']) : null;
+        $orderedIds = $body['ordered_ids'] ?? $body['order'] ?? [];
+
+        if ($unitId <= 0) {
+            return ['status' => 'error', 'message' => 'unit_id is required'];
+        }
+        if (!is_array($orderedIds) || empty($orderedIds)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $categorySql = $category !== null ? "AND category = '{$category}'" : '';
+        $position = 1;
+        foreach ($orderedIds as $bookId) {
+            $bookId = (int)$bookId;
+            if ($bookId <= 0) continue;
+            mysqli_query($con, "UPDATE course_books SET order_num = {$position} WHERE id = {$bookId} AND unit_id = {$unitId} {$categorySql}");
+            $position++;
+        }
+
+        return ['status' => 'success', 'message' => 'Books reordered successfully'];
+    }
+}
+
+if (!function_exists('adminStreamBookFile')) {
+    // Admin/teacher's own "Open" action, kept consistent with the student's authenticated
+    // view-only stream: when allow_download = 0, adminGetBookDetails() hands out this URL
+    // instead of the raw file_path/link, specifically so the file never ends up as a bare,
+    // copyable, permanent public link - not even in the hands of the people managing it.
+    // No per-book ownership check: being an authenticated admin or teacher (enforced by
+    // whichever middleware wraps the route) is itself the permission.
+    function adminStreamBookFile($con) {
+        $bookId = (int)($_GET['book_id'] ?? $_GET['id'] ?? 0);
+        if ($bookId <= 0) {
+            return ['status' => 'error', 'message' => 'book_id is required'];
+        }
+
+        $bRes = mysqli_query($con, "SELECT file_path, link, file_type FROM course_books WHERE id = {$bookId} LIMIT 1");
+        $bRow = $bRes ? mysqli_fetch_assoc($bRes) : null;
+        if (!$bRow) {
+            return ['status' => 'error', 'message' => 'Book not found'];
+        }
+
+        $source = trim($bRow['file_path'] ?: $bRow['link'] ?: '');
+        if ($source === '') {
+            return ['status' => 'error', 'message' => 'Book file is not available'];
+        }
+
+        $mime = ((trim($bRow['file_type'] ?? 'pdf')) === 'pdf') ? 'application/pdf' : 'application/octet-stream';
+
+        if (preg_match('/^https?:\/\//i', $source)) {
+            $ch = curl_init($source);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $content = curl_exec($ch);
+            $ok = ($content !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400);
+            curl_close($ch);
+
+            if (!$ok) {
+                return ['status' => 'error', 'message' => 'Failed to load book file'];
+            }
+
+            header('Content-Type: ' . $mime);
+            header('Content-Disposition: inline; filename="book-' . $bookId . '"');
+            header('X-Content-Type-Options: nosniff');
+            echo $content;
+            exit();
+        }
+
+        $localPath = realpath(__DIR__ . '/../../../' . ltrim($source, '/'));
+        $uploadsRoot = realpath(__DIR__ . '/../../../');
+        if (!$localPath || !$uploadsRoot || !str_starts_with($localPath, $uploadsRoot) || !is_file($localPath)) {
+            return ['status' => 'error', 'message' => 'Book file is not available'];
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: inline; filename="' . basename($localPath) . '"');
+        header('Content-Length: ' . filesize($localPath));
+        header('X-Content-Type-Options: nosniff');
+        readfile($localPath);
+        exit();
     }
 }
 

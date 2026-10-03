@@ -34,6 +34,7 @@ if (!function_exists('adminGetVideoDetails')) {
             SELECT
                 id,
                 unit_id,
+                order_num,
                 code,
                 " . (video_url_column_exists($con) ? 'video_url' : "'' AS video_url") . ",
                 duration_seconds,
@@ -63,6 +64,7 @@ if (!function_exists('adminGetVideoDetails')) {
 
         $row['id'] = (int)$row['id'];
         $row['unit_id'] = (int)$row['unit_id'];
+        $row['order_num'] = (int)($row['order_num'] ?? 1);
         $row['duration_seconds'] = (int)($row['duration_seconds'] ?? 0);
         $row['is_active'] = (int)$row['is_active'];
 
@@ -249,11 +251,17 @@ if (!function_exists('adminListVideos')) {
         |--------------------------------------------------------------------------
         */
 
+        // Nobody picking a sort option at all (the ordinary "just show me this unit's videos"
+        // case) means the manually drag-ordered sequence - exactly how Units and Books already
+        // behave. Only once the caller actually asks for a specific sort does `id DESC` (newest
+        // first) become the default direction for that explicit choice.
+        $sortByProvided = isset($_GET['sort_by']) || isset($_GET['sort']);
+
         $sortBy = strtolower(
             trim(
                 $_GET['sort_by']
                 ?? $_GET['sort']
-                ?? 'id'
+                ?? 'order_num'
             )
         );
 
@@ -263,17 +271,22 @@ if (!function_exists('adminListVideos')) {
                     $_GET['dir']
                     ?? $_GET['direction']
                     ?? $_GET['order']
-                    ?? 'DESC'
+                    ?? ($sortByProvided ? 'DESC' : 'ASC')
                 )
             ) === 'ASC'
                 ? 'ASC'
                 : 'DESC';
 
 
-        $orderCol =
-            ($sortBy === 'code')
-                ? 'v.code'
-                : 'v.id';
+        $allowedSort = [
+            'code' => 'v.code',
+            'id' => 'v.id',
+            'order_num' => 'v.order_num',
+            'duration_seconds' => 'v.duration_seconds',
+            'created_at' => 'v.created_at',
+        ];
+
+        $orderCol = $allowedSort[$sortBy] ?? 'v.order_num';
 
 
         /*
@@ -728,6 +741,10 @@ if (!function_exists('adminCreateVideo')) {
             ?? 0
         );
 
+        $orderNum = isset($body['order_num']) && (int)$body['order_num'] > 0
+            ? (int)$body['order_num']
+            : 1;
+
 
         /*
         |--------------------------------------------------------------------------
@@ -815,12 +832,13 @@ if (!function_exists('adminCreateVideo')) {
             INSERT INTO videos
             (
                 unit_id,
+                order_num,
                 code," . (video_url_column_exists($con) ? "\n                video_url," : '') . "
                 duration_seconds,
                 publish_status,
                 is_active
             )
-            VALUES (?, ?, " . (video_url_column_exists($con) ? '?, ' : '') . "?, ?, ?)
+            VALUES (?, ?, ?, " . (video_url_column_exists($con) ? '?, ' : '') . "?, ?, ?)
             "
         );
 
@@ -839,8 +857,9 @@ if (!function_exists('adminCreateVideo')) {
         if (video_url_column_exists($con)) {
             mysqli_stmt_bind_param(
                 $stmt,
-                "issisi",
+                "iissisi",
                 $unitId,
+                $orderNum,
                 $code,
                 $videoUrl,
                 $durationSeconds,
@@ -850,8 +869,9 @@ if (!function_exists('adminCreateVideo')) {
         } else {
             mysqli_stmt_bind_param(
                 $stmt,
-                "isisi",
+                "iisisi",
                 $unitId,
+                $orderNum,
                 $code,
                 $durationSeconds,
                 $publishStatus,
@@ -1124,6 +1144,11 @@ if (!function_exists('adminUpdateVideo')) {
         }
 
 
+        $orderNum = isset($body['order_num']) && (int)$body['order_num'] > 0
+            ? (int)$body['order_num']
+            : null;
+
+
         /*
         |--------------------------------------------------------------------------
         | Video URL
@@ -1246,6 +1271,20 @@ if (!function_exists('adminUpdateVideo')) {
 
             $params[] =
                 $durationSeconds;
+
+            $types .= "i";
+        }
+
+
+        if (
+            $orderNum !== null
+        ) {
+
+            $updateFields[] =
+                "order_num = ?";
+
+            $params[] =
+                $orderNum;
 
             $types .= "i";
         }
@@ -1654,5 +1693,39 @@ if (!function_exists('adminDeleteVideo')) {
                 'Failed to delete video: '
                 . mysqli_error($con)
         ];
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Reorder Videos
+|--------------------------------------------------------------------------
+*/
+
+if (!function_exists('adminReorderVideos')) {
+    // Persists a manually drag-reordered list of a unit's videos - same pattern as the Units and
+    // Books reorder endpoints. Body: { unit_id, ordered_ids: [video_id, video_id, ...] }.
+    function adminReorderVideos($con) {
+        $body = read_json_body();
+        $unitId = (int)($body['unit_id'] ?? 0);
+        $orderedIds = $body['ordered_ids'] ?? $body['order'] ?? [];
+
+        if ($unitId <= 0) {
+            return ['status' => 'error', 'message' => 'unit_id is required'];
+        }
+        if (!is_array($orderedIds) || empty($orderedIds)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $position = 1;
+        foreach ($orderedIds as $videoId) {
+            $videoId = (int)$videoId;
+            if ($videoId <= 0) continue;
+            mysqli_query($con, "UPDATE videos SET order_num = {$position} WHERE id = {$videoId} AND unit_id = {$unitId}");
+            $position++;
+        }
+
+        return ['status' => 'success', 'message' => 'Videos reordered successfully'];
     }
 }

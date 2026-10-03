@@ -199,7 +199,7 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
             FROM course_books b
             LEFT JOIN course_books_translations bt ON b.id = bt.book_id AND bt.language_id = {$langId}
             {$cbWhereSql}
-            ORDER BY b.id DESC
+            ORDER BY b.order_num ASC, b.id ASC
             LIMIT {$limit} OFFSET {$offset}
         ";
 
@@ -380,7 +380,7 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             FROM course_books b
             LEFT JOIN course_books_translations bt ON b.id = bt.book_id AND bt.language_id = {$langId}
             WHERE b.is_active = 1 AND {$subClause} {$whereSearch}
-            ORDER BY b.id DESC
+            ORDER BY b.order_num ASC, b.id ASC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);

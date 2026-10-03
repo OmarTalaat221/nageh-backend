@@ -3697,6 +3697,109 @@
         }
       }
     },
+    "/admin/books/reorder": {
+      "post": {
+        "tags": [
+          "Admin / Books"
+        ],
+        "summary": "NEW: reorder a unit's books/exam PDFs (category-scoped)",
+        "description": "Scoped to one unit_id + category at a time - the two categories ('summary' and 'exam') are always browsed as separate lists, so each has its own independent order_num sequence.",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "unit_id",
+                  "ordered_ids"
+                ],
+                "properties": {
+                  "unit_id": {
+                    "type": "integer"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "summary",
+                      "exam"
+                    ],
+                    "description": "Optional extra scope - when omitted, matches by unit_id alone."
+                  },
+                  "ordered_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "unit_id": 1,
+                "category": "exam",
+                "ordered_ids": [
+                  5,
+                  3,
+                  7
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/books/reorder": {
+      "post": {
+        "tags": [
+          "Teacher / Books"
+        ],
+        "summary": "NEW: reorder a unit's books/exam PDFs (category-scoped) - same as the admin endpoint",
+        "security": [
+          {
+            "TeacherAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/paths/~1admin~1books~1reorder/post/requestBody/content/application~1json/schema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/books/purchase-requests": {
       "get": {
         "tags": [
@@ -4028,6 +4131,74 @@
     },
     "/teacher/units/reorder": {
       "$ref": "#/paths/~1admin~1units~1reorder"
+    },
+    "/admin/videos/reorder": {
+      "post": {
+        "tags": [
+          "Admin / Videos"
+        ],
+        "summary": "NEW: reorder a unit's videos",
+        "security": [
+          {
+            "AdminAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "unit_id",
+                  "ordered_ids"
+                ],
+                "properties": {
+                  "unit_id": {
+                    "type": "integer"
+                  },
+                  "ordered_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "order": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "alias of ordered_ids"
+                  }
+                }
+              },
+              "example": {
+                "unit_id": 1,
+                "ordered_ids": [
+                  3,
+                  1,
+                  2
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccess"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teacher/videos/reorder": {
+      "$ref": "#/paths/~1admin~1videos~1reorder"
     },
     "/admin/sessions": {
       "get": {

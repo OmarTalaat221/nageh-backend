@@ -1078,6 +1078,16 @@ $routes = [
         },
     ],
     [
+        "method" => "POST",
+        "path" => "/najeh/teacher/videos/reorder",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/content/manage.php";
+            teacherAuthMiddleware();
+            return adminReorderVideos($con);
+        },
+    ],
+    [
         "method" => "GET",
         "path" => "/najeh/teacher/books",
         "handler" => function ($con) {
@@ -1119,6 +1129,28 @@ $routes = [
             include_once "./app/teacher/content/manage.php";
             $teacherData = teacherAuthMiddleware();
             return adminDeleteBook($con, $teacherData);
+        },
+    ],
+    [
+        // Teacher's own "Open" action for a view-only (allow_download = 0) book/exam - the same
+        // authenticated stream a student gets, never the bare file.
+        "method" => "GET",
+        "path" => "/najeh/teacher/books/stream",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/content/manage.php";
+            teacherAuthMiddleware();
+            return adminStreamBookFile($con);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/books/reorder",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/content/manage.php";
+            teacherAuthMiddleware();
+            return adminReorderBooks($con);
         },
     ],
     [
@@ -3429,6 +3461,17 @@ $routes = [
                 return adminDeleteVideo($con);
             },
         ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/videos/reorder",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/courses/content.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_courses');
+                return adminReorderVideos($con);
+            },
+        ],
 
         // Books CRUD
         [
@@ -3484,6 +3527,30 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_books');
                 return adminDeleteBook($con);
+            },
+        ],
+        [
+            // Admin's own "Open" action for a view-only (allow_download = 0) book/exam - the same
+            // authenticated stream a student gets, never the bare file.
+            "method" => "GET",
+            "path" => "/najeh/admin/books/stream",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/books/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_books');
+                return adminStreamBookFile($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/books/reorder",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/books/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_books');
+                return adminReorderBooks($con);
             },
         ],
         [
