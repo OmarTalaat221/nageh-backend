@@ -329,11 +329,61 @@ if (!function_exists('adminDeleteTeacher')) {
         $id = (int)($_GET['id'] ?? $body['id'] ?? 0);
         if ($id <= 0) return ['status' => 'error', 'message' => 'Teacher ID is required'];
 
+        // courses.teacher_id used to block the delete outright (fk_courses_teacher had no ON DELETE
+        // rule - see migrations/094). Even with the constraint fixed to SET NULL, a course losing
+        // its main teacher while a co-teacher is sitting right there in course_teachers is worse
+        // than just handing it to that co-teacher, so detach deliberately instead of letting the
+        // database blank the column.
+        $detached = 0;
+        $reassigned = 0;
+
+        $ownedRes = mysqli_query($con, "SELECT id FROM courses WHERE teacher_id = {$id}");
+        if ($ownedRes) {
+            while ($row = mysqli_fetch_assoc($ownedRes)) {
+                $courseId = (int)$row['id'];
+
+                $replacement = 0;
+                $altRes = mysqli_query($con, "
+                    SELECT ct.teacher_id
+                    FROM course_teachers ct
+                    JOIN teachers t ON t.id = ct.teacher_id
+                    WHERE ct.course_id = {$courseId}
+                      AND ct.teacher_id <> {$id}
+                      AND ct.is_active = 1
+                    ORDER BY t.is_active DESC, ct.id ASC
+                    LIMIT 1
+                ");
+                if ($altRes && $altRow = mysqli_fetch_assoc($altRes)) {
+                    $replacement = (int)$altRow['teacher_id'];
+                }
+
+                if ($replacement > 0) {
+                    mysqli_query($con, "UPDATE courses SET teacher_id = {$replacement} WHERE id = {$courseId}");
+                    $reassigned++;
+                } else {
+                    mysqli_query($con, "UPDATE courses SET teacher_id = NULL WHERE id = {$courseId}");
+                    $detached++;
+                }
+            }
+        }
+
         $stmt = mysqli_prepare($con, "DELETE FROM teachers WHERE id = ?");
         mysqli_stmt_bind_param($stmt, "i", $id);
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to delete teacher: ' . mysqli_error($con)];
         }
-        return ['status' => 'success', 'message' => 'Teacher deleted successfully'];
+
+        $message = 'Teacher deleted successfully';
+        if ($reassigned > 0 || $detached > 0) {
+            $parts = [];
+            if ($reassigned > 0) $parts[] = "{$reassigned} course(s) handed to a co-teacher";
+            if ($detached > 0) $parts[] = "{$detached} course(s) left without a main teacher";
+            $message .= ' (' . implode(', ', $parts) . ')';
+        }
+
+        return ['status' => 'success', 'message' => $message, 'data' => [
+            'courses_reassigned' => $reassigned,
+            'courses_detached' => $detached,
+        ]];
     }
 }
