@@ -816,7 +816,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             WHERE c.id IN ({$cListStr}) AND c.is_active = 1 {$whereSearch}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);
@@ -1173,7 +1173,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             {$whereClause}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);

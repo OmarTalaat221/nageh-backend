@@ -82,7 +82,7 @@ if (!function_exists('studentGetAllCoursesWithOwn')) {
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             {$whereClause}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);
@@ -179,7 +179,7 @@ if (!function_exists('studentGetMySubscribedCoursesProgress')) {
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             WHERE c.id IN ({$cListStr}) AND c.is_active = 1 {$whereSearch}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
             LIMIT {$limit} OFFSET {$offset}
         ";
         $res = mysqli_query($con, $sql);
@@ -699,7 +699,7 @@ if (!function_exists('studentGetCoursesAndSubjects')) {
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             WHERE c.is_active = 1
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
         ");
 
         $courses = [];
@@ -788,12 +788,12 @@ if (!function_exists('studentGetTeacherProfileDetails')) {
         }
 
         $cRes = mysqli_query($con, "
-            SELECT DISTINCT c.id, c.subject_id, c.type, c.kind, COALESCE(ct.name, c.slug) AS name, c.price, c.image, ct.description
+            SELECT DISTINCT c.id, c.subject_id, c.type, c.kind, COALESCE(ct.name, c.slug) AS name, c.price, c.image, c.order_num, ct.description
             FROM courses c
             LEFT JOIN course_teachers cot ON c.id = cot.course_id
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
             WHERE (c.teacher_id = {$teacherId} OR cot.teacher_id = {$teacherId}) AND c.is_active = 1 {$typeCondition}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
         ");
 
         $courses = [];

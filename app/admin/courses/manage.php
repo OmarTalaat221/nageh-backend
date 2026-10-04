@@ -84,7 +84,9 @@ if (!function_exists('adminListCourses')) {
         ensure_courses_schema($con);
 
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+        // The cap is 1000 rather than 100 because the dashboard's drag-to-reorder mode has to hold
+        // the whole list at once - you cannot drag a course from page 1 to page 3.
+        $limit = max(1, min(1000, (int)($_GET['limit'] ?? 10)));
         $offset = ($page - 1) * $limit;
 
         $whereConditions = [];
@@ -242,6 +244,9 @@ if (!function_exists('adminListCourses')) {
             $types .= "sss";
         }
 
+        // Without an explicit sort the admin's own drag-ordering wins; asking for any named sort
+        // (price, name, newest...) still overrides it, same convention as units/videos/books.
+        $sortProvided = isset($_GET['sort_by']) || isset($_GET['order_by']) || isset($_GET['sort']);
         $sortBy = strtolower(trim($_GET['sort_by'] ?? $_GET['order_by'] ?? $_GET['sort'] ?? 'id'));
         $sortDir = strtoupper(trim($_GET['dir'] ?? $_GET['order'] ?? $_GET['sort_dir'] ?? 'DESC'));
         if (!in_array($sortDir, ['ASC', 'DESC'])) {
@@ -249,6 +254,10 @@ if (!function_exists('adminListCourses')) {
         }
 
         switch ($sortBy) {
+            case 'order_num':
+            case 'manual':
+                $orderBy = "c.order_num ASC, c.id DESC";
+                break;
             case 'price_asc':
             case 'price_low':
                 $orderBy = "c.price ASC, c.id DESC";
@@ -273,7 +282,7 @@ if (!function_exists('adminListCourses')) {
             case 'created_at_desc':
             case 'id':
             default:
-                $orderBy = "c.id {$sortDir}";
+                $orderBy = $sortProvided ? "c.id {$sortDir}" : "c.order_num ASC, c.id DESC";
                 break;
         }
 
@@ -314,7 +323,7 @@ if (!function_exists('adminListCourses')) {
         }
 
         $sql = "
-            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.duration_months, c.allow_video_download, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
+            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.duration_months, c.allow_video_download, c.price, c.image, c.lessons_count, c.order_num, c.is_active, c.created_by_type, c.created_by_id, c.created_at, c.updated_at, c.video_preview_url
             FROM courses c
             {$joinCt}
             LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id
@@ -899,5 +908,29 @@ if (!function_exists('adminToggleCourseWebsiteVisibility')) {
         }
 
         return ['status' => 'success', 'message' => 'Course website visibility updated successfully'];
+    }
+}
+
+if (!function_exists('adminReorderCourses')) {
+    // Persists the order the admin dragged the courses table into. The dashboard only enables
+    // dragging when the list is unfiltered and unsorted, so `ordered_ids` is always the complete
+    // list in its final order and positions can simply be rewritten 1..N.
+    function adminReorderCourses($con) {
+        $body = read_json_body();
+        $orderedIds = $body['ordered_ids'] ?? $body['order'] ?? [];
+
+        if (!is_array($orderedIds) || empty($orderedIds)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $position = 1;
+        foreach ($orderedIds as $courseId) {
+            $courseId = (int)$courseId;
+            if ($courseId <= 0) continue;
+            mysqli_query($con, "UPDATE courses SET order_num = {$position} WHERE id = {$courseId}");
+            $position++;
+        }
+
+        return ['status' => 'success', 'message' => 'Courses reordered successfully'];
     }
 }

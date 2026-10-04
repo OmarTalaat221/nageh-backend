@@ -91,13 +91,13 @@ if (!function_exists('listPublicCourses')) {
         $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
 
         $sql = "
-            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.lessons_count, c.is_active, c.created_by_type, c.created_by_id, c.created_at,
+            SELECT DISTINCT c.id, c.subject_id, c.category_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.lessons_count, c.order_num, c.is_active, c.created_by_type, c.created_by_id, c.created_at,
                    COALESCE(ct_trans.name, c.slug) AS name, ct_trans.description
             FROM courses c
             {$joinCt}
             LEFT JOIN courses_translations ct_trans ON c.id = ct_trans.course_id AND ct_trans.language_id = ?
             {$whereClause}
-            ORDER BY c.id DESC
+            ORDER BY c.order_num ASC, c.id DESC
             LIMIT ? OFFSET ?
         ";
 

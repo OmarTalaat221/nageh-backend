@@ -3272,6 +3272,17 @@ $routes = [
         ],
         [
             "method" => "POST",
+            "path" => "/najeh/admin/courses/reorder",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/courses/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_courses');
+                return adminReorderCourses($con);
+            },
+        ],
+        [
+            "method" => "POST",
             "path" => "/najeh/admin/courses",
             "handler" => function ($con) {
                 include_once "./middlewares/adminauthmiddleware.php";
