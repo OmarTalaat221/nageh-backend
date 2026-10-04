@@ -190,6 +190,9 @@ function trans(string $key, ?string $lang = null, $con = null): string {
             'phone_on_multiple_accounts' => 'رقم الهاتف ده مسجّل على أكثر من حساب. سجّل الدخول بالبريد الإلكتروني.',
             'phone_already_registered' => 'رقم الهاتف ده مسجّل على حساب آخر بالفعل.',
             'name_email_password_required' => 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة',
+            // Student sign-up only - the other roles still require an email.
+            'name_password_required' => 'الاسم وكلمة المرور مطلوبة',
+            'email_or_phone_required' => 'سجّل بريدك الإلكتروني أو رقم هاتفك، عشان تقدر تسجّل دخولك بعد كده.',
             'invalid_email' => 'صيغة البريد الإلكتروني غير صالحة',
             'short_password' => 'كلمة المرور يجب أن لا تقل عن 6 أحرف',
             'invalid_credentials' => 'بيانات الدخول أو كلمة المرور غير صحيحة',
@@ -396,6 +399,9 @@ function trans(string $key, ?string $lang = null, $con = null): string {
             'phone_on_multiple_accounts' => 'This phone number is on more than one account. Please sign in with your email.',
             'phone_already_registered' => 'This phone number is already registered to another account.',
             'name_email_password_required' => 'Name, email, and password are required',
+            // Student sign-up only - the other roles still require an email.
+            'name_password_required' => 'Name and password are required',
+            'email_or_phone_required' => 'Please give either an email address or a phone number, so you can sign in later.',
             'invalid_email' => 'Invalid email format',
             'short_password' => 'Password must be at least 6 characters long',
             'invalid_credentials' => 'Invalid credentials or password',

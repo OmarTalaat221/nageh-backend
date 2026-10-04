@@ -96,14 +96,11 @@ if (!function_exists('studentLogin')) {
         // counter is cleared here rather than at the end.
         login_attempt_reset($con, $attemptKey, 'student');
 
-        if ((int)$student['is_email_verified'] !== 1) {
-            return [
-                'status' => 'error',
-                'message' => trans('email_not_verified'),
-                'requires_email_verification' => true,
-                'email' => $student['email']
-            ];
-        }
+        // No email verification gate for students. Sign-up does not send a code any more - the
+        // email itself is optional - so an account can legitimately exist with
+        // is_email_verified = 0 (every account created before this change) and with no email at
+        // all. Refusing those would lock out exactly the students this was meant to let in.
+        // Teachers, parents and admins keep their own gates; this is a student-only change.
 
         if ((int)$student['is_active'] !== 1) {
             return ['status' => 'error', 'message' => trans('account_inactive')];

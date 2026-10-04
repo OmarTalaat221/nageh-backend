@@ -34,11 +34,25 @@ if (!function_exists('studentRegister')) {
         $studyLanguage = strtolower(trim($body['study_language'] ?? 'arabic'));
         if (!in_array($studyLanguage, $allowedLanguages)) $studyLanguage = 'arabic';
 
-        if (empty($name) || empty($email) || empty($password)) {
-            return ['status' => 'error', 'message' => trans('name_email_password_required')];
+        // The email is optional now (migration 095 makes the column nullable). The account still
+        // needs SOMETHING to sign in with, though, so a student who leaves it out has to give a
+        // phone number instead - otherwise the account would be created and immediately
+        // unreachable.
+        if ($email === '') $email = null;
+
+        if (empty($name) || empty($password)) {
+            return ['status' => 'error', 'message' => trans('name_password_required')];
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if ($email === null && $phone === null) {
+            return [
+                'status' => 'error',
+                'message' => trans('email_or_phone_required'),
+                'error_code' => 'email_or_phone_required',
+            ];
+        }
+
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['status' => 'error', 'message' => trans('invalid_email')];
         }
 
@@ -46,12 +60,14 @@ if (!function_exists('studentRegister')) {
             return ['status' => 'error', 'message' => trans('short_password')];
         }
 
-        $checkStmt = mysqli_prepare($con, "SELECT id FROM students WHERE email = ? LIMIT 1");
-        mysqli_stmt_bind_param($checkStmt, "s", $email);
-        mysqli_stmt_execute($checkStmt);
-        $res = mysqli_stmt_get_result($checkStmt);
-        if (mysqli_fetch_assoc($res)) {
-            return ['status' => 'error', 'message' => trans('email_already_registered')];
+        if ($email !== null) {
+            $checkStmt = mysqli_prepare($con, "SELECT id FROM students WHERE email = ? LIMIT 1");
+            mysqli_stmt_bind_param($checkStmt, "s", $email);
+            mysqli_stmt_execute($checkStmt);
+            $res = mysqli_stmt_get_result($checkStmt);
+            if (mysqli_fetch_assoc($res)) {
+                return ['status' => 'error', 'message' => trans('email_already_registered')];
+            }
         }
 
         // A phone number is now something you can log in with, so it has to identify one account.
@@ -93,10 +109,15 @@ if (!function_exists('studentRegister')) {
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $ccCol = phone_country_code_column_exists($con);
 
+        // is_email_verified is written as 1, not 0. A student is not asked to confirm anything
+        // any more - they sign up and are in - and login no longer looks at this column for
+        // students. It is set rather than left at 0 so that any screen still reading it (the
+        // admin student list, the profile payload) does not show a permanent "unverified" badge
+        // against an account nobody will ever be asked to verify.
         $stmt = mysqli_prepare($con, "INSERT INTO students (name, email, password, image, phone, "
             . ($ccCol ? "phone_country_code, " : "")
             . "age, school_id, city_id, academic_year_id, study_language, is_email_verified, referred_by_student_id) "
-            . "VALUES (?, ?, ?, ?, ?, " . ($ccCol ? "?, " : "") . "?, ?, ?, ?, ?, 0, ?)");
+            . "VALUES (?, ?, ?, ?, ?, " . ($ccCol ? "?, " : "") . "?, ?, ?, ?, ?, 1, ?)");
 
         if ($ccCol) {
             mysqli_stmt_bind_param($stmt, "ssssssiiiisi", $name, $email, $hashedPassword, $image, $phone, $phoneDial, $age, $schoolId, $cityId, $academicYearId, $studyLanguage, $referredByStudentId);
@@ -126,9 +147,7 @@ if (!function_exists('studentRegister')) {
             }
         }
         
-        notify_of_new_student_registration($con, (int)$studentId, $name, $email, $referredByStudentId);
-
-        $otpInfo = generateAndSendOtp($con, 'student', $studentId, $email);
+        notify_of_new_student_registration($con, (int)$studentId, $name, (string)$email, $referredByStudentId);
 
         $payload = [
             'id' => (int)$studentId,
@@ -155,14 +174,14 @@ if (!function_exists('studentRegister')) {
                     'referral_code' => $affiliateCode,
                     'share_link' => 'https://najeh-app.com/register?ref=' . urlencode($affiliateCode),
                     'points_balance' => 0.00,
-                    'is_email_verified' => 0,
+                    'is_email_verified' => 1,
                     'city' => get_city_details($con, $cityId),
                     'school' => get_school_details($con, $schoolId)
                 ]),
-                'verification' => [
-                    'otp_code' => $otpInfo['code'],
-                    'expires_at' => $otpInfo['expires_at']
-                ],
+                // Kept, always false, so a client still reading it does not treat a missing key
+                // as "verification required" and strand the student on a code screen that will
+                // never receive a code.
+                'requires_email_verification' => false,
                 'tokens' => $tokens
             ]
         ];
