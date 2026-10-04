@@ -100,6 +100,10 @@ if (!function_exists('adminListBooks')) {
         $subjectId = isset($_GET['subject_id']) ? (int)$_GET['subject_id'] : 0;
         $teacherId = isset($_GET['teacher_id']) ? (int)$_GET['teacher_id'] : 0;
         $category = in_array(trim($_GET['category'] ?? ''), ['summary', 'exam'], true) ? trim($_GET['category']) : '';
+        // "general" = standalone library book (no unit/course/subject), "unit" = tied to a lesson -
+        // the two tabs on the admin books library page, previously done by fetching every single
+        // book in the table and filtering in the browser.
+        $scope = in_array(trim($_GET['scope'] ?? ''), ['general', 'unit'], true) ? trim($_GET['scope']) : '';
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
@@ -107,6 +111,8 @@ if (!function_exists('adminListBooks')) {
         $cbWhere = ["1=1"];
         if ($unitId > 0) $cbWhere[] = "cb.unit_id = {$unitId}";
         if ($category !== '') $cbWhere[] = "cb.category = '{$category}'";
+        if ($scope === 'general') $cbWhere[] = "cb.unit_id IS NULL";
+        if ($scope === 'unit') $cbWhere[] = "cb.unit_id IS NOT NULL";
         if ($courseId > 0) $cbWhere[] = "(cb.course_id = {$courseId} OR cb.unit_id IN (SELECT id FROM units WHERE course_id = {$courseId}))";
         if ($subjectId > 0) $cbWhere[] = "cb.subject_id = {$subjectId}";
         if ($teacherId > 0) {
@@ -159,7 +165,27 @@ if (!function_exists('adminListBooks')) {
             }
         }
 
-        return build_admin_paginated_response($books, $page, $limit, $totalRecords);
+        // Cheap aggregate counts for the library's stat cards - across the whole table, not just
+        // the current page/search/scope, so the admin building the page no longer has to fetch
+        // every single book (sometimes thousands, one page of 100 at a time) just to total them up.
+        $statsRow = mysqli_fetch_assoc(mysqli_query($con, "
+            SELECT
+                COUNT(*) AS total_count,
+                SUM(is_active = 1) AS active_count,
+                SUM(is_active = 0) AS inactive_count,
+                SUM(unit_id IS NULL) AS general_count,
+                SUM(unit_id IS NOT NULL) AS unit_count
+            FROM course_books
+        ")) ?: [];
+        $statistics = [
+            'total_count' => (int)($statsRow['total_count'] ?? 0),
+            'active_count' => (int)($statsRow['active_count'] ?? 0),
+            'inactive_count' => (int)($statsRow['inactive_count'] ?? 0),
+            'general_count' => (int)($statsRow['general_count'] ?? 0),
+            'unit_count' => (int)($statsRow['unit_count'] ?? 0),
+        ];
+
+        return build_admin_paginated_response($books, $page, $limit, $totalRecords, $statistics);
     }
 }
 
