@@ -194,3 +194,64 @@ if (!function_exists('teacherDeleteMyCourse')) {
         return adminDeleteCourse($con);
     }
 }
+
+if (!function_exists('teacherReorderMyCourses')) {
+    // A teacher only ever sees their own courses, so they are reordering a subset of a list the
+    // admin also orders. Rewriting positions 1..N here would stamp the teacher's courses on top of
+    // whatever order_num other teachers' courses already hold. Instead the teacher's own courses
+    // keep the exact set of slots they already occupy - only which course sits in which slot
+    // changes, so nobody else's position moves.
+    function teacherReorderMyCourses($con, $teacherData) {
+        $teacherId = (int)($teacherData['id'] ?? 0);
+        if ($teacherId <= 0) {
+            return ['status' => 'error', 'message' => 'Unauthorized teacher token'];
+        }
+
+        $body = read_json_body();
+        $orderedIds = $body['ordered_ids'] ?? $body['order'] ?? [];
+        if (!is_array($orderedIds) || empty($orderedIds)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $ids = [];
+        foreach ($orderedIds as $courseId) {
+            $courseId = (int)$courseId;
+            if ($courseId > 0) $ids[] = $courseId;
+        }
+        if (empty($ids)) {
+            return ['status' => 'error', 'message' => 'ordered_ids is required'];
+        }
+
+        $idList = implode(',', $ids);
+        $ownedRes = mysqli_query($con, "
+            SELECT DISTINCT c.id, c.order_num
+            FROM courses c
+            LEFT JOIN course_teachers ct ON c.id = ct.course_id
+            WHERE c.id IN ({$idList})
+              AND (c.teacher_id = {$teacherId} OR (ct.teacher_id = {$teacherId} AND ct.is_active = 1))
+        ");
+        if (!$ownedRes) {
+            return ['status' => 'error', 'message' => 'Courses lookup failed: ' . mysqli_error($con)];
+        }
+
+        $slots = [];
+        $owned = [];
+        while ($row = mysqli_fetch_assoc($ownedRes)) {
+            $owned[(int)$row['id']] = true;
+            $slots[] = (int)$row['order_num'];
+        }
+
+        if (count($owned) !== count($ids)) {
+            return ['status' => 'error', 'message' => 'You can only reorder courses owned by or assigned to you'];
+        }
+
+        sort($slots);
+
+        foreach ($ids as $index => $courseId) {
+            $position = $slots[$index];
+            mysqli_query($con, "UPDATE courses SET order_num = {$position} WHERE id = {$courseId}");
+        }
+
+        return ['status' => 'success', 'message' => 'Courses reordered successfully'];
+    }
+}

@@ -2148,6 +2148,16 @@ $routes = [
     ],
     [
         "method" => "POST",
+        "path" => "/najeh/teacher/courses/reorder",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/courses/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherReorderMyCourses($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "POST",
         "path" => "/najeh/teacher/courses",
         "handler" => function ($con) {
             include_once "./middlewares/teacherauthmiddleware.php";
