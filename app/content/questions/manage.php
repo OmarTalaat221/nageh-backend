@@ -252,11 +252,20 @@ if (!function_exists('adminListQuestions')) {
         $unitId = isset($_GET['unit_id']) && $_GET['unit_id'] !== '' ? (int)$_GET['unit_id'] : 0;
         $teacherId = isset($_GET['teacher_id']) && $_GET['teacher_id'] !== '' ? (int)$_GET['teacher_id'] : 0;
 
+        // The type and status filters on the admin per-exam questions page - previously done by
+        // fetching every question of the exam and filtering in the browser.
+        $questionType = in_array(trim($_GET['question_type'] ?? ''), ['mcq', 'true_false', 'written'], true) ? trim($_GET['question_type']) : '';
+        $activeFilter = isset($_GET['is_active']) && $_GET['is_active'] !== '' ? ((int)$_GET['is_active'] === 1 ? 1 : 0) : null;
+
         $where = ["1=1"];
         if ($examId > 0) $where[] = "q.exam_id = {$examId}";
         if ($courseId > 0) $where[] = "q.course_id = {$courseId}";
         if ($unitId > 0) $where[] = "q.unit_id = {$unitId}";
         if ($teacherId > 0) $where[] = "((q.created_by_type = 'teacher' AND q.created_by_id = {$teacherId}) OR q.created_by_type = 'admin')";
+        // Stat cards cover the exam/course/unit/teacher being viewed, not the search/type/status.
+        $statWhereSql = implode(" AND ", $where);
+        if ($questionType !== '') $where[] = "q.question_type = '{$questionType}'";
+        if ($activeFilter !== null) $where[] = "q.is_active = {$activeFilter}";
         if (!empty($search)) {
             $sp = '%' . mysqli_real_escape_string($con, $search) . '%';
             $where[] = "EXISTS (SELECT 1 FROM questions_translations qt WHERE qt.question_id = q.id AND qt.question_text LIKE '{$sp}')";
@@ -282,7 +291,26 @@ if (!function_exists('adminListQuestions')) {
             }
         }
 
-        return build_admin_paginated_response($items, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
+        // One cheap aggregate query instead of the admin page fetching every question of the exam
+        // just to count them and add up their scores in the browser.
+        $statsRes = mysqli_query($con, "
+            SELECT
+                COUNT(*) AS total_count,
+                SUM(q.is_active = 1) AS active_count,
+                SUM(q.is_active = 0) AS inactive_count,
+                COALESCE(SUM(q.score), 0) AS total_score
+            FROM questions q
+            WHERE {$statWhereSql}
+        ");
+        $statsRow = $statsRes ? (mysqli_fetch_assoc($statsRes) ?: []) : [];
+        $statistics = [
+            'total_count' => (int)($statsRow['total_count'] ?? 0),
+            'active_count' => (int)($statsRow['active_count'] ?? 0),
+            'inactive_count' => (int)($statsRow['inactive_count'] ?? 0),
+            'total_score' => (float)($statsRow['total_score'] ?? 0),
+        ];
+
+        return build_admin_paginated_response($items, $page, $limit, $totalRecords, $statistics);
     }
 }
 

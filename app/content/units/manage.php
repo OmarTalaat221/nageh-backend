@@ -176,7 +176,14 @@ if (!function_exists('adminListUnits')) {
 
         $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
 
-        $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM units");
+        // Stat cards are scoped to the course/subject being viewed (the admin per-course units page
+        // used to fetch every unit of the course just to count them in the browser, because these
+        // counted the whole table) - but not to search/status, so the cards stay the course's totals.
+        $statWhere = [];
+        if (!empty($courseIds)) $statWhere[] = "course_id IN (" . implode(',', array_map('intval', $courseIds)) . ")";
+        if (!empty($subjectIds)) $statWhere[] = "subject_id IN (" . implode(',', array_map('intval', $subjectIds)) . ")";
+        $statWhereSql = !empty($statWhere) ? "WHERE " . implode(" AND ", $statWhere) : "";
+        $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM units {$statWhereSql}");
         $statRow = mysqli_fetch_assoc($statRes);
         $totalRecords = (int)($statRow['total'] ?? 0);
         $statistics = [

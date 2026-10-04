@@ -93,11 +93,19 @@ if (!function_exists('adminListExams')) {
         $courseId = isset($_GET['course_id']) && $_GET['course_id'] !== '' ? (int)$_GET['course_id'] : 0;
         $subjectId = isset($_GET['subject_id']) && $_GET['subject_id'] !== '' ? (int)$_GET['subject_id'] : 0;
         $teacherId = isset($_GET['teacher_id']) && $_GET['teacher_id'] !== '' ? (int)$_GET['teacher_id'] : 0;
+        // The tabs on the admin exams library page - "unit" = tied to a lesson, "course" = a
+        // whole-course exam, "standalone" = no lesson/course/subject at all. Previously done by
+        // fetching every single exam in the table and filtering in the browser.
+        $scope = in_array(trim($_GET['scope'] ?? ''), ['unit', 'course', 'standalone'], true) ? trim($_GET['scope']) : '';
 
         $langInfo = get_language_info($con);
         $langId = (int)($langInfo['id'] ?? 1);
 
         $where = ["1=1"];
+        if ($scope === 'unit') $where[] = "COALESCE(ce.unit_id, 0) > 0";
+        if ($scope === 'course') $where[] = "COALESCE(ce.unit_id, 0) = 0 AND COALESCE(ce.course_id, 0) > 0";
+        if ($scope === 'standalone') $where[] = "COALESCE(ce.unit_id, 0) = 0 AND COALESCE(ce.course_id, 0) = 0 AND COALESCE(ce.subject_id, 0) = 0";
+        if (isset($_GET['is_active']) && $_GET['is_active'] !== '') $where[] = "ce.is_active = " . ((int)$_GET['is_active'] === 1 ? 1 : 0);
         if ($unitId > 0) $where[] = "ce.unit_id = {$unitId}";
         if ($courseId > 0) $where[] = "(ce.course_id = {$courseId} OR ce.unit_id IN (SELECT id FROM units WHERE course_id = {$courseId}))";
         if ($subjectId > 0) $where[] = "ce.subject_id = {$subjectId}";
@@ -138,7 +146,30 @@ if (!function_exists('adminListExams')) {
             }
         }
 
-        return build_admin_paginated_response($exams, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
+        // Cheap aggregate counts for the stat cards - scoped to the unit/course being viewed but not
+        // to search/tab, so the admin exams pages no longer have to fetch every single exam just
+        // to total them up in the browser.
+        $statWhere = ["1=1"];
+        if ($unitId > 0) $statWhere[] = "unit_id = {$unitId}";
+        if ($courseId > 0) $statWhere[] = "(course_id = {$courseId} OR unit_id IN (SELECT id FROM units WHERE course_id = {$courseId}))";
+        if ($subjectId > 0) $statWhere[] = "subject_id = {$subjectId}";
+        $statsRes = mysqli_query($con, "
+            SELECT
+                COUNT(*) AS total_count,
+                SUM(is_active = 1) AS active_count,
+                SUM(is_active = 0) AS inactive_count,
+                COALESCE(MAX(total_marks), 0) AS max_total_marks
+            FROM course_exams
+            WHERE " . implode(" AND ", $statWhere));
+        $statsRow = $statsRes ? (mysqli_fetch_assoc($statsRes) ?: []) : [];
+        $statistics = [
+            'total_count' => (int)($statsRow['total_count'] ?? 0),
+            'active_count' => (int)($statsRow['active_count'] ?? 0),
+            'inactive_count' => (int)($statsRow['inactive_count'] ?? 0),
+            'max_total_marks' => (int)($statsRow['max_total_marks'] ?? 0),
+        ];
+
+        return build_admin_paginated_response($exams, $page, $limit, $totalRecords, $statistics);
     }
 }
 

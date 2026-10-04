@@ -244,6 +244,13 @@ if (!function_exists('adminListVideos')) {
             ?? ''
         );
 
+        // The admin per-unit videos page filters by draft/published - it used to do that by
+        // fetching every video of the unit and filtering in the browser.
+        $publishStatus = strtolower(trim($_GET['publish_status'] ?? ''));
+        if (!in_array($publishStatus, ['draft', 'published'], true)) {
+            $publishStatus = '';
+        }
+
 
         /*
         |--------------------------------------------------------------------------
@@ -346,6 +353,16 @@ if (!function_exists('adminListVideos')) {
             $types .= "i";
         }
 
+        if ($publishStatus !== '') {
+
+            $whereConditions[] =
+                "v.publish_status = ?";
+
+            $params[] = $publishStatus;
+
+            $types .= "s";
+        }
+
 
         /*
         |--------------------------------------------------------------------------
@@ -389,6 +406,13 @@ if (!function_exists('adminListVideos')) {
         |--------------------------------------------------------------------------
         */
 
+        // Scoped to the unit(s) being viewed - not to search/status, so the cards stay the unit's
+        // totals - and including the total duration, so the admin per-unit page no longer has to
+        // fetch every video of the unit just to count and sum them in the browser.
+        $statWhereSql = !empty($unitIds)
+            ? "WHERE unit_id IN (" . implode(',', array_map('intval', $unitIds)) . ")"
+            : "";
+
         $statRes = mysqli_query(
             $con,
             "
@@ -409,9 +433,12 @@ if (!function_exists('adminListVideos')) {
                         THEN 1
                         ELSE 0
                     END
-                ) AS inactive_count
+                ) AS inactive_count,
+
+                COALESCE(SUM(duration_seconds), 0) AS total_duration_seconds
 
             FROM videos
+            {$statWhereSql}
             "
         );
 
@@ -425,7 +452,10 @@ if (!function_exists('adminListVideos')) {
                 (int)($statRow['active_count'] ?? 0),
 
             'inactive_count' =>
-                (int)($statRow['inactive_count'] ?? 0)
+                (int)($statRow['inactive_count'] ?? 0),
+
+            'total_duration_seconds' =>
+                (int)($statRow['total_duration_seconds'] ?? 0)
         ];
 
 
