@@ -141,11 +141,16 @@ if (!function_exists('studentListAvailableExams')) {
         $onlyUnitExams = in_array($unitExamsParam, ['only', 'unit_only', 'units_only'], true);
         $includeUnitExams = $onlyUnitExams || in_array($unitExamsParam, ['1', 'true', 'yes'], true);
 
-        // Sorting: newest-first by default (previously this endpoint had NO ORDER BY at all,
-        // i.e. undefined/storage-engine-dependent order). `sort` (aliases: `sort_by`, `order`)
-        // accepts "newest" (default) or "oldest"; anything unrecognised falls back to newest.
-        $sortParam = strtolower(trim((string)($_GET['sort'] ?? $_GET['sort_by'] ?? $_GET['order'] ?? 'newest')));
+        // Sorting: by order_num by default - the sequence the teacher/admin actually intended (and
+        // already numbers into the exam titles themselves, e.g. "... - 07"), not when each exam
+        // happened to be created. `sort` (aliases: `sort_by`, `order`) still accepts "newest"/
+        // "oldest" to explicitly fall back to created_at-based sorting when a caller wants that.
+        $sortByProvided = isset($_GET['sort']) || isset($_GET['sort_by']) || isset($_GET['order']);
+        $sortParam = strtolower(trim((string)($_GET['sort'] ?? $_GET['sort_by'] ?? $_GET['order'] ?? '')));
         $sortDir = in_array($sortParam, ['oldest', 'asc', 'created_at_asc', 'id_asc'], true) ? 'ASC' : 'DESC';
+        $orderBySql = $sortByProvided
+            ? "created_at {$sortDir}, id {$sortDir}"
+            : "order_num ASC, id ASC";
 
         // A standalone exam - no course, no unit, no subject - belongs to nobody in particular and
         // is offered to every student. It is listed unconditionally, which is also why the old
@@ -202,7 +207,7 @@ if (!function_exists('studentListAvailableExams')) {
 
         $extraSql = !empty($extraConditions) ? " AND " . implode(" AND ", $extraConditions) : "";
 
-        $sql = "SELECT id FROM course_exams WHERE is_active = 1 AND (" . implode(" OR ", $whereParts) . ")" . $extraSql . " ORDER BY created_at {$sortDir}, id {$sortDir}";
+        $sql = "SELECT id FROM course_exams WHERE is_active = 1 AND (" . implode(" OR ", $whereParts) . ")" . $extraSql . " ORDER BY {$orderBySql}";
         $stmt = mysqli_prepare($con, $sql);
         // A student with no subscriptions leaves nothing to bind - only the public-exam condition
         // is left, and it carries no placeholder. bind_param with an empty type string is an error.

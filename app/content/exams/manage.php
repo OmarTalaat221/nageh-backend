@@ -10,7 +10,7 @@ if (!function_exists('adminGetExamDetails')) {
         if (!$examId) return null;
         $langInfo = get_language_info($con);
 
-        $stmt = mysqli_prepare($con, "SELECT id, subject_id, course_id, unit_id, duration_minutes, total_marks, pass_marks, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_exams WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, subject_id, course_id, unit_id, order_num, duration_minutes, total_marks, pass_marks, is_active, created_by_type, created_by_id, created_at, updated_at FROM course_exams WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $examId);
         mysqli_stmt_execute($stmt);
@@ -18,6 +18,7 @@ if (!function_exists('adminGetExamDetails')) {
         if (!$row) return null;
 
         $row['id'] = (int)$row['id'];
+        $row['order_num'] = (int)($row['order_num'] ?? 1);
         $row['unit_id'] = !empty($row['unit_id']) ? (int)$row['unit_id'] : null;
         $row['subject_id'] = !empty($row['subject_id']) ? (int)$row['subject_id'] : null;
         $row['course_id'] = !empty($row['course_id']) ? (int)$row['course_id'] : null;
@@ -121,7 +122,7 @@ if (!function_exists('adminListExams')) {
         $countRes = mysqli_query($con, "SELECT COUNT(DISTINCT ce.id) AS total FROM course_exams ce {$whereSql}");
         $totalRecords = $countRes ? (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0) : 0;
 
-        $sql = "SELECT DISTINCT ce.id FROM course_exams ce {$whereSql} ORDER BY ce.id DESC LIMIT {$limit} OFFSET {$offset}";
+        $sql = "SELECT DISTINCT ce.id FROM course_exams ce {$whereSql} ORDER BY ce.order_num ASC, ce.id ASC LIMIT {$limit} OFFSET {$offset}";
         $res = mysqli_query($con, $sql);
 
         $exams = [];
@@ -187,12 +188,13 @@ if (!function_exists('adminCreateExam')) {
         $totalMarks = isset($body['total_marks']) ? (int)$body['total_marks'] : 100;
         $passMarks = isset($body['pass_marks']) ? (int)$body['pass_marks'] : 50;
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
+        $orderNum = isset($body['order_num']) && (int)$body['order_num'] > 0 ? (int)$body['order_num'] : 1;
 
         $ceSub = $subjectId ? $subjectId : 'NULL';
         $ceCourse = $courseId ? $courseId : 'NULL';
         $ceUnit = $unitId ? $unitId : 'NULL';
 
-        $sql = "INSERT INTO course_exams (subject_id, course_id, unit_id, duration_minutes, total_marks, pass_marks, is_active, created_by_type, created_by_id) VALUES ({$ceSub}, {$ceCourse}, {$ceUnit}, {$durationMinutes}, {$totalMarks}, {$passMarks}, {$isActive}, '{$creatorType}', {$creatorId})";
+        $sql = "INSERT INTO course_exams (subject_id, course_id, unit_id, order_num, duration_minutes, total_marks, pass_marks, is_active, created_by_type, created_by_id) VALUES ({$ceSub}, {$ceCourse}, {$ceUnit}, {$orderNum}, {$durationMinutes}, {$totalMarks}, {$passMarks}, {$isActive}, '{$creatorType}', {$creatorId})";
         if (!mysqli_query($con, $sql)) {
             return ['status' => 'error', 'message' => 'Failed to create exam: ' . mysqli_error($con)];
         }
@@ -242,6 +244,10 @@ if (!function_exists('adminUpdateExam')) {
         }
         if (isset($body['is_active'])) {
             $updateFields[] = "is_active = " . (int)$body['is_active'];
+        }
+        if (isset($body['order_num'])) {
+            $orderVal = (int)$body['order_num'] > 0 ? (int)$body['order_num'] : 1;
+            $updateFields[] = "order_num = {$orderVal}";
         }
         if (isset($body['subject_id'])) {
             $subVal = (int)$body['subject_id'] > 0 ? (int)$body['subject_id'] : 'NULL';
