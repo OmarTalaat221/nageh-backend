@@ -331,6 +331,11 @@ if (!function_exists('studentStartExamAttempt')) {
             mysqli_stmt_execute($iStmt);
             $attemptId = mysqli_insert_id($con);
         } else {
+            // Retaking is unlimited, and only the latest sitting is ever kept: the same attempt
+            // row is reused, its answers are deleted and every score/timestamp is reset, so the
+            // previous result is gone rather than stacked up beside the new one. The report row
+            // in student_reports is keyed on this attempt id, so it is rewritten at submit
+            // instead of a second one appearing.
             $attemptId = (int)$existing['id'];
             if ($existing['status'] !== 'in_progress') {
                 $maxScoreRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT COALESCE(SUM(score),0) AS total FROM questions WHERE exam_id = {$examId} AND is_active = 1"));
@@ -342,7 +347,10 @@ if (!function_exists('studentStartExamAttempt')) {
             }
         }
 
-        $qStmt = mysqli_prepare($con, "SELECT q.id, q.question_type, q.score, qt.question_text FROM questions q LEFT JOIN questions_translations qt ON q.id = qt.question_id AND qt.language_id = 1 WHERE q.exam_id = ? AND q.is_active = 1 ORDER BY q.id ASC");
+        // Same order the result screen lists them in, and the order the teacher arranged them in -
+        // sitting the exam in one sequence and reading the result in another makes a question
+        // impossible to find afterwards.
+        $qStmt = mysqli_prepare($con, "SELECT q.id, q.question_type, q.score, qt.question_text FROM questions q LEFT JOIN questions_translations qt ON q.id = qt.question_id AND qt.language_id = 1 WHERE q.exam_id = ? AND q.is_active = 1 ORDER BY q.order_num ASC, q.id ASC");
         mysqli_stmt_bind_param($qStmt, "i", $examId);
         mysqli_stmt_execute($qStmt);
         $qRes = mysqli_stmt_get_result($qStmt);
