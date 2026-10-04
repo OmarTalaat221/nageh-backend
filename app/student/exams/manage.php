@@ -89,45 +89,89 @@ if (!function_exists('get_exam_attempt_details')) {
         $sRow = mysqli_fetch_assoc(mysqli_stmt_get_result($sStmt));
         if ($sRow) { $sRow['id'] = (int)$sRow['id']; $row['student'] = $sRow; }
 
+        // Driven from the exam's QUESTIONS, not from the rows the student submitted. The old
+        // query started at exam_attempt_answers, so a question left blank produced no row at all
+        // and simply vanished from the result - a student who answered four of ten saw a
+        // four-question paper and no way to tell what they had skipped or what the answer was.
+        // Every question of the exam now comes back, in the order it is asked, with
+        // `is_answered` saying whether this student put anything against it.
         $aStmt = mysqli_prepare($con, "
-            SELECT eaa.id, eaa.question_id, eaa.mcq_option_id, eaa.true_false_answer, eaa.written_answer_text,
-                   eaa.is_correct, eaa.score_awarded, eaa.teacher_note, q.question_type, q.score AS max_question_score,
-                   qt.question_text
-            FROM exam_attempt_answers eaa
-            JOIN questions q ON eaa.question_id = q.id
+            SELECT q.id AS question_id, q.question_type, q.score AS max_question_score, q.order_num,
+                   qt.question_text,
+                   eaa.id, eaa.mcq_option_id, eaa.true_false_answer, eaa.written_answer_text,
+                   eaa.is_correct, eaa.score_awarded, eaa.teacher_note
+            FROM questions q
             LEFT JOIN questions_translations qt ON q.id = qt.question_id AND qt.language_id = 1
-            WHERE eaa.attempt_id = ?
+            LEFT JOIN exam_attempt_answers eaa ON eaa.question_id = q.id AND eaa.attempt_id = ?
+            WHERE q.exam_id = ? AND q.is_active = 1
+            ORDER BY q.order_num ASC, q.id ASC
         ");
-        mysqli_stmt_bind_param($aStmt, "i", $attemptId);
+        mysqli_stmt_bind_param($aStmt, "ii", $attemptId, $row['exam_id']);
         mysqli_stmt_execute($aStmt);
         $aRes = mysqli_stmt_get_result($aStmt);
 
         $answers = [];
         while ($aRow = mysqli_fetch_assoc($aRes)) {
-            $aRow['id'] = (int)$aRow['id'];
-            $aRow['question_id'] = (int)$aRow['question_id'];
+            $questionId = (int)$aRow['question_id'];
+
+            // No answer row means the question was skipped. It is worth zero, and `is_correct`
+            // stays null rather than becoming 0 - "not answered" and "answered wrongly" are
+            // different things and the result screen labels them differently.
+            $isAnswered = $aRow['id'] !== null;
+
+            $aRow['id'] = $aRow['id'] !== null ? (int)$aRow['id'] : null;
+            $aRow['question_id'] = $questionId;
+            $aRow['is_answered'] = $isAnswered ? 1 : 0;
             $aRow['mcq_option_id'] = $aRow['mcq_option_id'] ? (int)$aRow['mcq_option_id'] : null;
             $aRow['true_false_answer'] = $aRow['true_false_answer'] !== null ? (int)$aRow['true_false_answer'] : null;
             $aRow['is_correct'] = $aRow['is_correct'] !== null ? (int)$aRow['is_correct'] : null;
-            $aRow['score_awarded'] = $aRow['score_awarded'] !== null ? (float)$aRow['score_awarded'] : null;
+            $aRow['score_awarded'] = $aRow['score_awarded'] !== null ? (float)$aRow['score_awarded'] : ($isAnswered ? null : 0.0);
             $aRow['max_question_score'] = (float)$aRow['max_question_score'];
+            $aRow['order_num'] = (int)($aRow['order_num'] ?? 0);
 
             if ($revealAnswers && $aRow['question_type'] === 'mcq') {
-                $optRes = mysqli_query($con, "SELECT mo.id, mo.is_correct, mot.option_text FROM mcq_options mo LEFT JOIN mcq_options_translations mot ON mo.id = mot.mcq_option_id AND mot.language_id = 1 WHERE mo.question_id = {$aRow['question_id']}");
+                $optRes = mysqli_query($con, "SELECT mo.id, mo.is_correct, mot.option_text FROM mcq_options mo LEFT JOIN mcq_options_translations mot ON mo.id = mot.mcq_option_id AND mot.language_id = 1 WHERE mo.question_id = {$questionId}");
                 $options = [];
+                $correctOptionId = null;
+                $correctOptionText = null;
                 while ($o = mysqli_fetch_assoc($optRes)) {
-                    $options[] = ['id' => (int)$o['id'], 'is_correct' => (int)$o['is_correct'], 'option_text' => $o['option_text']];
+                    $option = ['id' => (int)$o['id'], 'is_correct' => (int)$o['is_correct'], 'option_text' => $o['option_text']];
+                    if ($option['is_correct'] === 1 && $correctOptionId === null) {
+                        $correctOptionId = $option['id'];
+                        $correctOptionText = $option['option_text'];
+                    }
+                    $options[] = $option;
                 }
                 $aRow['options'] = $options;
+                // Spelled out as well as flagged inside `options`, so a client can print "the
+                // right answer was X" without scanning the list for the flag.
+                $aRow['correct_option_id'] = $correctOptionId;
+                $aRow['correct_answer_text'] = $correctOptionText;
             }
             if ($revealAnswers && $aRow['question_type'] === 'true_false') {
-                $tf = mysqli_fetch_assoc(mysqli_query($con, "SELECT correct_answer FROM true_false_answers WHERE question_id = {$aRow['question_id']} LIMIT 1"));
+                $tf = mysqli_fetch_assoc(mysqli_query($con, "SELECT correct_answer FROM true_false_answers WHERE question_id = {$questionId} LIMIT 1"));
                 $aRow['correct_answer'] = $tf ? (int)$tf['correct_answer'] : null;
+            }
+            if ($revealAnswers && $aRow['question_type'] === 'written') {
+                // The model answer, where the teacher wrote one. A written question is graded by
+                // hand, so this is the only thing the student can compare their own text against.
+                $wm = mysqli_fetch_assoc(mysqli_query($con, "
+                    SELECT wmat.model_answer
+                    FROM written_model_answers wma
+                    LEFT JOIN written_model_answers_translations wmat
+                        ON wma.id = wmat.written_model_answer_id AND wmat.language_id = 1
+                    WHERE wma.question_id = {$questionId} AND wma.is_active = 1
+                    LIMIT 1
+                "));
+                $aRow['model_answer'] = $wm['model_answer'] ?? null;
+                $aRow['correct_answer_text'] = $wm['model_answer'] ?? null;
             }
 
             $answers[] = $aRow;
         }
         $row['answers'] = $answers;
+        $row['questions_count'] = count($answers);
+        $row['answered_count'] = count(array_filter($answers, fn($a) => $a['is_answered'] === 1));
 
         return $row;
     }
@@ -431,9 +475,13 @@ if (!function_exists('studentListExamResults')) {
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
 
+        // `false`: this is the results LIST, which shows a score and a status per attempt and
+        // never renders an answer. Revealing them costs an options query (and now a model-answer
+        // query) for every question of every exam the student has ever sat, for data nothing
+        // draws. The single-attempt endpoint below still reveals everything.
         $items = [];
         while ($row = mysqli_fetch_assoc($res)) {
-            $items[] = get_exam_attempt_details($con, (int)$row['id'], true);
+            $items[] = get_exam_attempt_details($con, (int)$row['id'], false);
         }
 
         return ['status' => 'success', 'data' => $items];

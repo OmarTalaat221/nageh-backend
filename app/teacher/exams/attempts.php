@@ -115,12 +115,25 @@ if (!function_exists('grade_exam_attempt')) {
             $maxQScore = $qScore ? (float)$qScore['score'] : $scoreAwarded;
             $isCorrect = $scoreAwarded >= $maxQScore ? 1 : ($scoreAwarded <= 0 ? 0 : null);
 
+            // Upsert, not UPDATE. A question the student skipped has no answer row at all, and
+            // those are now shown to the grader alongside the answered ones - an UPDATE against
+            // a row that does not exist reports success and saves nothing, so the grade and the
+            // note a teacher typed against a blank answer would quietly disappear.
+            // uq_attempt_question (attempt_id, question_id) is what makes this safe.
             if ($teacherNote !== null) {
-                $stmt = mysqli_prepare($con, "UPDATE exam_attempt_answers SET score_awarded = ?, is_correct = ?, teacher_note = ? WHERE attempt_id = ? AND question_id = ?");
-                mysqli_stmt_bind_param($stmt, "disii", $scoreAwarded, $isCorrect, $teacherNote, $attemptId, $questionId);
+                $stmt = mysqli_prepare($con, "
+                    INSERT INTO exam_attempt_answers (attempt_id, question_id, score_awarded, is_correct, teacher_note)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE score_awarded = VALUES(score_awarded), is_correct = VALUES(is_correct), teacher_note = VALUES(teacher_note)
+                ");
+                mysqli_stmt_bind_param($stmt, "iidis", $attemptId, $questionId, $scoreAwarded, $isCorrect, $teacherNote);
             } else {
-                $stmt = mysqli_prepare($con, "UPDATE exam_attempt_answers SET score_awarded = ?, is_correct = ? WHERE attempt_id = ? AND question_id = ?");
-                mysqli_stmt_bind_param($stmt, "diii", $scoreAwarded, $isCorrect, $attemptId, $questionId);
+                $stmt = mysqli_prepare($con, "
+                    INSERT INTO exam_attempt_answers (attempt_id, question_id, score_awarded, is_correct)
+                    VALUES (?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE score_awarded = VALUES(score_awarded), is_correct = VALUES(is_correct)
+                ");
+                mysqli_stmt_bind_param($stmt, "iidi", $attemptId, $questionId, $scoreAwarded, $isCorrect);
             }
             mysqli_stmt_execute($stmt);
         }
