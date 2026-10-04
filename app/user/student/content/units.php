@@ -274,7 +274,7 @@ if (!function_exists('studentGetUnitVideosOnly')) {
             LEFT JOIN videos_translations vt ON v.id = vt.video_id AND vt.language_id = {$langId}
             LEFT JOIN course_videos_translations cvt ON cv.id = cvt.video_id AND cvt.language_id = {$langId}
             WHERE v.unit_id = {$unitId} AND v.is_active = 1
-            ORDER BY v.id ASC
+            ORDER BY v.order_num ASC, v.id ASC
         ";
         $vRes = mysqli_query($con, $vSql);
 

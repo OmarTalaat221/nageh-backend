@@ -980,7 +980,7 @@ if (!function_exists('studentGetCourseAllContent')) {
                     LEFT JOIN videos_translations vt ON v.id = vt.video_id AND vt.language_id = {$langId}
                     LEFT JOIN course_videos_translations cvt ON cv.id = cvt.video_id AND cvt.language_id = {$langId}
                     WHERE v.unit_id = {$uId} AND v.is_active = 1 AND (v.publish_status IS NULL OR v.publish_status = 'published')
-                    ORDER BY v.id ASC
+                    ORDER BY v.order_num ASC, v.id ASC
                 ";
                 $vRes = mysqli_query($con, $vSql);
                 $videos = [];
@@ -1067,7 +1067,7 @@ if (!function_exists('studentGetCourseAllContent')) {
                     FROM course_books cb
                     LEFT JOIN course_books_translations cbt ON cb.id = cbt.book_id AND cbt.language_id = {$langId}
                     WHERE cb.unit_id = {$uId} AND cb.is_active = 1
-                    ORDER BY cb.id ASC
+                    ORDER BY cb.order_num ASC, cb.id ASC
                 ";
                 $bRes = mysqli_query($con, $bSql);
                 $books = [];
@@ -1126,7 +1126,7 @@ if (!function_exists('studentGetCourseAllContent')) {
                     FROM course_exams ce
                     LEFT JOIN course_exams_translations cet ON ce.id = cet.exam_id AND cet.language_id = {$langId}
                     WHERE ce.unit_id = {$uId} AND ce.is_active = 1
-                    ORDER BY ce.id ASC
+                    ORDER BY ce.order_num ASC, ce.id ASC
                 ";
                 $eRes = mysqli_query($con, $eSql);
                 $exams = [];

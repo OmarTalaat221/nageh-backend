@@ -278,6 +278,9 @@ if (!function_exists('studentGetAllBooksWithOwn')) {
             $books[] = enrich_student_book_details($con, $row);
         }
 
+        // The price a student in this country actually pays, in that country's currency.
+        pricing_decorate_rows($con, $books, 'book', $stId);
+
         return build_admin_paginated_response($books, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
 }
@@ -402,6 +405,9 @@ if (!function_exists('studentGetMySubscribedBooks')) {
             $row['is_subscribed'] = true;
             $books[] = enrich_student_book_details($con, $row);
         }
+
+        // The price a student in this country actually pays, in that country's currency.
+        pricing_decorate_rows($con, $books, 'book', $stId);
 
         return build_admin_paginated_response($books, $page, $limit, $totalRecords, ['total_count' => $totalRecords]);
     }
