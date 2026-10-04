@@ -45,6 +45,20 @@ if (!function_exists('get_exam_summary')) {
                 WHERE u.id = {$row['unit_id']} LIMIT 1
             "));
             $row['unit'] = $uRow ? ['id' => (int)$uRow['id'], 'name' => $uRow['name']] : null;
+
+            // A unit exam is supposed to be saved with its parent course_id, but rows created
+            // before that was enforced carry only the unit. Backfilling it here means "take me
+            // back to the course this exam belongs to" has an answer for every exam, not only
+            // the ones entered after the fix.
+            if (empty($row['course_id'])) {
+                $cRow = mysqli_fetch_assoc(mysqli_query(
+                    $con,
+                    "SELECT course_id FROM units WHERE id = {$row['unit_id']} LIMIT 1"
+                ));
+                if (!empty($cRow['course_id'])) {
+                    $row['course_id'] = (int)$cRow['course_id'];
+                }
+            }
         }
 
         $row['course'] = !empty($row['course_id']) ? get_course_details($con, $row['course_id']) : null;
@@ -319,8 +333,12 @@ if (!function_exists('studentSubmitExamAttempt')) {
         $attemptId = (int)($body['attempt_id'] ?? 0);
         $answers = $body['answers'] ?? [];
 
-        if ($attemptId <= 0 || !is_array($answers) || empty($answers)) {
-            return ['status' => 'error', 'message' => 'attempt_id and a non-empty answers array are required'];
+        // An empty answers array is a valid submission, not a malformed request. A student who
+        // opens an exam and answers nothing has still sat it - refusing the submit left them with
+        // an attempt stuck "in progress" that they could neither finish nor restart. They score
+        // zero, which is the correct outcome, instead of being trapped.
+        if ($attemptId <= 0 || !is_array($answers)) {
+            return ['status' => 'error', 'message' => 'attempt_id and an answers array are required'];
         }
 
         $checkStmt = mysqli_prepare($con, "SELECT id, status FROM exam_attempts WHERE id = ? AND student_id = ? LIMIT 1");
