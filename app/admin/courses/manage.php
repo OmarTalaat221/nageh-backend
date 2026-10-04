@@ -87,6 +87,10 @@ if (!function_exists('adminListCourses')) {
         // The cap is 1000 rather than 100 because the dashboard's drag-to-reorder mode has to hold
         // the whole list at once - you cannot drag a course from page 1 to page 3.
         $limit = max(1, min(1000, (int)($_GET['limit'] ?? 10)));
+
+        // `light=1` trims each row down to what a list of draggable labels needs. See the loop
+        // below for why that matters at this page size.
+        $light = in_array(strtolower(trim((string)($_GET['light'] ?? ''))), ['1', 'true', 'yes'], true);
         $offset = ($page - 1) * $limit;
 
         $whereConditions = [];
@@ -358,9 +362,31 @@ if (!function_exists('adminListCourses')) {
         }
 
         $courses = [];
+        $lightIds = [];
         if ($res) {
             while ($row = mysqli_fetch_assoc($res)) {
                 $cId = (int)$row['id'];
+
+                // The drag-ordering view asks for the whole catalogue at once and only needs
+                // enough to label a row. The full shape below costs six or seven extra queries
+                // per course (subject, category, academic year, creator, translations, teachers),
+                // which at a thousand rows is thousands of round trips for data nothing renders.
+                if ($light) {
+                    $lightIds[] = $cId;
+                    $courses[] = format_response_images([
+                        'id' => $cId,
+                        'slug' => $row['slug'] ?? null,
+                        'image' => $row['image'] ?? null,
+                        'type' => $row['type'] ?? 'english',
+                        'kind' => $row['kind'] ?? 'normal',
+                        'price' => (float)($row['price'] ?? 0),
+                        'lessons_count' => (int)($row['lessons_count'] ?? 0),
+                        'order_num' => (int)($row['order_num'] ?? 0),
+                        'is_active' => (int)($row['is_active'] ?? 0),
+                    ]);
+                    continue;
+                }
+
                 $sId = isset($row['subject_id']) && $row['subject_id'] ? (int)$row['subject_id'] : null;
                 $catId = $row['category_id'] ? (int)$row['category_id'] : null;
                 $ayId = $row['academic_year_id'] ? (int)$row['academic_year_id'] : null;
@@ -413,6 +439,31 @@ if (!function_exists('adminListCourses')) {
 
                 $courses[] = format_response_images($row);
             }
+        }
+
+        // One query for every name in the light list, instead of one per row.
+        if ($light && !empty($lightIds)) {
+            $names = [];
+            $idList = implode(',', $lightIds);
+            $tRes = mysqli_query($con, "
+                SELECT ct.course_id, l.code AS language_code, ct.name
+                FROM courses_translations ct
+                JOIN languages l ON ct.language_id = l.id
+                WHERE ct.course_id IN ({$idList})
+            ");
+            if ($tRes) {
+                while ($t = mysqli_fetch_assoc($tRes)) {
+                    $names[(int)$t['course_id']][$t['language_code']] = $t['name'];
+                }
+            }
+
+            foreach ($courses as &$lightRow) {
+                $row = $names[(int)$lightRow['id']] ?? [];
+                $lightRow['name_ar'] = $row['ar'] ?? null;
+                $lightRow['name_en'] = $row['en'] ?? null;
+                $lightRow['name'] = $lightRow['name_ar'] ?: ($lightRow['name_en'] ?: $lightRow['slug']);
+            }
+            unset($lightRow);
         }
 
         return build_admin_paginated_response($courses, $page, $limit, $totalRecords, $statistics);
