@@ -258,7 +258,12 @@ if (!function_exists('adminCreateBook')) {
         // (external) books, with no course_id/unit_id, are individually priced.
         $isCourseLinked = ($courseId !== null || $unitId !== null);
         $price = $isCourseLinked ? 0.00 : (float)($body['price'] ?? 0.00);
-        $allowDownload = isset($body['allow_download']) ? (int)(bool)$body['allow_download'] : 1;
+        // Unit/course-scoped summaries and exam PDFs are forced to view-only on the platform,
+        // regardless of what the form sends - protected course content must never leave an
+        // option to download it to a device. Only a standalone library book can be downloadable.
+        $allowDownload = $isCourseLinked
+            ? 0
+            : (isset($body['allow_download']) ? (int)(bool)$body['allow_download'] : 1);
 
         $cbSub = $subjectId ? $subjectId : 'NULL';
         $cbCourse = $courseId ? $courseId : 'NULL';
@@ -326,13 +331,18 @@ if (!function_exists('adminUpdateBook')) {
 
         if ($isCourseLinked) {
             $updateFields[] = "price = 0";
-        } elseif (isset($body['price'])) {
-            $price = (float)$body['price'];
-            $updateFields[] = "price = {$price}";
-        }
-        if (isset($body['allow_download'])) {
-            $allowDownload = (int)(bool)$body['allow_download'];
-            $updateFields[] = "allow_download = {$allowDownload}";
+            // Same enforcement as creation: a unit/course-scoped book is always view-only,
+            // whatever the form sends.
+            $updateFields[] = "allow_download = 0";
+        } else {
+            if (isset($body['price'])) {
+                $price = (float)$body['price'];
+                $updateFields[] = "price = {$price}";
+            }
+            if (isset($body['allow_download'])) {
+                $allowDownload = (int)(bool)$body['allow_download'];
+                $updateFields[] = "allow_download = {$allowDownload}";
+            }
         }
         // read_json_body() already uploads a raw $_FILES entry itself and rewrites $body[key] into a
         // hosted URL - 'cover_image'/'image' already relied on that below. The PDF upload never
