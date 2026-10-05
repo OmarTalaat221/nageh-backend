@@ -82,10 +82,9 @@ if (!function_exists('studentGetVideoDetails')) {
 
         $cId = (int)$vRow['course_id'];
         $isSubscribed = false;
-        $isSubscribed = true;
         if ($stId > 0 && function_exists('get_student_accessible_entities')) {
             $accessible = get_student_accessible_entities($con, $stId);
-            // $isSubscribed = in_array($cId, $accessible['course_ids']);
+            $isSubscribed = in_array($cId, $accessible['course_ids']);
         }
 
         $firstVideoId = 0;
