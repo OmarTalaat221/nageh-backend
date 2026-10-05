@@ -221,6 +221,24 @@ if (!function_exists('adminCreateExam')) {
         $isActive = isset($body['is_active']) ? (int)$body['is_active'] : 1;
         $orderNum = isset($body['order_num']) && (int)$body['order_num'] > 0 ? (int)$body['order_num'] : 1;
 
+        // A unit-scoped exam only ever got unit_id from the form - course_id/subject_id were left
+        // NULL on the row forever unless the caller happened to also send them (the general exams
+        // library does; a lesson's own exams page did not, since it already knows the unit and
+        // had no reason to also resend the course). Storing the real values here keeps every
+        // course/subject-filtered query (and the student's "my subscribed exams" list) consistent
+        // regardless of which form created the exam. Same pattern as course_books.
+        if ($unitId !== null && ($courseId === null || $subjectId === null)) {
+            $uRes = mysqli_query($con, "SELECT course_id, subject_id FROM units WHERE id = {$unitId} LIMIT 1");
+            if ($uRes && $uRow = mysqli_fetch_assoc($uRes)) {
+                if ($courseId === null && !empty($uRow['course_id'])) {
+                    $courseId = (int)$uRow['course_id'];
+                }
+                if ($subjectId === null && !empty($uRow['subject_id'])) {
+                    $subjectId = (int)$uRow['subject_id'];
+                }
+            }
+        }
+
         $ceSub = $subjectId ? $subjectId : 'NULL';
         $ceCourse = $courseId ? $courseId : 'NULL';
         $ceUnit = $unitId ? $unitId : 'NULL';
@@ -291,6 +309,21 @@ if (!function_exists('adminUpdateExam')) {
         if (array_key_exists('unit_id', $body)) {
             $unitVal = (int)($body['unit_id'] ?? 0) > 0 ? (int)$body['unit_id'] : 'NULL';
             $updateFields[] = "unit_id = {$unitVal}";
+
+            // Same backfill as adminCreateExam: moving an exam under a different unit carries
+            // that unit's course/subject along automatically, unless the caller is setting either
+            // one explicitly in the same request (then their value wins, not the unit's).
+            if ($unitVal !== 'NULL' && !isset($body['course_id']) && !isset($body['subject_id'])) {
+                $uRes2 = mysqli_query($con, "SELECT course_id, subject_id FROM units WHERE id = {$unitVal} LIMIT 1");
+                if ($uRes2 && $uRow2 = mysqli_fetch_assoc($uRes2)) {
+                    if (!empty($uRow2['course_id'])) {
+                        $updateFields[] = "course_id = " . (int)$uRow2['course_id'];
+                    }
+                    if (!empty($uRow2['subject_id'])) {
+                        $updateFields[] = "subject_id = " . (int)$uRow2['subject_id'];
+                    }
+                }
+            }
         }
 
         if (!empty($updateFields)) {
