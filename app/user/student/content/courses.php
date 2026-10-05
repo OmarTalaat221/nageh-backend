@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../../helpers/video_source.php';
 require_once __DIR__ . '/../../../../helpers/pricing.php';
 require_once __DIR__ . '/../../../content/helpers.php';
 require_once __DIR__ . '/../subscriptions/manage.php';
+require_once __DIR__ . '/books.php';
 
 if (!function_exists('studentTableExists')) {
     function studentTableExists($con, $tableName) {
@@ -1062,7 +1063,7 @@ if (!function_exists('studentGetCourseAllContent')) {
                 }
 
                 $bSql = "
-                    SELECT cb.id, cb.unit_id, cb.course_id, cb.file_type, cb.extension, cb.link, cb.file_path, cb.is_active,
+                    SELECT cb.id, cb.unit_id, cb.course_id, cb.file_type, cb.extension, cb.link, cb.file_path, cb.allow_download, cb.is_active,
                            COALESCE(cbt.title, cb.file_type) AS title, cbt.description
                     FROM course_books cb
                     LEFT JOIN course_books_translations cbt ON cb.id = cbt.book_id AND cbt.language_id = {$langId}
@@ -1098,6 +1099,25 @@ if (!function_exists('studentGetCourseAllContent')) {
                             $overallTotalOpenedBooks++;
                         }
 
+                        $bookRow = [
+                            'file_path' => $bRow['file_path'],
+                            'link' => $bRow['link'],
+                            'allow_download' => (int)($bRow['allow_download'] ?? 1),
+                        ];
+                        // Same gating as the books list/subscribed-books endpoints: a view-only
+                        // book (allow_download = 0, which every unit-linked book now is) never
+                        // leaves its raw storage link reachable - only an authenticated stream URL
+                        // that re-checks ownership server-side. Previously this endpoint handed
+                        // back cb.file_path/cb.link directly to any subscribed student, which is a
+                        // permanent, copyable link that works for anyone, subscribed or not.
+                        if ($isSubscribed) {
+                            apply_student_book_file_access($bookRow, $bId);
+                        } else {
+                            $bookRow['file_path'] = null;
+                            $bookRow['link'] = null;
+                            $bookRow['view_url'] = null;
+                        }
+
                         $books[] = [
                             'id' => $bId,
                             'unit_id' => $uId,
@@ -1105,8 +1125,10 @@ if (!function_exists('studentGetCourseAllContent')) {
                             'description' => $bRow['description'],
                             'file_type' => $bRow['file_type'],
                             'extension' => $bRow['extension'],
-                            'file_path' => $isSubscribed ? format_image_url($bRow['file_path'] ?: $bRow['link']) : null,
-                            'link' => $isSubscribed ? $bRow['link'] : null,
+                            'file_path' => $bookRow['file_path'],
+                            'link' => $bookRow['link'],
+                            'view_url' => $bookRow['view_url'] ?? null,
+                            'allow_download' => $bookRow['allow_download'],
                             'is_locked' => !$isSubscribed,
                             'is_open' => $isSubscribed,
                             'is_subscribed' => $isSubscribed,
