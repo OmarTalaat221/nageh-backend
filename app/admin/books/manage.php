@@ -258,12 +258,11 @@ if (!function_exists('adminCreateBook')) {
         // (external) books, with no course_id/unit_id, are individually priced.
         $isCourseLinked = ($courseId !== null || $unitId !== null);
         $price = $isCourseLinked ? 0.00 : (float)($body['price'] ?? 0.00);
-        // Unit/course-scoped summaries and exam PDFs are forced to view-only on the platform,
-        // regardless of what the form sends - protected course content must never leave an
-        // option to download it to a device. Only a standalone library book can be downloadable.
-        $allowDownload = $isCourseLinked
-            ? 0
-            : (isset($body['allow_download']) ? (int)(bool)$body['allow_download'] : 1);
+        // Every book is view-only on the platform, whatever the request body says. Handing a
+        // student a downloadable file hands it to whoever they pass it on to, and the column is
+        // what the student endpoints read to decide whether to expose the file's real address at
+        // all - so this is the single place that keeps that address from ever being published.
+        $allowDownload = 0;
 
         $cbSub = $subjectId ? $subjectId : 'NULL';
         $cbCourse = $courseId ? $courseId : 'NULL';
@@ -329,20 +328,16 @@ if (!function_exists('adminUpdateBook')) {
             }
         }
 
+        // Same enforcement as creation: every book is view-only, whatever the form sends. An
+        // older book that was saved as downloadable is pulled back in line the next time it is
+        // edited, without anyone having to notice it.
+        $updateFields[] = "allow_download = 0";
+
         if ($isCourseLinked) {
             $updateFields[] = "price = 0";
-            // Same enforcement as creation: a unit/course-scoped book is always view-only,
-            // whatever the form sends.
-            $updateFields[] = "allow_download = 0";
-        } else {
-            if (isset($body['price'])) {
-                $price = (float)$body['price'];
-                $updateFields[] = "price = {$price}";
-            }
-            if (isset($body['allow_download'])) {
-                $allowDownload = (int)(bool)$body['allow_download'];
-                $updateFields[] = "allow_download = {$allowDownload}";
-            }
+        } elseif (isset($body['price'])) {
+            $price = (float)$body['price'];
+            $updateFields[] = "price = {$price}";
         }
         // read_json_body() already uploads a raw $_FILES entry itself and rewrites $body[key] into a
         // hosted URL - 'cover_image'/'image' already relied on that below. The PDF upload never
