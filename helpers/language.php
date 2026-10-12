@@ -187,8 +187,8 @@ function trans(string $key, ?string $lang = null, $con = null): string {
             // told "email is required" after typing a phone number reads as a rejection of the
             // phone number itself.
             'email_password_required' => 'البريد الإلكتروني أو رقم الهاتف وكلمة المرور مطلوبان',
-            'phone_on_multiple_accounts' => 'رقم الهاتف ده مسجّل على أكثر من حساب. سجّل الدخول بالبريد الإلكتروني.',
-            'phone_already_registered' => 'رقم الهاتف ده مسجّل على حساب آخر بالفعل.',
+            'phone_on_multiple_accounts' => 'رقم الهاتف هذا مسجّل على أكثر من حساب. سجّل الدخول بالبريد الإلكتروني.',
+            'phone_already_registered' => 'رقم الهاتف هذا مسجّل على حساب آخر بالفعل.',
             'name_email_password_required' => 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة',
             // Student sign-up only - the other roles still require an email.
             'name_password_required' => 'الاسم وكلمة المرور مطلوبة',
