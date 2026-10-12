@@ -236,7 +236,7 @@ if (!function_exists('dashboard_students_by_month')) {
         $rows = dashboard_fetch_all($con, "
             SELECT MONTH(created_at) AS m, COUNT(*) AS c
             FROM students
-            WHERE YEAR(created_at) = {$year}
+            WHERE " . demo_account_condition($con) . " AND YEAR(created_at) = {$year}
             GROUP BY MONTH(created_at)
         ");
         foreach ($rows as $row) {
@@ -390,7 +390,7 @@ if (!function_exists('dashboard_recent_activity')) {
         };
 
         $push(dashboard_fetch_all($con, "
-            SELECT id, name, created_at FROM students ORDER BY created_at DESC, id DESC LIMIT {$perSource}
+            SELECT id, name, created_at FROM students WHERE " . demo_account_condition($con) . " ORDER BY created_at DESC, id DESC LIMIT {$perSource}
         "), 'student_registered', function ($r) {
             return [
                 'title_ar' => 'طالب جديد سجّل في المنصة',
@@ -603,7 +603,7 @@ if (!function_exists('adminDashboardStatistics')) {
         $teachersRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS pending FROM teachers");
         $teachers = mysqli_fetch_assoc($teachersRes);
 
-        $studentsRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN is_email_verified = 1 THEN 1 ELSE 0 END) AS verified FROM students");
+        $studentsRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN is_email_verified = 1 THEN 1 ELSE 0 END) AS verified FROM students WHERE " . demo_account_condition($con));
         $students = mysqli_fetch_assoc($studentsRes);
 
         $parentsRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active FROM parents");

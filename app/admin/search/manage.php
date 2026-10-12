@@ -97,7 +97,7 @@ if (!function_exists('adminGlobalSearch')) {
                    CONCAT_WS(' · ', NULLIF(s.email,''), NULLIF(s.phone,'')) AS subtitle,
                    s.image, CONCAT('/users?q=', s.name) AS link, s.is_active
             FROM students s
-            WHERE s.name LIKE '{$like}' OR s.email LIKE '{$like}' OR s.phone LIKE '{$like}'
+            WHERE " . demo_account_condition($con, 's') . " AND (s.name LIKE '{$like}' OR s.email LIKE '{$like}' OR s.phone LIKE '{$like}')
             ORDER BY s.id DESC LIMIT {$perGroup}
         ", 'الطلاب', 'Students');
 

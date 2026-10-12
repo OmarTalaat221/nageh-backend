@@ -10,18 +10,19 @@ if (!function_exists('adminListStudents')) {
         $offset = ($page - 1) * $limit;
         $search = trim($_GET['search'] ?? $_GET['q'] ?? $_GET['query'] ?? '');
 
-        $whereClause = "";
+        // Demo accounts are invisible here - see student_is_demo_account().
+        $whereClause = "WHERE " . demo_account_condition($con, 's');
         $params = [];
         $types = "";
 
         if (!empty($search)) {
             $searchPattern = '%' . $search . '%';
-            $whereClause = "WHERE (s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ?)";
+            $whereClause .= " AND (s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ?)";
             $params = [$searchPattern, $searchPattern, $searchPattern];
             $types = "sss";
         }
 
-        $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM students");
+        $statRes = mysqli_query($con, "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count FROM students WHERE " . demo_account_condition($con));
         $statRow = mysqli_fetch_assoc($statRes);
         $totalRecords = (int)($statRow['total'] ?? 0);
         $statistics = [
@@ -33,7 +34,11 @@ if (!function_exists('adminListStudents')) {
         if (!empty($whereClause)) {
             $countSql = "SELECT COUNT(*) AS total FROM students s {$whereClause}";
             $countStmt = mysqli_prepare($con, $countSql);
-            mysqli_stmt_bind_param($countStmt, $types, ...$params);
+            // The where clause now always carries the demo-account filter, so this runs even
+            // with nothing to bind - and bind_param rejects an empty type string.
+            if ($types !== "") {
+                mysqli_stmt_bind_param($countStmt, $types, ...$params);
+            }
             mysqli_stmt_execute($countStmt);
             $countRes = mysqli_stmt_get_result($countStmt);
             $totalRecords = (int)(mysqli_fetch_assoc($countRes)['total'] ?? 0);
@@ -81,7 +86,7 @@ if (!function_exists('adminGetStudent')) {
             return ['status' => 'error', 'message' => 'Student ID is required'];
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, city_id, school_id, academic_year_id, study_language, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, age, city_id, school_id, academic_year_id, study_language, is_email_verified, is_active, created_at FROM students WHERE id = ? AND " . demo_account_condition($con) . " LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $id);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);

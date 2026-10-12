@@ -445,6 +445,11 @@ if (!function_exists('get_student_accessible_entities')) {
         if ($studentId <= 0) {
             return ['course_ids' => [], 'subject_ids' => [], 'teacher_ids' => []];
         }
+
+        if (function_exists('student_is_demo_account') && student_is_demo_account($con, $studentId)) {
+            return demo_account_accessible_entities($con);
+        }
+
         $now = date('Y-m-d H:i:s');
 
         $activeSubIds = [];

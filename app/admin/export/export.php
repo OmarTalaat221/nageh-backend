@@ -32,12 +32,12 @@ if (!function_exists('adminExportStudents')) {
         $lang = get_request_lang($con);
         $search = trim($_GET['search'] ?? $_GET['q'] ?? $_GET['query'] ?? '');
 
-        $whereClause = "";
+        $whereClause = "WHERE " . demo_account_condition($con, 's');
         $params = [];
         $types = "";
         if (!empty($search)) {
             $searchPattern = '%' . $search . '%';
-            $whereClause = "WHERE (s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ?)";
+            $whereClause .= " AND (s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ?)";
             $params = [$searchPattern, $searchPattern, $searchPattern];
             $types = "sss";
         }

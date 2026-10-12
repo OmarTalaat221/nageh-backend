@@ -374,3 +374,91 @@ if (!function_exists('generate_entity_code')) {
         return $base . '-' . substr(bin2hex(random_bytes(4)), 0, 6);
     }
 }
+
+// A demo student account: sees and opens everything in the catalogue without paying for any of
+// it, and is kept out of every admin-facing student list and count. It is flagged by a column
+// rather than a hardcoded email so the flag can be moved or revoked from the database alone.
+//
+// Access is granted here, in code, rather than by writing subscription rows. That matters twice
+// over: new content is covered the moment it is created, with nothing to re-run, and because the
+// account owns no subscription, it never surfaces in the lists that are built from subscriptions
+// - teacher rosters, subscription screens, revenue reports - which is exactly where it should
+// not appear.
+if (!function_exists('student_is_demo_account')) {
+    function student_is_demo_account($con, int $studentId): bool {
+        static $cache = [];
+
+        if ($studentId <= 0) {
+            return false;
+        }
+
+        if (array_key_exists($studentId, $cache)) {
+            return $cache[$studentId];
+        }
+
+        // Older databases predate the column; treat its absence as "no demo accounts exist"
+        // rather than letting every student query fail.
+        $hasColumn = @mysqli_query($con, "SHOW COLUMNS FROM `students` LIKE 'is_demo_account'");
+
+        if (!$hasColumn || mysqli_num_rows($hasColumn) === 0) {
+            return $cache[$studentId] = false;
+        }
+
+        $stmt = mysqli_prepare($con, "SELECT is_demo_account FROM `students` WHERE id = ? LIMIT 1");
+
+        if (!$stmt) {
+            return $cache[$studentId] = false;
+        }
+
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+
+        return $cache[$studentId] = ((int)($row['is_demo_account'] ?? 0) === 1);
+    }
+}
+
+if (!function_exists('demo_account_accessible_entities')) {
+    function demo_account_accessible_entities($con): array {
+        $collect = function (string $sql) use ($con): array {
+            $ids = [];
+            $res = @mysqli_query($con, $sql);
+
+            if ($res) {
+                while ($row = mysqli_fetch_row($res)) {
+                    $ids[] = (int)$row[0];
+                }
+            }
+
+            return $ids;
+        };
+
+        return [
+            'course_ids' => $collect("SELECT id FROM `courses` WHERE is_active = 1"),
+            'subject_ids' => $collect("SELECT id FROM `subjects` WHERE is_active = 1"),
+            'teacher_ids' => $collect("SELECT id FROM `teachers` WHERE is_active = 1"),
+        ];
+    }
+}
+
+// SQL condition that keeps demo accounts out of a student query. Returns a harmless `1=1` on a
+// database where the column has not been added yet, so deploying this code before running the
+// migration degrades to "no demo accounts" instead of breaking every admin student screen.
+if (!function_exists('demo_account_condition')) {
+    function demo_account_condition($con, string $alias = ''): string {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $res = @mysqli_query($con, "SHOW COLUMNS FROM `students` LIKE 'is_demo_account'");
+            $hasColumn = (bool)($res && mysqli_num_rows($res) > 0);
+        }
+
+        if (!$hasColumn) {
+            return '1=1';
+        }
+
+        $prefix = $alias !== '' ? "`{$alias}`." : '';
+
+        return "{$prefix}is_demo_account = 0";
+    }
+}
