@@ -1,3 +1,7 @@
 uploads/
 updates-for-project/
 claude/
+
+# Database exports. These carry real student, parent and payment rows, and the
+# largest is 33MB - neither belongs in a git history.
+campcod1_najeh*.sql
