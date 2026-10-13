@@ -123,8 +123,6 @@ if (!function_exists('record_teacher_auto_absence')) {
 
 if (!function_exists('record_student_auto_absence')) {
     function record_student_auto_absence($con, int $sessionId, int $studentId, string $occurrenceDate, ?int $subscriptionId): void {
-        $policy = get_hr_policy_settings($con);
-
         $stmt = mysqli_prepare($con, "INSERT IGNORE INTO session_attendance (session_id, student_id, session_date, status, is_excused) VALUES (?, ?, ?, 'absent', 0)");
         mysqli_stmt_bind_param($stmt, "iis", $sessionId, $studentId, $occurrenceDate);
         mysqli_stmt_execute($stmt);
@@ -134,14 +132,10 @@ if (!function_exists('record_student_auto_absence')) {
 
         notify_of_unexcused_absence($con, 'student', $studentId, $sessionId);
 
-        $absenceCount = count_unexcused_absences_this_month($con, 'session_attendance', 'student_id', $studentId);
-        if ($absenceCount >= $policy['student_max_absence_without_permission'] && $subscriptionId) {
-            $stmt2 = mysqli_prepare($con, "UPDATE student_subscriptions SET is_active = 0 WHERE id = ? AND is_active = 1");
-            mysqli_stmt_bind_param($stmt2, "i", $subscriptionId);
-            mysqli_stmt_execute($stmt2);
-            if (mysqli_stmt_affected_rows($stmt2) > 0) {
-                notify_of_student_subscription_frozen($con, $studentId, $subscriptionId);
-            }
-        }
+        // A student's subscription is never frozen for absence on Najeh. Missing too many
+        // sessions used to switch the subscription off automatically, which locked a paying
+        // student out of content they had already bought and left the admin to undo it by hand.
+        // The absence is still recorded above and the student is still told about it; only the
+        // automatic punishment is gone. Freezing a subscription remains an admin action.
     }
 }

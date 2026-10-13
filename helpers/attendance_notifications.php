@@ -131,27 +131,6 @@ if (!function_exists('notify_of_teacher_suspended')) {
     }
 }
 
-if (!function_exists('notify_of_student_subscription_frozen')) {
-    function notify_of_student_subscription_frozen($con, int $studentId, int $subscriptionId): void {
-        try {
-            send_notification_to_users(
-                $con,
-                'student',
-                [$studentId],
-                'تم تجميد اشتراكك مؤقتًا',
-                'تم تجميد اشتراكك تلقائيًا لتجاوزك الحد المسموح به من الغياب بدون إذن. تواصل مع الإدارة لمزيد من التفاصيل.',
-                ['type' => 'subscription_frozen', 'subscription_id' => $subscriptionId],
-                'system',
-                null,
-                ['push']
-            );
-            $name = admin_notify_get_student_name($con, $studentId);
-            notify_admins($con, 'تم تجميد اشتراك طالب تلقائيًا', "تم تجميد اشتراك الطالب {$name} تلقائيًا لتجاوزه الحد المسموح به من الغياب بدون إذن.", ['type' => 'subscription_frozen', 'student_id' => $studentId, 'subscription_id' => $subscriptionId]);
-        } catch (Throwable $e) {
-        }
-    }
-}
-
 if (!function_exists('notify_of_deduction_appeal_reviewed')) {
     function notify_of_deduction_appeal_reviewed($con, int $teacherId, string $decision): void {
         try {
