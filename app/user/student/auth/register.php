@@ -176,7 +176,9 @@ if (!function_exists('studentRegister')) {
                     'points_balance' => 0.00,
                     'is_email_verified' => 1,
                     'city' => get_city_details($con, $cityId),
-                    'school' => get_school_details($con, $schoolId)
+                    'school' => get_school_details($con, $schoolId),
+                    // Brand new account, so the welcome card has not been shown yet.
+                    'has_seen_welcome' => false
                 ]),
                 // Kept, always false, so a client still reading it does not treat a missing key
                 // as "verification required" and strand the student on a code screen that will

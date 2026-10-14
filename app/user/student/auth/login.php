@@ -38,7 +38,8 @@ if (!function_exists('studentLogin')) {
         $locked = login_attempt_guard($con, $attemptKey, 'student');
         if ($locked !== null) return $locked;
 
-        $columns = "id, name, email, password, image, phone, age, school_id, city_id, is_email_verified, is_active";
+        $columns = "id, name, email, password, image, phone, age, school_id, city_id, is_email_verified, is_active"
+            . (students_table_has_column($con, 'welcome_seen_at') ? ", welcome_seen_at" : "");
 
         if ($byPhone) {
             // No LIMIT 1. A number that is on two accounts has to be recognised as ambiguous
@@ -154,6 +155,14 @@ if (!function_exists('studentLogin')) {
 
         $accessible = get_student_accessible_entities($con, $stId);
         $student['is_subscribed'] = !empty($accessible['course_ids']);
+
+        // The one-time welcome card. Sent as a plain boolean so a client never has to reason
+        // about the timestamp or the column being absent on an older database.
+        // A database where migration 098 has not run cannot remember a dismissal, so the card
+        // is reported as already seen rather than shown on every single load.
+        $student['has_seen_welcome'] = !students_table_has_column($con, 'welcome_seen_at')
+            || !empty($student['welcome_seen_at']);
+        unset($student['welcome_seen_at']);
 
         return [
             'status' => 'success',

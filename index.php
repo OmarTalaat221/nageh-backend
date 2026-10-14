@@ -485,6 +485,17 @@ $routes = [
             },
         ],
         [
+            // Records that the one-time welcome card has been shown to this student.
+            "method" => "POST",
+            "path" => "/najeh/student/welcome-seen",
+            "handler" => function ($con) {
+                include_once "./middlewares/studentauthmiddleware.php";
+                include_once "./app/user/student/auth/profile.php";
+                $studentData = studentAuthMiddleware();
+                return studentMarkWelcomeSeen($con, $studentData);
+            },
+        ],
+        [
             "method" => "POST",
             "path" => "/najeh/user/student/fcm-token",
             "handler" => function ($con) {

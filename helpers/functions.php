@@ -462,3 +462,20 @@ if (!function_exists('demo_account_condition')) {
         return "{$prefix}is_demo_account = 0";
     }
 }
+
+// Whether the students table carries a given column. Lets a query opt into a column that a
+// pending migration has not added yet instead of failing outright on an older database.
+if (!function_exists('students_table_has_column')) {
+    function students_table_has_column($con, string $column): bool {
+        static $cache = [];
+
+        if (array_key_exists($column, $cache)) {
+            return $cache[$column];
+        }
+
+        $safe = preg_replace('/[^A-Za-z0-9_]/', '', $column);
+        $res = @mysqli_query($con, "SHOW COLUMNS FROM `students` LIKE '{$safe}'");
+
+        return $cache[$column] = (bool)($res && mysqli_num_rows($res) > 0);
+    }
+}

@@ -30,7 +30,7 @@ if (!function_exists('studentProfile')) {
             ensure_affiliate_commissions_extended_columns($con);
         }
 
-        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, " . (phone_country_code_column_exists($con) ? "phone_country_code" : "NULL AS phone_country_code") . ", age, school_id, city_id, academic_year_id, study_language, affiliate_code, points_balance, is_email_verified, is_active, created_at FROM students WHERE id = ? LIMIT 1");
+        $stmt = mysqli_prepare($con, "SELECT id, name, email, image, phone, " . (phone_country_code_column_exists($con) ? "phone_country_code" : "NULL AS phone_country_code") . ", age, school_id, city_id, academic_year_id, study_language, affiliate_code, points_balance, is_email_verified, is_active, created_at " . (students_table_has_column($con, 'welcome_seen_at') ? ", welcome_seen_at" : "") . " FROM students WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "i", $studentId);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -58,6 +58,14 @@ if (!function_exists('studentProfile')) {
         // $student['referral_code'] = $affCode;
         $student['share_link'] = "https://najeh-app.com/register?ref=" . urlencode($affCode);
         $student['points_balance'] = (float)($student['points_balance'] ?? 0.00);
+
+        // The one-time welcome card: the app reads the profile on every boot, so this is what
+        // decides whether the card is still owed to this student.
+        // A database where migration 098 has not run cannot remember a dismissal, so the card
+        // is reported as already seen rather than shown on every single load.
+        $student['has_seen_welcome'] = !students_table_has_column($con, 'welcome_seen_at')
+            || !empty($student['welcome_seen_at']);
+        unset($student['welcome_seen_at']);
         $student['is_email_verified'] = (int)$student['is_email_verified'];
         $student['is_active'] = (int)$student['is_active'];
         $student['city'] = get_city_details($con, $cityId);
@@ -225,5 +233,37 @@ if (!function_exists('studentUpdateFcmToken')) {
         $studentId = (int)($studentData['id'] ?? 0);
         $body = read_json_body();
         return save_user_fcm_token($con, 'student', $studentId, trim($body['fcm_token'] ?? ''));
+    }
+}
+
+if (!function_exists('studentMarkWelcomeSeen')) {
+    /**
+     * Records that the student has seen the one-time welcome card.
+     *
+     * Writing only when the column is still NULL keeps the first dismissal as the stored moment,
+     * and makes a repeated call from a client that retries harmless.
+     */
+    function studentMarkWelcomeSeen($con, $studentData) {
+        $studentId = (int)($studentData['id'] ?? 0);
+
+        if ($studentId <= 0) {
+            return ['status' => 'error', 'message' => trans('auth_required')];
+        }
+
+        if (!students_table_has_column($con, 'welcome_seen_at')) {
+            // Migration 098 has not run yet. Nothing to record, and nothing worth failing over -
+            // the card is a greeting, not a gate.
+            return ['status' => 'success', 'message' => trans('welcome_card_dismissed'), 'data' => ['has_seen_welcome' => true]];
+        }
+
+        $stmt = mysqli_prepare($con, "UPDATE students SET welcome_seen_at = NOW() WHERE id = ? AND welcome_seen_at IS NULL");
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        mysqli_stmt_execute($stmt);
+
+        return [
+            'status' => 'success',
+            'message' => trans('welcome_card_dismissed'),
+            'data' => ['has_seen_welcome' => true]
+        ];
     }
 }
