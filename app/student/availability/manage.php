@@ -25,14 +25,16 @@ if (!function_exists('studentListAvailableSlots')) {
             return ['status' => 'error', 'message' => 'Student authentication required'];
         }
 
-        // teacher_id=0 is the platform owner asking for his own slots, and it is a real answer -
-        // so what matters is whether the parameter was sent, not whether it is truthy.
+        // A consultation belongs to the platform rather than to a teacher or a package, and any
+        // student may book any open slot - so asking for a scope before answering left the
+        // student's calendar empty with nothing to pick from. Both filters stay available for
+        // a caller that wants them; neither is required.
+        //
+        // teacher_id=0 means the platform owner specifically, so what matters is whether the
+        // parameter was sent at all, not whether it is truthy.
         $teacherSent = isset($_GET['teacher_id']) && trim((string)$_GET['teacher_id']) !== '';
         $teacherId = (int)($_GET['teacher_id'] ?? 0);
         $courseId = (int)($_GET['course_id'] ?? 0);
-        if (!$teacherSent && $courseId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id or course_id is required'];
-        }
 
         return availability_list_slots($con, [
             'teacher_id' => $teacherSent ? $teacherId : null,
