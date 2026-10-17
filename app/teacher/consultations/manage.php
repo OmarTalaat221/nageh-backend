@@ -95,7 +95,21 @@ if (!function_exists('get_consultation_slot_details')) {
         $row['student_id'] = $row['student_id'] ? (int)$row['student_id'] : null;
         $row['is_booked'] = (int)$row['is_booked'];
         $row['is_active'] = (int)$row['is_active'];
-        $row['status'] = $row['status'] ?: ($row['is_booked'] ? 'pending' : 'available');
+        // An empty status means MySQL refused the value that was written: `status` was an enum
+        // that never listed in_progress or completed, and an invalid enum value is stored as ''
+        // without complaint. The timestamps are plain datetimes and did land, so they are the
+        // truth to read the state back from - otherwise a consultation that had been started
+        // and ended reported itself as still waiting for approval. Migration 102 widens the
+        // column; this keeps the rows written before it ran readable.
+        if (empty($row['status'])) {
+            if (!empty($row['ended_at'])) {
+                $row['status'] = 'completed';
+            } elseif (!empty($row['started_at'])) {
+                $row['status'] = 'in_progress';
+            } else {
+                $row['status'] = $row['is_booked'] ? 'pending' : 'available';
+            }
+        }
 
         $row['date'] = $row['slot_date'];
         $row['session_date'] = $row['slot_date'];
