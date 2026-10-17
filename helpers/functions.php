@@ -479,3 +479,43 @@ if (!function_exists('students_table_has_column')) {
         return $cache[$column] = (bool)($res && mysqli_num_rows($res) > 0);
     }
 }
+
+// The platform's owner gives consultations himself and is not a teacher: he has no row in
+// `teachers`, and should not appear in any teacher listing. A slot with teacher_id NULL is his.
+//
+// These two helpers are the only place that knows what to call him, so every screen - admin,
+// teacher, student - says the same thing, and the name is a setting rather than a constant.
+if (!function_exists('platform_owner_name')) {
+    function platform_owner_name($con): string {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $res = @mysqli_query($con, "SELECT setting_value FROM site_settings WHERE setting_key = 'platform_owner_name' LIMIT 1");
+        $value = $res ? trim((string)(mysqli_fetch_assoc($res)['setting_value'] ?? '')) : '';
+
+        return $cached = ($value !== '' ? $value : 'الأستاذ إبراهيم العبيد');
+    }
+}
+
+if (!function_exists('platform_owner_as_teacher')) {
+    /**
+     * The owner shaped like a teacher, for responses that carry a `teacher` object.
+     *
+     * id is 0, never a real teacher's id: a client can tell the two apart, and sending 0 back as
+     * a teacher_id filter asks for the owner's slots.
+     */
+    function platform_owner_as_teacher($con): array {
+        return [
+            'id' => 0,
+            'name' => platform_owner_name($con),
+            'email' => null,
+            'image' => null,
+            'specialization' => null,
+            'rating' => null,
+            'is_platform_owner' => true,
+        ];
+    }
+}

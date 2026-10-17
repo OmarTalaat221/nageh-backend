@@ -158,14 +158,24 @@ if (!function_exists('notify_admins_of_session_started')) {
 if (!function_exists('notify_of_consultation_slot_created')) {
     function notify_of_consultation_slot_created($con, int $teacherId, ?int $subjectId, string $slotDate, string $slotTime): void {
         try {
-            $teacherRes = mysqli_query($con, "SELECT name FROM teachers WHERE id = {$teacherId} LIMIT 1");
-            $teacherRow = $teacherRes ? mysqli_fetch_assoc($teacherRes) : null;
-            $teacherName = $teacherRow['name'] ?? "معلم #{$teacherId}";
+            // 0 is the platform owner's own slot: he has no row in `teachers`, and the wording
+            // should not call him a teacher either.
+            $isOwner = $teacherId <= 0;
+
+            if ($isOwner) {
+                $teacherName = function_exists('platform_owner_name')
+                    ? platform_owner_name($con)
+                    : 'صاحب المنصة';
+            } else {
+                $teacherRes = mysqli_query($con, "SELECT name FROM teachers WHERE id = {$teacherId} LIMIT 1");
+                $teacherRow = $teacherRes ? mysqli_fetch_assoc($teacherRes) : null;
+                $teacherName = $teacherRow['name'] ?? "معلم #{$teacherId}";
+            }
 
             notify_admins(
                 $con,
-                'استشارة جديدة من معلم',
-                "المعلم {$teacherName} أضاف موعد استشارة جديد يوم {$slotDate} الساعة {$slotTime}.",
+                $isOwner ? 'موعد استشارة جديد' : 'استشارة جديدة من معلم',
+                ($isOwner ? "{$teacherName} أضاف" : "المعلم {$teacherName} أضاف") . " موعد استشارة جديد يوم {$slotDate} الساعة {$slotTime}.",
                 ['type' => 'consultation_created', 'teacher_id' => $teacherId, 'subject_id' => $subjectId]
             );
 
@@ -176,7 +186,7 @@ if (!function_exists('notify_of_consultation_slot_created')) {
                     'student',
                     $studentIds,
                     'موعد استشارة جديد متاح',
-                    "المعلم {$teacherName} أتاح موعد استشارة جديد يوم {$slotDate} الساعة {$slotTime}.",
+                    ($isOwner ? "{$teacherName} أتاح" : "المعلم {$teacherName} أتاح") . " موعد استشارة جديد يوم {$slotDate} الساعة {$slotTime}.",
                     ['type' => 'consultation_created', 'teacher_id' => $teacherId, 'subject_id' => $subjectId],
                     'system',
                     null,

@@ -25,10 +25,8 @@ if (!function_exists('adminListAvailabilitySlots')) {
 if (!function_exists('adminCreateAvailabilitySlot')) {
     function adminCreateAvailabilitySlot($con, $adminData) {
         $body = read_json_body();
-        $teacherId = (int)($body['teacher_id'] ?? 0);
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id is required'];
-        }
+        // 0 is the platform owner, who opens slots of his own and is not a teacher.
+        $teacherId = max(0, (int)($body['teacher_id'] ?? 0));
         $adminId = (int)($adminData['id'] ?? 0);
         return availability_create_slot($con, $teacherId, $body, 'admin', $adminId ?: null);
     }
@@ -37,10 +35,8 @@ if (!function_exists('adminCreateAvailabilitySlot')) {
 if (!function_exists('adminGenerateAvailabilitySlots')) {
     function adminGenerateAvailabilitySlots($con, $adminData) {
         $body = read_json_body();
-        $teacherId = (int)($body['teacher_id'] ?? 0);
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id is required'];
-        }
+        // 0 is the platform owner, who opens slots of his own and is not a teacher.
+        $teacherId = max(0, (int)($body['teacher_id'] ?? 0));
         $adminId = (int)($adminData['id'] ?? 0);
         return availability_generate_slots($con, $teacherId, $body, 'admin', $adminId ?: null);
     }
@@ -105,8 +101,10 @@ if (!function_exists('adminScheduleStudent')) {
         $body = read_json_body();
         $teacherId = (int)($body['teacher_id'] ?? 0);
         $studentId = (int)($body['student_id'] ?? 0);
-        if ($teacherId <= 0 || $studentId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id and student_id are required'];
+        // teacher_id 0 is the platform owner; only the student is genuinely required here.
+        $teacherId = max(0, $teacherId);
+        if ($studentId <= 0) {
+            return ['status' => 'error', 'message' => 'student_id is required'];
         }
 
         $student = get_student_details($con, $studentId);
@@ -141,8 +139,13 @@ if (!function_exists('adminScheduleStudent')) {
         $booked = 0;
         $failures = [];
         foreach ($dates as $date) {
-            $stmt = mysqli_prepare($con, "SELECT id FROM teacher_availability_slots WHERE teacher_id = ? AND slot_date = ? AND start_time = ? LIMIT 1");
-            mysqli_stmt_bind_param($stmt, "iss", $teacherId, $date, $startTime);
+            $teacherMatch = $teacherId > 0 ? "teacher_id = ?" : "teacher_id IS NULL";
+            $stmt = mysqli_prepare($con, "SELECT id FROM teacher_availability_slots WHERE {$teacherMatch} AND slot_date = ? AND start_time = ? LIMIT 1");
+            if ($teacherId > 0) {
+                mysqli_stmt_bind_param($stmt, "iss", $teacherId, $date, $startTime);
+            } else {
+                mysqli_stmt_bind_param($stmt, "ss", $date, $startTime);
+            }
             mysqli_stmt_execute($stmt);
             $slotRow = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
             if (!$slotRow) continue;

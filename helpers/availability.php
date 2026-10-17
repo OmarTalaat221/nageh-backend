@@ -170,7 +170,10 @@ if (!function_exists('get_availability_slot_details')) {
 if (!function_exists('availability_format_slot_row')) {
     function availability_format_slot_row($con, array $row, bool $withBookings = true): array {
         $row['id'] = (int)$row['id'];
-        $row['teacher_id'] = (int)$row['teacher_id'];
+        // NULL means the slot belongs to the platform owner, who is not a teacher. Reported as
+        // 0 so a client can tell it from a real teacher id.
+        $isOwnerSlot = $row['teacher_id'] === null;
+        $row['teacher_id'] = $isOwnerSlot ? 0 : (int)$row['teacher_id'];
         $row['course_id'] = $row['course_id'] ? (int)$row['course_id'] : null;
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
         $row['capacity'] = (int)$row['capacity'];
@@ -188,7 +191,9 @@ if (!function_exists('availability_format_slot_row')) {
         $row['end_datetime'] = $row['slot_date'] . ' ' . $row['end_time'];
         $row['day_of_week'] = date('l', strtotime($row['slot_date']));
 
-        $row['teacher'] = get_teacher_details($con, $row['teacher_id']);
+        $row['teacher'] = $isOwnerSlot
+            ? platform_owner_as_teacher($con)
+            : get_teacher_details($con, $row['teacher_id']);
         $row['course'] = $row['course_id'] ? get_course_details($con, $row['course_id']) : null;
         $row['subject'] = $row['subject_id'] ? get_subject_details($con, $row['subject_id']) : null;
 
@@ -234,9 +239,8 @@ if (!function_exists('availability_recompute_slot')) {
 
 if (!function_exists('availability_create_slot')) {
     function availability_create_slot($con, int $teacherId, array $body, string $byType, ?int $byId): array {
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id is required'];
-        }
+        // 0 is the platform owner: his slots are stored with no teacher at all.
+        $teacherParam = $teacherId > 0 ? $teacherId : null;
 
         $slotDate = !empty($body['slot_date']) ? date('Y-m-d', strtotime($body['slot_date'])) : null;
         $startTime = !empty($body['start_time']) ? date('H:i:s', strtotime($body['start_time'])) : null;
@@ -264,7 +268,7 @@ if (!function_exists('availability_create_slot')) {
         ");
         mysqli_stmt_bind_param(
             $stmt, "iiisssiissssi",
-            $teacherId, $courseId, $subjectId, $slotDate, $startTime, $endTime, $capacity, $isOnline, $meetingLink, $room, $notes, $byType, $byId
+            $teacherParam, $courseId, $subjectId, $slotDate, $startTime, $endTime, $capacity, $isOnline, $meetingLink, $room, $notes, $byType, $byId
         );
         if (!mysqli_stmt_execute($stmt)) {
             if (mysqli_errno($con) === 1062) {
@@ -288,9 +292,8 @@ if (!function_exists('availability_create_slot')) {
  */
 if (!function_exists('availability_generate_slots')) {
     function availability_generate_slots($con, int $teacherId, array $body, string $byType, ?int $byId): array {
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => 'teacher_id is required'];
-        }
+        // 0 is the platform owner: his slots are stored with no teacher at all.
+        $teacherParam = $teacherId > 0 ? $teacherId : null;
 
         $pattern = strtolower(trim((string)($body['pattern'] ?? 'weekly')));
         $startDate = trim((string)($body['start_date'] ?? ''));
@@ -335,7 +338,7 @@ if (!function_exists('availability_generate_slots')) {
         foreach ($result['dates'] as $slotDate) {
             mysqli_stmt_bind_param(
                 $stmt, "iiisssiissssi",
-                $teacherId, $courseId, $subjectId, $slotDate, $startTime, $endTime, $capacity, $isOnline, $meetingLink, $room, $notes, $byType, $byId
+                $teacherParam, $courseId, $subjectId, $slotDate, $startTime, $endTime, $capacity, $isOnline, $meetingLink, $room, $notes, $byType, $byId
             );
             if (!mysqli_stmt_execute($stmt)) {
                 return ['status' => 'error', 'message' => 'Failed while creating slots: ' . mysqli_error($con)];
@@ -619,7 +622,10 @@ if (!function_exists('availability_notify_booking')) {
             $body = $isBooking
                 ? "قام {$name} بحجز موعد بتاريخ {$when}"
                 : "قام {$name} بإلغاء حجز موعد بتاريخ {$when}";
-            send_notification_to_user($con, 'teacher', (int)$slot['teacher_id'], $title, $body, ['slot_id' => $slotId], 'system', null);
+            // An owner slot has no teacher to notify; he is the one acting from the admin panel.
+            if ((int)$slot['teacher_id'] > 0) {
+                send_notification_to_user($con, 'teacher', (int)$slot['teacher_id'], $title, $body, ['slot_id' => $slotId], 'system', null);
+            }
             return;
         }
 
@@ -640,7 +646,10 @@ if (!function_exists('availability_list_slots')) {
         $params = [];
         $types = '';
 
-        if (!empty($filters['teacher_id'])) {
+        if (isset($filters['teacher_id']) && trim((string)$filters['teacher_id']) !== '' && (int)$filters['teacher_id'] <= 0) {
+            // Explicit 0: the platform owner's own slots.
+            $where[] = 's.teacher_id IS NULL';
+        } elseif (!empty($filters['teacher_id'])) {
             $where[] = 's.teacher_id = ?';
             $params[] = (int)$filters['teacher_id'];
             $types .= 'i';

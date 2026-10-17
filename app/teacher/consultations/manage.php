@@ -31,7 +31,10 @@ if (!function_exists('get_consultation_slot_details')) {
         if (!$row) return null;
 
         $row['id'] = (int)$row['id'];
-        $row['teacher_id'] = (int)$row['teacher_id'];
+        // NULL means the slot is the platform owner's, and he is not a teacher. Reported as 0
+        // so a client can tell it apart from a real teacher id and ask for his slots with it.
+        $isOwnerSlot = $row['teacher_id'] === null;
+        $row['teacher_id'] = $isOwnerSlot ? 0 : (int)$row['teacher_id'];
         $row['subject_id'] = $row['subject_id'] ? (int)$row['subject_id'] : null;
 
         $rawType = strtolower(trim($row['type'] ?? 'educational'));
@@ -54,7 +57,9 @@ if (!function_exists('get_consultation_slot_details')) {
         $row['session_date'] = $row['slot_date'];
 
         $row['subject'] = $row['subject_id'] ? get_subject_details($con, $row['subject_id']) : null;
-        $row['teacher'] = get_teacher_details($con, $row['teacher_id']);
+        $row['teacher'] = $isOwnerSlot
+            ? platform_owner_as_teacher($con)
+            : get_teacher_details($con, $row['teacher_id']);
         $row['student'] = $row['student_id'] ? get_student_details($con, $row['student_id']) : null;
 
         return format_response_images($row);
@@ -337,12 +342,17 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
 
         // Skip dates where this exact teacher+date+time slot already exists, so running
         // this twice (or with overlapping ranges) never creates duplicates.
+        // 0 is the platform owner, whose slots are stored with no teacher at all.
+        $isOwnerSlot = $teacherId <= 0;
+        $teacherParam = $isOwnerSlot ? null : $teacherId;
+        $teacherMatch = $isOwnerSlot ? "teacher_id IS NULL" : "teacher_id = ?";
+
         $existingDates = [];
         $placeholders = implode(',', array_fill(0, count($datesToCreate), '?'));
-        $existingStmt = mysqli_prepare($con, "SELECT slot_date FROM consultation_slots WHERE teacher_id = ? AND slot_time = ? AND slot_date IN ({$placeholders})");
+        $existingStmt = mysqli_prepare($con, "SELECT slot_date FROM consultation_slots WHERE {$teacherMatch} AND slot_time = ? AND slot_date IN ({$placeholders})");
         if ($existingStmt) {
-            $bindTypes = 'is' . str_repeat('s', count($datesToCreate));
-            $bindParams = array_merge([$teacherId, $slotTime], $datesToCreate);
+            $bindTypes = ($isOwnerSlot ? 's' : 'is') . str_repeat('s', count($datesToCreate));
+            $bindParams = array_merge($isOwnerSlot ? [$slotTime] : [$teacherId, $slotTime], $datesToCreate);
             mysqli_stmt_bind_param($existingStmt, $bindTypes, ...$bindParams);
             mysqli_stmt_execute($existingStmt);
             $existingRes = mysqli_stmt_get_result($existingStmt);
@@ -356,7 +366,7 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
         $createdSlots = [];
         $insertStmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
         foreach ($newDates as $slotDate) {
-            mysqli_stmt_bind_param($insertStmt, "iisssss", $teacherId, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+            mysqli_stmt_bind_param($insertStmt, "iisssss", $teacherParam, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
             if (mysqli_stmt_execute($insertStmt)) {
                 $createdSlots[] = ['id' => mysqli_insert_id($con), 'slot_date' => $slotDate, 'slot_time' => $slotTime];
             }
@@ -519,15 +529,19 @@ if (!function_exists('studentListAvailableConsultationTeachers')) {
 
         $items = [];
         while ($row = mysqli_fetch_assoc($res)) {
-            $teacherId = (int)$row['teacher_id'];
-            $teacher = get_teacher_details($con, $teacherId);
+            // A NULL teacher_id is the platform owner. He has no row in `teachers`, so he is
+            // built here instead of looked up - without this his slots exist but nobody can
+            // see who gives them, and a student never reaches them.
+            $isOwner = $row['teacher_id'] === null;
+            $teacherId = $isOwner ? 0 : (int)$row['teacher_id'];
+            $teacher = $isOwner ? platform_owner_as_teacher($con) : get_teacher_details($con, $teacherId);
             if ($teacher) {
-                $cntStmt = mysqli_prepare($con, "SELECT COUNT(*) AS total FROM consultation_slots WHERE teacher_id = ? AND is_booked = 0 AND is_active = 1 AND slot_date >= CURDATE() AND (status = 'available' OR status IS NULL)");
-                mysqli_stmt_bind_param($cntStmt, "i", $teacherId);
-                mysqli_stmt_execute($cntStmt);
-                $teacher['available_slots_count'] = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($cntStmt))['total'] ?? 0);
+                $ownerClause = $isOwner ? "teacher_id IS NULL" : "teacher_id = {$teacherId}";
 
-                $subjRes = mysqli_query($con, "SELECT DISTINCT subject_id FROM consultation_slots WHERE teacher_id = {$teacherId} AND is_booked = 0 AND is_active = 1 AND slot_date >= CURDATE() AND subject_id IS NOT NULL");
+                $cntRes = mysqli_query($con, "SELECT COUNT(*) AS total FROM consultation_slots WHERE {$ownerClause} AND is_booked = 0 AND is_active = 1 AND slot_date >= CURDATE() AND (status = 'available' OR status IS NULL)");
+                $teacher['available_slots_count'] = (int)(mysqli_fetch_assoc($cntRes)['total'] ?? 0);
+
+                $subjRes = mysqli_query($con, "SELECT DISTINCT subject_id FROM consultation_slots WHERE {$ownerClause} AND is_booked = 0 AND is_active = 1 AND slot_date >= CURDATE() AND subject_id IS NOT NULL");
                 $subjects = [];
                 if ($subjRes) {
                     while ($sRow = mysqli_fetch_assoc($subjRes)) {
@@ -560,7 +574,16 @@ if (!function_exists('studentListAvailableConsultationSlots')) {
         $params = [];
         $types = "";
 
-        if ($teacherId > 0) { $where[] = "cs.teacher_id = ?"; $params[] = $teacherId; $types .= "i"; }
+        // teacher_id=0 sent explicitly asks for the platform owner's slots; the parameter left
+        // out still means "any teacher", as it always did.
+        $teacherFilterSent = isset($_GET['teacher_id']) && trim((string)$_GET['teacher_id']) !== '';
+        if ($teacherId > 0) {
+            $where[] = "cs.teacher_id = ?";
+            $params[] = $teacherId;
+            $types .= "i";
+        } elseif ($teacherFilterSent) {
+            $where[] = "cs.teacher_id IS NULL";
+        }
         if ($subjectId > 0) { $where[] = "cs.subject_id = ?"; $params[] = $subjectId; $types .= "i"; }
         if (!empty($meetingType)) { $where[] = "cs.meeting_type = ?"; $params[] = $meetingType; $types .= "s"; }
         if (!empty($search)) {

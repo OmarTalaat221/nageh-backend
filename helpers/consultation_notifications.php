@@ -27,6 +27,11 @@ if (!function_exists('consultation_when_label')) {
 
 if (!function_exists('consultation_person_name')) {
     function consultation_person_name($con, string $table, ?int $id): string {
+        // A consultation with no teacher is the platform owner's own. He has no row to read a
+        // name from, so without this the notification would name nobody at all.
+        if ($table === 'teachers' && !$id && function_exists('platform_owner_name')) {
+            return platform_owner_name($con);
+        }
         if (!$id || !in_array($table, ['students', 'teachers'], true)) return '';
         $row = mysqli_fetch_assoc(mysqli_query($con, "SELECT name FROM {$table} WHERE id = " . (int)$id . " LIMIT 1"));
         return trim((string)($row['name'] ?? ''));

@@ -22,10 +22,14 @@ if (!function_exists('adminListConsultations')) {
         $params = [];
         $types = "";
 
+        // teacher_id=0 sent explicitly asks for the platform owner's own slots; the parameter
+        // left out still means "any teacher", as it always did.
         if ($teacherId > 0) {
             $where[] = "cs.teacher_id = ?";
             $params[] = $teacherId;
             $types .= "i";
+        } elseif (isset($_GET['teacher_id']) && trim((string)$_GET['teacher_id']) !== '') {
+            $where[] = "cs.teacher_id IS NULL";
         }
         if ($studentId > 0) {
             $where[] = "cs.student_id = ?";
@@ -116,9 +120,11 @@ if (!function_exists('adminUpdateConsultationSlot')) {
         $params = [];
         $types = "";
 
-        if (array_key_exists('teacher_id', $body) && (int)$body['teacher_id'] > 0) {
+        // Moving a slot to the platform owner is teacher_id = 0, which is stored as no teacher
+        // at all; any other value still has to be a real teacher.
+        if (array_key_exists('teacher_id', $body) && (int)$body['teacher_id'] >= 0) {
             $updateFields[] = "teacher_id = ?";
-            $params[] = (int)$body['teacher_id'];
+            $params[] = (int)$body['teacher_id'] > 0 ? (int)$body['teacher_id'] : null;
             $types .= "i";
         }
         if (array_key_exists('subject_id', $body)) {
@@ -222,16 +228,16 @@ if (!function_exists('adminDeleteConsultationSlot')) {
 if (!function_exists('adminCreateRecurringConsultationSlots')) {
     function adminCreateRecurringConsultationSlots($con, $adminData = null) {
         $body = read_json_body();
+        // 0 means the platform owner, who gives consultations himself and has no row in
+        // `teachers`. Any other value still has to be a teacher that exists.
         $teacherId = (int)($body['teacher_id'] ?? 0);
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => trans('teacher_id_required')];
-        }
-
-        $checkStmt = mysqli_prepare($con, "SELECT id FROM teachers WHERE id = ? LIMIT 1");
-        mysqli_stmt_bind_param($checkStmt, "i", $teacherId);
-        mysqli_stmt_execute($checkStmt);
-        if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
-            return ['status' => 'error', 'message' => trans('teacher_not_found')];
+        if ($teacherId > 0) {
+            $checkStmt = mysqli_prepare($con, "SELECT id FROM teachers WHERE id = ? LIMIT 1");
+            mysqli_stmt_bind_param($checkStmt, "i", $teacherId);
+            mysqli_stmt_execute($checkStmt);
+            if (!mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+                return ['status' => 'error', 'message' => trans('teacher_not_found')];
+            }
         }
 
         // Optional: create the run already booked for one student. Without this the admin had to
