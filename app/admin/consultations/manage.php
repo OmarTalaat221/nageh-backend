@@ -351,3 +351,75 @@ if (!function_exists('adminBookConsultationForStudent')) {
         ];
     }
 }
+
+if (!function_exists('adminRespondToConsultationBooking')) {
+    /**
+     * The admin approves or refuses a booking a student made.
+     *
+     * The teacher's own respond endpoint matches on `teacher_id`, so it can never reach a slot
+     * the platform owner gives: those carry no teacher at all. Without this every booking a
+     * student made on the owner's consultations stayed "pending" for good, with nobody on the
+     * platform able to move it.
+     *
+     * Refusing frees the slot rather than marking it refused: the date is still open, and the
+     * next student should be able to take it.
+     */
+    function adminRespondToConsultationBooking($con, $adminData = null) {
+        $body = read_json_body();
+        $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
+        $action = strtolower(trim($body['action'] ?? $body['status'] ?? ''));
+
+        if ($slotId <= 0) {
+            return ['status' => 'error', 'message' => trans('slot_id_required')];
+        }
+
+        $slot = mysqli_fetch_assoc(mysqli_query($con, "SELECT id, teacher_id, student_id FROM consultation_slots WHERE id = {$slotId} LIMIT 1"));
+        if (!$slot || !$slot['student_id']) {
+            return ['status' => 'error', 'message' => trans('consultation_not_found_or_not_booked')];
+        }
+
+        // Read before the reject branch clears it - the student still has to be told.
+        $studentId = (int)$slot['student_id'];
+        $teacherId = (int)($slot['teacher_id'] ?? 0);
+
+        if (in_array($action, ['approve', 'approved', 'accept', 'accepted'], true)) {
+            $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET status = 'approved' WHERE id = ?");
+            mysqli_stmt_bind_param($stmt, "i", $slotId);
+            mysqli_stmt_execute($stmt);
+            notify_consultation_reviewed($con, $slotId, $studentId, $teacherId, true);
+            $message = trans('consultation_approved_success');
+        } elseif (in_array($action, ['reject', 'rejected', 'decline', 'declined', 'cancel', 'cancelled'], true)) {
+            $stmt = mysqli_prepare($con, "UPDATE consultation_slots SET is_booked = 0, student_id = NULL, booked_at = NULL, status = 'available' WHERE id = ?");
+            mysqli_stmt_bind_param($stmt, "i", $slotId);
+            mysqli_stmt_execute($stmt);
+            notify_consultation_reviewed($con, $slotId, $studentId, $teacherId, false);
+            $message = trans('consultation_cancelled_restored');
+        } else {
+            return ['status' => 'error', 'message' => trans('invalid_action_approve_reject')];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => $message,
+            'data' => get_consultation_slot_details($con, $slotId)
+        ];
+    }
+}
+
+if (!function_exists('adminStartConsultation')) {
+    function adminStartConsultation($con, $adminData = null) {
+        $body = read_json_body();
+        $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
+
+        return consultation_set_live_state_core($con, $slotId, true, null);
+    }
+}
+
+if (!function_exists('adminEndConsultation')) {
+    function adminEndConsultation($con, $adminData = null) {
+        $body = read_json_body();
+        $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
+
+        return consultation_set_live_state_core($con, $slotId, false, null);
+    }
+}

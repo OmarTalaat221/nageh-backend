@@ -1606,6 +1606,26 @@ $routes = [
         },
     ],
     [
+        "method" => "POST",
+        "path" => "/najeh/teacher/consultations/start",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/consultations/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherStartConsultation($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "POST",
+        "path" => "/najeh/teacher/consultations/end",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/consultations/manage.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherEndConsultation($con, $teacherData);
+        },
+    ],
+    [
         "method" => "DELETE",
         "path" => "/najeh/teacher/consultations",
         "handler" => function ($con) {
@@ -4764,6 +4784,43 @@ $routes = [
                 $adminData = adminAuthMiddleware();
                 requirePermission($con, $adminData, 'manage_consultations');
                 return adminBookConsultationForStudent($con, $adminData);
+            },
+        ],
+        [
+            // Approve or refuse a booking a student made. The teacher's own respond endpoint
+            // cannot reach a slot the platform owner gives, because that slot has no teacher.
+            "method" => "POST",
+            "path" => "/najeh/admin/consultations/respond",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/consultations/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_consultations');
+                return adminRespondToConsultationBooking($con, $adminData);
+            },
+        ],
+        [
+            // Start / end: the student's screen is waiting on these, which is why they are a
+            // stored state and not just a link somebody opens.
+            "method" => "POST",
+            "path" => "/najeh/admin/consultations/start",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/consultations/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_consultations');
+                return adminStartConsultation($con, $adminData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/consultations/end",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/consultations/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_consultations');
+                return adminEndConsultation($con, $adminData);
             },
         ],
         [

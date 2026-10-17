@@ -36,12 +36,31 @@ if (!function_exists('consultation_slots_has_meeting_link')) {
     }
 }
 
+if (!function_exists('consultation_slots_has_live_state')) {
+    /**
+     * Migration 101 adds `started_at` and `ended_at`. Until it has run, a consultation simply
+     * never reads as live - which is how it behaved before the Start button meant anything.
+     */
+    function consultation_slots_has_live_state($con): bool {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $res = @mysqli_query($con, "SHOW COLUMNS FROM `consultation_slots` LIKE 'started_at'");
+
+        return $cached = (bool)($res && mysqli_num_rows($res) > 0);
+    }
+}
+
 if (!function_exists('get_consultation_slot_details')) {
     function get_consultation_slot_details($con, int $slotId) {
         ensure_consultation_slots_type_column($con);
         $hasMeetingLink = consultation_slots_has_meeting_link($con);
         $linkColumn = $hasMeetingLink ? ", meeting_link" : "";
-        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, is_booked, student_id, booked_at, status, is_active, created_at{$linkColumn} FROM consultation_slots WHERE id = ? LIMIT 1");
+        $liveColumns = consultation_slots_has_live_state($con) ? ", started_at, ended_at" : "";
+        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, is_booked, student_id, booked_at, status, is_active, created_at{$linkColumn}{$liveColumns} FROM consultation_slots WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $slotId);
         mysqli_stmt_execute($stmt);
@@ -69,6 +88,10 @@ if (!function_exists('get_consultation_slot_details')) {
         }
 
         $row['meeting_link'] = $row['meeting_link'] ?? null;
+        $row['started_at'] = $row['started_at'] ?? null;
+        $row['ended_at'] = $row['ended_at'] ?? null;
+        // What the student's screen asks: is it happening right now? Started and not yet ended.
+        $row['is_live'] = (bool)($row['started_at'] && !$row['ended_at']);
         $row['student_id'] = $row['student_id'] ? (int)$row['student_id'] : null;
         $row['is_booked'] = (int)$row['is_booked'];
         $row['is_active'] = (int)$row['is_active'];
@@ -841,5 +864,89 @@ if (!function_exists('studentListMyBookedConsultations')) {
         }
 
         return build_paginated_response($items, $page, $limit, $totalRecords);
+    }
+}
+
+if (!function_exists('consultation_set_live_state_core')) {
+    /**
+     * Start or end a consultation.
+     *
+     * Start is a state, not a link: the student's screen is waiting on it. Until somebody
+     * presses Start the student has no way of knowing whether to go in, and after End they have
+     * no way of knowing it is over - which is the whole reason these two timestamps exist.
+     *
+     * $teacherScope limits the action to one teacher's own slots; null lets the admin act on any
+     * slot, including the platform owner's, which belong to no teacher at all.
+     */
+    function consultation_set_live_state_core($con, int $slotId, bool $start, ?int $teacherScope = null): array {
+        if ($slotId <= 0) {
+            return ['status' => 'error', 'message' => trans('slot_id_required')];
+        }
+
+        if (!consultation_slots_has_live_state($con)) {
+            return ['status' => 'error', 'message' => 'هذه الميزة تحتاج تحديث قاعدة البيانات (migration 101).'];
+        }
+
+        $scopeClause = $teacherScope !== null ? " AND teacher_id = " . (int)$teacherScope : "";
+        $slot = mysqli_fetch_assoc(mysqli_query(
+            $con,
+            "SELECT id, teacher_id, student_id, started_at, ended_at FROM consultation_slots WHERE id = {$slotId}{$scopeClause} LIMIT 1"
+        ));
+
+        if (!$slot) {
+            return ['status' => 'error', 'message' => trans('consultation_slot_not_found')];
+        }
+
+        $studentId = (int)($slot['student_id'] ?? 0);
+        $teacherId = (int)($slot['teacher_id'] ?? 0);
+
+        if ($start) {
+            // Starting again after it was ended re-opens it, so a consultation cut off by a
+            // dropped connection can simply be started once more.
+            $sql = "UPDATE consultation_slots SET started_at = NOW(), ended_at = NULL, status = 'in_progress' WHERE id = ?";
+        } else {
+            if (empty($slot['started_at'])) {
+                return ['status' => 'error', 'message' => 'لم تبدأ هذه الاستشارة بعد.'];
+            }
+            $sql = "UPDATE consultation_slots SET ended_at = NOW(), status = 'completed' WHERE id = ?";
+        }
+
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $slotId);
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['status' => 'error', 'message' => 'تعذر تحديث حالة الاستشارة'];
+        }
+
+        if ($studentId > 0) {
+            if ($start) {
+                notify_consultation_started($con, $slotId, $studentId, $teacherId);
+            } else {
+                notify_consultation_ended($con, $slotId, $studentId, $teacherId);
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'message' => $start ? 'بدأت الاستشارة، وتم إخطار الطالب.' : 'انتهت الاستشارة، وتم إخطار الطالب.',
+            'data' => get_consultation_slot_details($con, $slotId)
+        ];
+    }
+}
+
+if (!function_exists('teacherStartConsultation')) {
+    function teacherStartConsultation($con, $teacherData) {
+        $body = read_json_body();
+        $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
+
+        return consultation_set_live_state_core($con, $slotId, true, (int)($teacherData['id'] ?? 0));
+    }
+}
+
+if (!function_exists('teacherEndConsultation')) {
+    function teacherEndConsultation($con, $teacherData) {
+        $body = read_json_body();
+        $slotId = (int)($_GET['id'] ?? $body['slot_id'] ?? $body['id'] ?? 0);
+
+        return consultation_set_live_state_core($con, $slotId, false, (int)($teacherData['id'] ?? 0));
     }
 }

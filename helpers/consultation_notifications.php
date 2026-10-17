@@ -12,6 +12,7 @@
  */
 
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/admin_notifications.php';
 
 if (!function_exists('consultation_when_label')) {
     function consultation_when_label(?array $slot): string {
@@ -67,6 +68,17 @@ if (!function_exists('notify_consultation_booked')) {
 
             @send_notification_to_users($con, 'teacher', [$teacherId], 'حجز استشارة جديد', $body, $data, $senderType, $actorId, ['push']);
         }
+
+        // A consultation the platform owner gives has no teacher to tell, and the booking waits
+        // on the admin's approval - so without this the request sat there with nobody aware of it.
+        if ($teacherId <= 0 && $bookedBy !== 'admin' && function_exists('notify_admins')) {
+            notify_admins(
+                $con,
+                'حجز استشارة بانتظار الموافقة',
+                "حجز الطالب {$studentName} موعد استشارة مع {$teacherName}" . ($when !== '' ? " يوم {$when}" : '') . "، وبانتظار الموافقة.",
+                $data
+            );
+        }
     }
 }
 
@@ -120,7 +132,9 @@ if (!function_exists('notify_consultation_reviewed')) {
             $approved ? 'تم تأكيد الاستشارة' : 'تم إلغاء الاستشارة',
             $body,
             ['type' => 'consultation_reviewed', 'slot_id' => $slotId, 'approved' => $approved ? 1 : 0],
-            'teacher', $teacherId, ['push']
+            // No teacher on the slot means the platform owner's own consultation, reviewed by
+            // the admin. Sending it as teacher #0 would attribute it to nobody.
+            $teacherId > 0 ? 'teacher' : 'system', $teacherId > 0 ? $teacherId : null, ['push']
         );
     }
 }
@@ -149,5 +163,43 @@ if (!function_exists('notify_consultation_cancelled')) {
                 "ألغى {$by} موعد الاستشارة" . ($when !== '' ? " يوم {$when}" : '') . ".",
                 $data, $cancelledBy === 'admin' ? 'admin' : 'system', $actorId, ['push']);
         }
+    }
+}
+
+if (!function_exists('notify_consultation_started')) {
+    /**
+     * The consultation has just been started. This is the one notification the student is
+     * actually waiting for: it is what tells them the hour has come and the room is open.
+     */
+    function notify_consultation_started($con, int $slotId, int $studentId, int $teacherId): void {
+        if ($studentId <= 0) return;
+
+        $teacherName = consultation_person_name($con, 'teachers', $teacherId);
+        $with = $teacherName !== '' ? " مع {$teacherName}" : '';
+
+        @send_notification_to_users(
+            $con, 'student', [$studentId],
+            'بدأت الاستشارة',
+            "بدأت الاستشارة{$with} الآن، يمكنك الدخول.",
+            ['type' => 'consultation_started', 'slot_id' => $slotId],
+            'system', null, ['push']
+        );
+    }
+}
+
+if (!function_exists('notify_consultation_ended')) {
+    function notify_consultation_ended($con, int $slotId, int $studentId, int $teacherId): void {
+        if ($studentId <= 0) return;
+
+        $teacherName = consultation_person_name($con, 'teachers', $teacherId);
+        $with = $teacherName !== '' ? " مع {$teacherName}" : '';
+
+        @send_notification_to_users(
+            $con, 'student', [$studentId],
+            'انتهت الاستشارة',
+            "انتهت الاستشارة{$with}.",
+            ['type' => 'consultation_ended', 'slot_id' => $slotId],
+            'system', null, ['push']
+        );
     }
 }
