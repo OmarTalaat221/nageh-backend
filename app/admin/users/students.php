@@ -134,15 +134,22 @@ if (!function_exists('adminCreateStudent')) {
         $studyLanguage = strtolower(trim($body['study_language'] ?? 'arabic'));
         if (!in_array($studyLanguage, $allowedLanguages)) $studyLanguage = 'arabic';
 
-        if (empty($name) || empty($email) || empty($password)) {
-            return ['status' => 'error', 'message' => 'Name, email, and password are required'];
+        if (empty($name) || empty($password)) {
+            return ['status' => 'error', 'message' => 'Name and password are required'];
         }
 
-        $checkStmt = mysqli_prepare($con, "SELECT id FROM students WHERE email = ? LIMIT 1");
-        mysqli_stmt_bind_param($checkStmt, "s", $email);
-        mysqli_stmt_execute($checkStmt);
-        if (mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
-            return ['status' => 'error', 'message' => 'Email already registered'];
+        // Optional, the same way it is for a student signing themselves up: the phone number is
+        // what signs them in. Stored as NULL rather than '' - the email column is unique, and a
+        // second student with an empty string would collide with the first.
+        if ($email === '') {
+            $email = null;
+        } else {
+            $checkStmt = mysqli_prepare($con, "SELECT id FROM students WHERE email = ? LIMIT 1");
+            mysqli_stmt_bind_param($checkStmt, "s", $email);
+            mysqli_stmt_execute($checkStmt);
+            if (mysqli_fetch_assoc(mysqli_stmt_get_result($checkStmt))) {
+                return ['status' => 'error', 'message' => 'Email already registered'];
+            }
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
