@@ -259,6 +259,14 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
     function create_recurring_consultation_slots_core($con, int $teacherId, array $body) {
         ensure_consultation_slots_type_column($con);
 
+        // Three ways to repeat, the same three publishing availability offers: every day in the
+        // range, the chosen weekdays, or the chosen dates of each month. Weekly stays the
+        // default, which is what every caller sent before this existed.
+        $pattern = strtolower(trim((string)($body['pattern'] ?? 'weekly')));
+        if (!in_array($pattern, ['daily', 'weekly', 'monthly'], true)) {
+            $pattern = 'weekly';
+        }
+
         $allowedDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         $rawDays = $body['days'] ?? [];
         if (!is_array($rawDays)) {
@@ -271,7 +279,22 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
                 $days[] = $normalized;
             }
         }
-        if (empty($days)) {
+        if ($pattern === 'weekly' && empty($days)) {
+            return ['status' => 'error', 'message' => trans('at_least_one_day_required')];
+        }
+
+        $rawMonthDays = $body['days_of_month'] ?? [];
+        if (!is_array($rawMonthDays)) {
+            $rawMonthDays = [$rawMonthDays];
+        }
+        $daysOfMonth = [];
+        foreach ($rawMonthDays as $rawMonthDay) {
+            $dayNumber = (int)$rawMonthDay;
+            if ($dayNumber >= 1 && $dayNumber <= 31 && !in_array($dayNumber, $daysOfMonth, true)) {
+                $daysOfMonth[] = $dayNumber;
+            }
+        }
+        if ($pattern === 'monthly' && empty($daysOfMonth)) {
             return ['status' => 'error', 'message' => trans('at_least_one_day_required')];
         }
 
@@ -302,6 +325,17 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
 
         $today = get_request_now();
         $todayStr = $today->format('Y-m-d');
+
+        // Opening a run that begins next month is a normal thing to want; before this, every
+        // run started the day it was created.
+        $startDateStr = !empty($body['start_date']) ? date('Y-m-d', strtotime($body['start_date'])) : $todayStr;
+        if ($startDateStr < $todayStr) {
+            $startDateStr = $todayStr;
+        }
+        if ($endDateStr < $startDateStr) {
+            return ['status' => 'error', 'message' => trans('end_date_must_be_in_future')];
+        }
+
         if ($endDateStr < $todayStr) {
             return ['status' => 'error', 'message' => trans('end_date_must_be_in_future')];
         }
@@ -316,16 +350,46 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
         // get_session_calculated_date() for class_sessions, just repeated until the end date
         // instead of stopping at the first occurrence.
         $datesToCreate = [];
-        foreach ($days as $dayName) {
-            $cursor = clone $today;
-            if (strcasecmp($today->format('l'), $dayName) !== 0) {
-                $cursor->modify("next {$dayName}");
-            }
+        $rangeStart = new DateTime($startDateStr);
 
+        if ($pattern === 'daily') {
+            $cursor = clone $rangeStart;
             while ($cursor->format('Y-m-d') <= $endDateStr) {
                 $datesToCreate[] = $cursor->format('Y-m-d');
                 $cursor = clone $cursor;
-                $cursor->modify('+7 days');
+                $cursor->modify('+1 day');
+            }
+        } elseif ($pattern === 'monthly') {
+            $cursor = new DateTime($rangeStart->format('Y-m-01'));
+            $endDate = new DateTime($endDateStr);
+            while ($cursor <= $endDate) {
+                $daysInMonth = (int)$cursor->format('t');
+                foreach ($daysOfMonth as $dayNumber) {
+                    // A 31st exists in seven months of the year; the rest skip it rather than
+                    // rolling the slot forward into the next month.
+                    if ($dayNumber > $daysInMonth) {
+                        continue;
+                    }
+                    $candidate = $cursor->format('Y-m-') . str_pad((string)$dayNumber, 2, '0', STR_PAD_LEFT);
+                    if ($candidate >= $startDateStr && $candidate <= $endDateStr) {
+                        $datesToCreate[] = $candidate;
+                    }
+                }
+                $cursor = clone $cursor;
+                $cursor->modify('first day of next month');
+            }
+        } else {
+            foreach ($days as $dayName) {
+                $cursor = clone $rangeStart;
+                if (strcasecmp($cursor->format('l'), $dayName) !== 0) {
+                    $cursor->modify("next {$dayName}");
+                }
+
+                while ($cursor->format('Y-m-d') <= $endDateStr) {
+                    $datesToCreate[] = $cursor->format('Y-m-d');
+                    $cursor = clone $cursor;
+                    $cursor->modify('+7 days');
+                }
             }
         }
 
