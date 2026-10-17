@@ -25,14 +25,17 @@ if (!function_exists('studentListAvailableSlots')) {
             return ['status' => 'error', 'message' => 'Student authentication required'];
         }
 
+        // teacher_id=0 is the platform owner asking for his own slots, and it is a real answer -
+        // so what matters is whether the parameter was sent, not whether it is truthy.
+        $teacherSent = isset($_GET['teacher_id']) && trim((string)$_GET['teacher_id']) !== '';
         $teacherId = (int)($_GET['teacher_id'] ?? 0);
         $courseId = (int)($_GET['course_id'] ?? 0);
-        if ($teacherId <= 0 && $courseId <= 0) {
+        if (!$teacherSent && $courseId <= 0) {
             return ['status' => 'error', 'message' => 'teacher_id or course_id is required'];
         }
 
         return availability_list_slots($con, [
-            'teacher_id' => $teacherId ?: null,
+            'teacher_id' => $teacherSent ? $teacherId : null,
             'course_id' => $courseId ?: null,
             'subject_id' => $_GET['subject_id'] ?? null,
             'date_from' => $_GET['date_from'] ?? $_GET['from'] ?? null,

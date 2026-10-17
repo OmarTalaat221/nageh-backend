@@ -299,6 +299,11 @@ if (!function_exists('getPublicAppConfig')) {
                 // this once at boot so it can label a cached price it was handed before the
                 // pricing context came back.
                 'base_currency' => function_exists('pricing_base_currency') ? pricing_base_currency($con) : 'USD',
+                // The owner gives sessions himself and is not a teacher, so a client that has
+                // to name him - the appointments picker, for one - has nowhere else to read it.
+                'platform_owner_name' => function_exists('platform_owner_name')
+                    ? platform_owner_name($con)
+                    : 'الأستاذ إبراهيم العبيد',
                 'country_pricing_enabled' => app_setting_flag($con, 'country_pricing_enabled', true),
                 // Already in the language of the request, so a client shows it as-is.
                 'registration_disabled_message' => app_setting_message(
