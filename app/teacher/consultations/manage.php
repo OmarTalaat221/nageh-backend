@@ -18,10 +18,30 @@ if (!function_exists('ensure_consultation_slots_type_column')) {
     }
 }
 
+if (!function_exists('consultation_slots_has_meeting_link')) {
+    /**
+     * Migration 100 adds the column. Until it has run, every read and write simply leaves the
+     * link out rather than failing - a consultation without a link is the old behaviour.
+     */
+    function consultation_slots_has_meeting_link($con): bool {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $res = @mysqli_query($con, "SHOW COLUMNS FROM `consultation_slots` LIKE 'meeting_link'");
+
+        return $cached = (bool)($res && mysqli_num_rows($res) > 0);
+    }
+}
+
 if (!function_exists('get_consultation_slot_details')) {
     function get_consultation_slot_details($con, int $slotId) {
         ensure_consultation_slots_type_column($con);
-        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, is_booked, student_id, booked_at, status, is_active, created_at FROM consultation_slots WHERE id = ? LIMIT 1");
+        $hasMeetingLink = consultation_slots_has_meeting_link($con);
+        $linkColumn = $hasMeetingLink ? ", meeting_link" : "";
+        $stmt = mysqli_prepare($con, "SELECT id, teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, is_booked, student_id, booked_at, status, is_active, created_at{$linkColumn} FROM consultation_slots WHERE id = ? LIMIT 1");
         if (!$stmt) return null;
         mysqli_stmt_bind_param($stmt, "i", $slotId);
         mysqli_stmt_execute($stmt);
@@ -48,6 +68,7 @@ if (!function_exists('get_consultation_slot_details')) {
             $row['type_ar'] = 'تربوية';
         }
 
+        $row['meeting_link'] = $row['meeting_link'] ?? null;
         $row['student_id'] = $row['student_id'] ? (int)$row['student_id'] : null;
         $row['is_booked'] = (int)$row['is_booked'];
         $row['is_active'] = (int)$row['is_active'];
@@ -239,8 +260,15 @@ if (!function_exists('teacherCreateConsultationSlot')) {
             return ['status' => 'error', 'message' => trans('slot_date_time_required')];
         }
 
-        $stmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
-        mysqli_stmt_bind_param($stmt, "iisssss", $teacherId, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+        $meetingLink = trim((string)($body['meeting_link'] ?? '')) ?: null;
+
+        if (consultation_slots_has_meeting_link($con)) {
+            $stmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')");
+            mysqli_stmt_bind_param($stmt, "iissssss", $teacherId, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes, $meetingLink);
+        } else {
+            $stmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
+            mysqli_stmt_bind_param($stmt, "iisssss", $teacherId, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+        }
         if (!mysqli_stmt_execute($stmt)) {
             return ['status' => 'error', 'message' => 'Failed to create slot: ' . mysqli_error($con)];
         }
@@ -428,9 +456,18 @@ if (!function_exists('create_recurring_consultation_slots_core')) {
         $newDates = array_values(array_diff($datesToCreate, $existingDates));
 
         $createdSlots = [];
-        $insertStmt = mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
+        $meetingLink = trim((string)($body['meeting_link'] ?? '')) ?: null;
+        $withLink = consultation_slots_has_meeting_link($con);
+
+        $insertStmt = $withLink
+            ? mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')")
+            : mysqli_prepare($con, "INSERT INTO consultation_slots (teacher_id, subject_id, type, meeting_type, slot_date, slot_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')");
         foreach ($newDates as $slotDate) {
-            mysqli_stmt_bind_param($insertStmt, "iisssss", $teacherParam, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+            if ($withLink) {
+                mysqli_stmt_bind_param($insertStmt, "iissssss", $teacherParam, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes, $meetingLink);
+            } else {
+                mysqli_stmt_bind_param($insertStmt, "iisssss", $teacherParam, $subjectId, $type, $meetingType, $slotDate, $slotTime, $notes);
+            }
             if (mysqli_stmt_execute($insertStmt)) {
                 $createdSlots[] = ['id' => mysqli_insert_id($con), 'slot_date' => $slotDate, 'slot_time' => $slotTime];
             }

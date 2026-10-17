@@ -127,6 +127,11 @@ if (!function_exists('adminUpdateConsultationSlot')) {
             $params[] = (int)$body['teacher_id'] > 0 ? (int)$body['teacher_id'] : null;
             $types .= "i";
         }
+        if (array_key_exists('meeting_link', $body) && consultation_slots_has_meeting_link($con)) {
+            $updateFields[] = "meeting_link = ?";
+            $params[] = trim((string)$body['meeting_link']) ?: null;
+            $types .= "s";
+        }
         if (array_key_exists('subject_id', $body)) {
             $updateFields[] = "subject_id = ?";
             $params[] = $body['subject_id'] ? (int)$body['subject_id'] : null;
