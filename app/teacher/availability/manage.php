@@ -127,3 +127,24 @@ if (!function_exists('teacherCancelStudentBooking')) {
         return availability_cancel_booking($con, $slotId, $studentId, 'teacher', $teacherId);
     }
 }
+
+if (!function_exists('teacherStartAvailabilitySlot')) {
+    /**
+     * Same as the admin pair, scoped to this teacher's own slots.
+     */
+    function teacherStartAvailabilitySlot($con, $teacherData) {
+        $body = read_json_body();
+        $slotId = (int)($body['slot_id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+
+        return availability_set_live_state($con, $slotId, true, (int)($teacherData['id'] ?? 0));
+    }
+}
+
+if (!function_exists('teacherEndAvailabilitySlot')) {
+    function teacherEndAvailabilitySlot($con, $teacherData) {
+        $body = read_json_body();
+        $slotId = (int)($body['slot_id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+
+        return availability_set_live_state($con, $slotId, false, (int)($teacherData['id'] ?? 0));
+    }
+}

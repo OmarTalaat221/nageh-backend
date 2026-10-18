@@ -4927,6 +4927,30 @@ $routes = [
             },
         ],
         [
+            // Start / end a package session. The meeting link stays hidden from the students
+            // booked into it until it has actually been started.
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/start",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_sessions');
+                return adminStartAvailabilitySlot($con);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/end",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_sessions');
+                return adminEndAvailabilitySlot($con);
+            },
+        ],
+        [
             "method" => "POST",
             "path" => "/najeh/admin/availability/generate",
             "handler" => function ($con) {
@@ -5018,6 +5042,26 @@ $routes = [
                 include_once "./app/teacher/availability/manage.php";
                 $teacherData = teacherAuthMiddleware();
                 return teacherGenerateAvailabilitySlots($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability/start",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherStartAvailabilitySlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability/end",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherEndAvailabilitySlot($con, $teacherData);
             },
         ],
         [

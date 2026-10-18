@@ -173,3 +173,25 @@ if (!function_exists('adminScheduleStudent')) {
         ];
     }
 }
+
+if (!function_exists('adminStartAvailabilitySlot')) {
+    /**
+     * Start / end a package session. The student's screen is waiting on these: the meeting link
+     * is hidden until the session has actually been started.
+     */
+    function adminStartAvailabilitySlot($con) {
+        $body = read_json_body();
+        $slotId = (int)($body['slot_id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+
+        return availability_set_live_state($con, $slotId, true, null);
+    }
+}
+
+if (!function_exists('adminEndAvailabilitySlot')) {
+    function adminEndAvailabilitySlot($con) {
+        $body = read_json_body();
+        $slotId = (int)($body['slot_id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+
+        return availability_set_live_state($con, $slotId, false, null);
+    }
+}

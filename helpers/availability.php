@@ -154,6 +154,24 @@ if (!function_exists('availability_slot_bookings')) {
     }
 }
 
+if (!function_exists('availability_has_live_state')) {
+    /**
+     * Migration 103 adds `started_at` and `ended_at`. Until it has run a session simply never
+     * reads as live, which is how it behaved before Start meant anything.
+     */
+    function availability_has_live_state($con): bool {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $res = @mysqli_query($con, "SHOW COLUMNS FROM `teacher_availability_slots` LIKE 'started_at'");
+
+        return $cached = (bool)($res && mysqli_num_rows($res) > 0);
+    }
+}
+
 if (!function_exists('get_availability_slot_details')) {
     function get_availability_slot_details($con, int $slotId, bool $withBookings = true): ?array {
         $stmt = mysqli_prepare($con, "SELECT * FROM teacher_availability_slots WHERE id = ? LIMIT 1");
@@ -182,6 +200,12 @@ if (!function_exists('availability_format_slot_row')) {
         $row['created_by_id'] = $row['created_by_id'] ? (int)$row['created_by_id'] : null;
         $row['remaining_places'] = max(0, $row['capacity'] - $row['booked_count']);
         $row['is_bookable'] = $row['status'] === 'available' && $row['remaining_places'] > 0;
+
+        $row['started_at'] = $row['started_at'] ?? null;
+        $row['ended_at'] = $row['ended_at'] ?? null;
+        // Started and not yet ended. This is what the student's screen reads to decide whether
+        // to show the meeting link - not the clock, and not the booking.
+        $row['is_live'] = (bool)($row['started_at'] && !$row['ended_at']);
 
         $labels = availability_slot_status_labels($row['status']);
         $row['status_label_ar'] = $labels['ar'];
@@ -790,5 +814,108 @@ if (!function_exists('availability_list_slots')) {
         }
 
         return build_paginated_response($rows, $page, $limit, $total);
+    }
+}
+
+if (!function_exists('availability_set_live_state')) {
+    /**
+     * Start or end a package session.
+     *
+     * The same shape as consultations: a stored state, not a link somebody opens privately.
+     * Until Start is pressed the students booked into the slot are shown no meeting link at
+     * all, because a link handed out at booking time is an invitation to an empty room.
+     *
+     * $teacherScope limits the action to one teacher's own slots; null lets the admin act on
+     * any of them, including the platform owner's, which belong to no teacher.
+     */
+    function availability_set_live_state($con, int $slotId, bool $start, ?int $teacherScope = null): array {
+        if ($slotId <= 0) {
+            return ['status' => 'error', 'message' => 'Slot id is required'];
+        }
+
+        if (!availability_has_live_state($con)) {
+            return ['status' => 'error', 'message' => 'هذه الميزة تحتاج تحديث قاعدة البيانات (migration 103).'];
+        }
+
+        $scopeClause = $teacherScope !== null ? " AND teacher_id = " . (int)$teacherScope : "";
+        $slot = mysqli_fetch_assoc(mysqli_query(
+            $con,
+            "SELECT id, teacher_id, slot_date, start_time, started_at, ended_at FROM teacher_availability_slots WHERE id = {$slotId}{$scopeClause} LIMIT 1"
+        ));
+
+        if (!$slot) {
+            return ['status' => 'error', 'message' => 'Slot not found'];
+        }
+
+        if ($start) {
+            // Starting again after an end re-opens it, so a session cut off by a dropped
+            // connection is simply started once more.
+            $sql = "UPDATE teacher_availability_slots SET started_at = NOW(), ended_at = NULL, status = 'in_progress' WHERE id = ?";
+        } else {
+            if (empty($slot['started_at'])) {
+                return ['status' => 'error', 'message' => 'لم تبدأ هذه الحصة بعد.'];
+            }
+            $sql = "UPDATE teacher_availability_slots SET ended_at = NOW(), status = 'completed' WHERE id = ?";
+        }
+
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $slotId);
+        if (!mysqli_stmt_execute($stmt)) {
+            return ['status' => 'error', 'message' => 'تعذر تحديث حالة الحصة'];
+        }
+
+        availability_notify_live_state($con, $slotId, $slot, $start);
+
+        return [
+            'status' => 'success',
+            'message' => $start ? 'بدأت الحصة، وتم إخطار الطلاب.' : 'انتهت الحصة، وتم إخطار الطلاب.',
+            'data' => get_availability_slot_details($con, $slotId)
+        ];
+    }
+}
+
+if (!function_exists('availability_notify_live_state')) {
+    /**
+     * Everybody holding a live booking on this slot, told at once.
+     *
+     * A package session holds several students, unlike a consultation, so this is one send to
+     * many rather than one each. Best-effort: the session must still start even if the
+     * notification service is unreachable.
+     */
+    function availability_notify_live_state($con, int $slotId, array $slot, bool $start): void {
+        $res = @mysqli_query($con, "SELECT student_id FROM availability_slot_bookings WHERE slot_id = {$slotId} AND status <> 'cancelled'");
+        if (!$res) {
+            return;
+        }
+
+        $studentIds = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $studentId = (int)$row['student_id'];
+            if ($studentId > 0) {
+                $studentIds[] = $studentId;
+            }
+        }
+
+        if (empty($studentIds)) {
+            return;
+        }
+
+        $when = trim(($slot['slot_date'] ?? '') . ' ' . substr((string)($slot['start_time'] ?? ''), 0, 5));
+
+        if ($start) {
+            $title = 'بدأت الحصة';
+            $body = 'بدأت حصتك' . ($when !== '' ? " ({$when})" : '') . ' الآن، يمكنك الدخول.';
+            $type = 'availability_session_started';
+        } else {
+            $title = 'انتهت الحصة';
+            $body = 'انتهت حصتك' . ($when !== '' ? " ({$when})" : '') . '.';
+            $type = 'availability_session_ended';
+        }
+
+        @send_notification_to_users(
+            $con, 'student', $studentIds, $title, $body,
+            ['type' => $type, 'slot_id' => $slotId],
+            'system', null, ['push']
+        );
     }
 }
