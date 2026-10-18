@@ -145,7 +145,7 @@ if (!function_exists('studentHome')) {
         }
 
         $sql = "
-            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.price, c.image, c.is_active, c.created_at,
+            SELECT c.id, c.subject_id, c.academic_year_id, c.teacher_id, c.slug, c.type, c.kind, c.price, c.image, c.is_active, c.created_at,
                    COALESCE(ct.name, c.slug) AS name, ct.description
             FROM courses c
             LEFT JOIN courses_translations ct ON c.id = ct.course_id AND ct.language_id = {$langId}
