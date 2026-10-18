@@ -25,10 +25,9 @@ if (!function_exists('studentListAvailableSlots')) {
             return ['status' => 'error', 'message' => 'Student authentication required'];
         }
 
-        // A consultation belongs to the platform rather than to a teacher or a package, and any
-        // student may book any open slot - so asking for a scope before answering left the
-        // student's calendar empty with nothing to pick from. Both filters stay available for
-        // a caller that wants them; neither is required.
+        // Neither filter is required. Demanding a teacher or a course before answering left the
+        // student staring at an empty calendar with nothing to pick from and no way to discover
+        // what to ask for.
         //
         // teacher_id=0 means the platform owner specifically, so what matters is whether the
         // parameter was sent at all, not whether it is truthy.
@@ -36,9 +35,18 @@ if (!function_exists('studentListAvailableSlots')) {
         $teacherId = (int)($_GET['teacher_id'] ?? 0);
         $courseId = (int)($_GET['course_id'] ?? 0);
 
+        // Without a course named, the answer is the packages this student actually has - not
+        // every package on the platform. Booking already refuses a slot the student has no
+        // subscription for, so listing them was offering a calendar full of dates that each
+        // turned into an error on the way back.
+        $courseIds = $courseId > 0
+            ? null
+            : availability_student_course_ids($con, $studentId);
+
         return availability_list_slots($con, [
             'teacher_id' => $teacherSent ? $teacherId : null,
             'course_id' => $courseId ?: null,
+            'course_ids' => $courseIds,
             'subject_id' => $_GET['subject_id'] ?? null,
             'date_from' => $_GET['date_from'] ?? $_GET['from'] ?? null,
             'date_to' => $_GET['date_to'] ?? $_GET['to'] ?? null,

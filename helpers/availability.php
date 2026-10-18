@@ -477,6 +477,48 @@ if (!function_exists('availability_delete_slot')) {
 }
 
 /**
+ * The packages a student is actually in, as course ids.
+ *
+ * Read from the same two tables as availability_find_student_subscription rather than through
+ * the subscriptions app file, so the calendar does not depend on that file being included.
+ *
+ * NULL means "do not filter at all": that is the answer for the demo account, which reaches
+ * the whole catalogue without owning a subscription row. An EMPTY ARRAY is a real answer - a
+ * student who is in no package - and the caller must tell the two apart.
+ */
+if (!function_exists('availability_student_course_ids')) {
+    function availability_student_course_ids($con, int $studentId): ?array {
+        if (function_exists('student_is_demo_account') && student_is_demo_account($con, $studentId)) {
+            return null;
+        }
+
+        $stmt = mysqli_prepare($con, "
+            SELECT DISTINCT ssc.course_id
+            FROM student_subscriptions ss
+            JOIN student_subscription_courses ssc ON ssc.student_subscription_id = ss.id
+            WHERE ss.student_id = ? AND ss.is_active = 1
+        ");
+        if (!$stmt) {
+            return null;
+        }
+
+        mysqli_stmt_bind_param($stmt, "i", $studentId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $ids = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $courseId = (int)$row['course_id'];
+            if ($courseId > 0) {
+                $ids[] = $courseId;
+            }
+        }
+
+        return $ids;
+    }
+}
+
+/**
  * The student's live subscription is what a booking is charged against, and it is also what
  * bounds the booking in time: a slot after the subscription ends cannot be booked, which is the
  * whole point of giving a package a duration.
@@ -658,6 +700,19 @@ if (!function_exists('availability_list_slots')) {
             $where[] = 's.course_id = ?';
             $params[] = (int)$filters['course_id'];
             $types .= 'i';
+        }
+        // The packages one student is allowed to see sessions of. A slot attached to no course
+        // is open to everybody and stays in the list - restricting it to nobody would hide the
+        // platform owner's general slots from every student at once.
+        // isset, not !empty: a student with no packages at all has an EMPTY list, and that is
+        // an answer - skipping the filter there would show them every package on the platform.
+        if (isset($filters['course_ids']) && is_array($filters['course_ids'])) {
+            $ids = array_values(array_unique(array_filter(array_map('intval', $filters['course_ids']))));
+            if (!empty($ids)) {
+                $where[] = '(s.course_id IS NULL OR s.course_id IN (' . implode(',', $ids) . '))';
+            } else {
+                $where[] = 's.course_id IS NULL';
+            }
         }
         if (!empty($filters['subject_id'])) {
             $where[] = 's.subject_id = ?';
