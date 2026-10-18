@@ -569,6 +569,15 @@ if (!function_exists('availability_book_slot')) {
             return ['status' => 'error', 'message' => 'Student not found'];
         }
 
+        // A slot with no course belongs to no package, so there is no subscription that could
+        // cover it. Without this, find_student_subscription(null) matches ANY active
+        // subscription the student has and lets them into a session they bought nothing for -
+        // the same hole the listing had. An admin booking (requireSubscription = false) is
+        // still allowed to place somebody in one deliberately.
+        if ($requireSubscription && empty($slot['course_id'])) {
+            return ['status' => 'error', 'message' => 'This slot does not belong to any package'];
+        }
+
         $subscription = availability_find_student_subscription($con, $studentId, $slot['course_id']);
         if ($requireSubscription && !$subscription) {
             return ['status' => 'error', 'message' => 'This student has no active subscription covering this slot'];
@@ -701,17 +710,23 @@ if (!function_exists('availability_list_slots')) {
             $params[] = (int)$filters['course_id'];
             $types .= 'i';
         }
-        // The packages one student is allowed to see sessions of. A slot attached to no course
-        // is open to everybody and stays in the list - restricting it to nobody would hide the
-        // platform owner's general slots from every student at once.
+        // The packages one student is allowed to see sessions of.
+        //
+        // A slot with no course belongs to no package, so it is NOT shown. Letting those
+        // through was offering every student a "موعد عام" they had bought nothing to earn -
+        // which is what a student who is in no package was being shown. Time with the platform
+        // that belongs to no package is a consultation, and consultations are their own
+        // feature with their own table.
+        //
         // isset, not !empty: a student with no packages at all has an EMPTY list, and that is
         // an answer - skipping the filter there would show them every package on the platform.
         if (isset($filters['course_ids']) && is_array($filters['course_ids'])) {
             $ids = array_values(array_unique(array_filter(array_map('intval', $filters['course_ids']))));
             if (!empty($ids)) {
-                $where[] = '(s.course_id IS NULL OR s.course_id IN (' . implode(',', $ids) . '))';
+                $where[] = 's.course_id IN (' . implode(',', $ids) . ')';
             } else {
-                $where[] = 's.course_id IS NULL';
+                // In no package: there is nothing on this calendar for them.
+                $where[] = '1 = 0';
             }
         }
         if (!empty($filters['subject_id'])) {
