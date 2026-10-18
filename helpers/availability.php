@@ -203,9 +203,31 @@ if (!function_exists('availability_format_slot_row')) {
 
         $row['started_at'] = $row['started_at'] ?? null;
         $row['ended_at'] = $row['ended_at'] ?? null;
-        // Started and not yet ended. This is what the student's screen reads to decide whether
-        // to show the meeting link - not the clock, and not the booking.
-        $row['is_live'] = (bool)($row['started_at'] && !$row['ended_at']);
+
+        // TWO GATES, AND EITHER ONE OPENS THE LINK.
+        //
+        // The clock is the rule: the session's own hour decides, so a teacher who forgets to
+        // press Start does not lock out a room full of students who turned up on time. Ten
+        // minutes early, because people arrive early.
+        //
+        // The human is the override: Start opens it ahead of the window when a session is
+        // brought forward, and End closes it for good - which is why End is checked first and
+        // beats everything. Without the clock a forgotten press locks everyone out; without
+        // the human a forgotten End would leave the link open all night.
+        $row['window_opens_at'] = date(
+            'Y-m-d H:i:s',
+            strtotime($row['slot_date'] . ' ' . $row['start_time']) - (10 * 60)
+        );
+        $row['window_closes_at'] = date(
+            'Y-m-d H:i:s',
+            strtotime($row['slot_date'] . ' ' . $row['end_time'])
+        );
+
+        $now = get_request_now()->format('Y-m-d H:i:s');
+        $inWindow = $now >= $row['window_opens_at'] && $now <= $row['window_closes_at'];
+
+        $row['is_live'] = empty($row['ended_at'])
+            && (!empty($row['started_at']) || $inWindow);
 
         $labels = availability_slot_status_labels($row['status']);
         $row['status_label_ar'] = $labels['ar'];
