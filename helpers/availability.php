@@ -323,11 +323,35 @@ if (!function_exists('availability_create_slot')) {
             return ['status' => 'error', 'message' => 'Failed to create slot: ' . mysqli_error($con)];
         }
 
-        return [
+        $slotId = (int)mysqli_insert_id($con);
+
+        // Opened from one student's calendar, the slot is meant FOR that student - an empty
+        // slot would be created and then hidden by the very filter that screen is showing,
+        // which reads as "nothing was saved". Booking them here is what makes the date appear.
+        $studentId = isset($body['student_id']) ? (int)$body['student_id'] : 0;
+        $bookingWarning = null;
+        if ($studentId > 0) {
+            $booking = availability_book_slot($con, $slotId, $studentId, $byType, $byId);
+            if (($booking['status'] ?? '') === 'error') {
+                // The slot itself is real and the caller must be told it exists, so this is a
+                // warning rather than a failure - deleting it here would throw away work the
+                // admin can still use by booking the student by hand.
+                $bookingWarning = $booking['message'] ?? 'Failed to book the student into the slot';
+            }
+        }
+
+        $response = [
             'status' => 'success',
-            'message' => 'تم إنشاء الموعد بنجاح',
-            'data' => get_availability_slot_details($con, mysqli_insert_id($con)),
+            'message' => $bookingWarning
+                ? 'تم إنشاء الموعد، ولم يتم حجز الطالب: ' . $bookingWarning
+                : 'تم إنشاء الموعد بنجاح',
+            'data' => get_availability_slot_details($con, $slotId),
         ];
+        if ($bookingWarning) {
+            $response['booking_warning'] = $bookingWarning;
+        }
+
+        return $response;
     }
 }
 
