@@ -64,20 +64,6 @@ if (!function_exists('adminDeleteAvailabilitySlot')) {
     }
 }
 
-if (!function_exists('adminBulkDeleteAvailabilitySlots')) {
-    function adminBulkDeleteAvailabilitySlots($con) {
-        $body = read_json_body();
-        return availability_bulk_delete_slots($con, [
-            'teacher_id' => array_key_exists('teacher_id', $body) ? $body['teacher_id'] : null,
-            'course_id' => $body['course_id'] ?? null,
-            'student_id' => $body['student_id'] ?? null,
-            'date_from' => $body['date_from'] ?? $body['from'] ?? null,
-            'date_to' => $body['date_to'] ?? $body['to'] ?? null,
-            'include_started' => $body['include_started'] ?? false,
-        ], null);
-    }
-}
-
 if (!function_exists('adminBookStudentIntoSlot')) {
     function adminBookStudentIntoSlot($con, $adminData) {
         $body = read_json_body();

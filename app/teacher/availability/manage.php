@@ -50,25 +50,6 @@ if (!function_exists('teacherCreateAvailabilitySlot')) {
     }
 }
 
-if (!function_exists('teacherBulkDeleteAvailabilitySlots')) {
-    function teacherBulkDeleteAvailabilitySlots($con, $teacherData) {
-        $teacherId = teacher_availability_id($teacherData);
-        if ($teacherId <= 0) {
-            return ['status' => 'error', 'message' => 'Teacher authentication required'];
-        }
-        $body = read_json_body();
-        // The teacher id is passed as the restriction rather than as a filter, so no body
-        // field can widen this past the caller's own calendar.
-        return availability_bulk_delete_slots($con, [
-            'course_id' => $body['course_id'] ?? null,
-            'student_id' => $body['student_id'] ?? null,
-            'date_from' => $body['date_from'] ?? $body['from'] ?? null,
-            'date_to' => $body['date_to'] ?? $body['to'] ?? null,
-            'include_started' => $body['include_started'] ?? false,
-        ], $teacherId);
-    }
-}
-
 if (!function_exists('teacherGenerateAvailabilitySlots')) {
     function teacherGenerateAvailabilitySlots($con, $teacherData) {
         $teacherId = teacher_availability_id($teacherData);
