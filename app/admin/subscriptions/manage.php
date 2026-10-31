@@ -730,6 +730,21 @@ if (!function_exists('adminListStudentSubscriptions')) {
             $types .= "s";
         } elseif ($statusFilter === 'inactive') {
             $whereConditions[] = "ss.is_active = 0";
+        } elseif ($statusFilter === 'paused' || $statusFilter === 'cancelled') {
+            // `inactive` covers both of these, which is why it is kept, but it cannot tell an
+            // admin who paused a subscription from one who cancelled it - and the row itself
+            // reports those as two different words, so the filter has to as well.
+            //
+            // Before migration 081 there is no cancelled_at to tell them apart: an inactive
+            // unexpired subscription has always meant paused, so `paused` answers as `inactive`
+            // did and `cancelled` can match nothing rather than quietly returning paused rows.
+            if (subscription_status_columns_exist($con)) {
+                $whereConditions[] = $statusFilter === 'cancelled'
+                    ? "ss.cancelled_at IS NOT NULL"
+                    : "ss.is_active = 0 AND ss.cancelled_at IS NULL";
+            } else {
+                $whereConditions[] = $statusFilter === 'cancelled' ? "1 = 0" : "ss.is_active = 0";
+            }
         }
 
         if (!empty($fromDate)) {
