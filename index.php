@@ -1399,6 +1399,16 @@ $routes = [
     ],
     [
         "method" => "GET",
+        "path" => "/najeh/teacher/package-subscriptions",
+        "handler" => function ($con) {
+            include_once "./middlewares/teacherauthmiddleware.php";
+            include_once "./app/teacher/subscriptions/package_subscriptions.php";
+            $teacherData = teacherAuthMiddleware();
+            return teacherListPackageSubscriptions($con, $teacherData);
+        },
+    ],
+    [
+        "method" => "GET",
         "path" => "/najeh/teacher/subscribed-students",
         "handler" => function ($con) {
             include_once "./middlewares/teacherauthmiddleware.php";
