@@ -4937,6 +4937,19 @@ $routes = [
             },
         ],
         [
+            // Clearing a whole published period at once. POST rather than DELETE because it
+            // carries a filter body, and several clients drop the body of a DELETE.
+            "method" => "POST",
+            "path" => "/najeh/admin/availability/bulk-delete",
+            "handler" => function ($con) {
+                include_once "./middlewares/adminauthmiddleware.php";
+                include_once "./app/admin/availability/manage.php";
+                $adminData = adminAuthMiddleware();
+                requirePermission($con, $adminData, 'manage_sessions');
+                return adminBulkDeleteAvailabilitySlots($con);
+            },
+        ],
+        [
             // Start / end a package session. The meeting link stays hidden from the students
             // booked into it until it has actually been started.
             "method" => "POST",
@@ -5042,6 +5055,16 @@ $routes = [
                 include_once "./app/teacher/availability/manage.php";
                 $teacherData = teacherAuthMiddleware();
                 return teacherDeleteAvailabilitySlot($con, $teacherData);
+            },
+        ],
+        [
+            "method" => "POST",
+            "path" => "/najeh/teacher/availability/bulk-delete",
+            "handler" => function ($con) {
+                include_once "./middlewares/teacherauthmiddleware.php";
+                include_once "./app/teacher/availability/manage.php";
+                $teacherData = teacherAuthMiddleware();
+                return teacherBulkDeleteAvailabilitySlots($con, $teacherData);
             },
         ],
         [
