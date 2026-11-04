@@ -180,13 +180,28 @@ function count_tuples(string $sql): int
 function connect_db()
 {
     // Credentials come from the app's own config, so they are not copied into this file.
-    require_once __DIR__ . '/../config/connection.php';
-    global $con;
-    if (!$con) {
-        throw new RuntimeException('No database connection.');
+    //
+    // The include happens inside this function, which means connection.php's $con lands
+    // in THIS scope and not the global one - reading it back through `global $con` finds
+    // nothing. It is read directly instead, and cached so the include runs once.
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
     }
+
+    $path = __DIR__ . '/../config/connection.php';
+    if (!is_readable($path)) {
+        throw new RuntimeException("Cannot read the database config: {$path}");
+    }
+    require $path;
+
+    if (empty($con)) {
+        throw new RuntimeException('config/connection.php did not give a connection.');
+    }
+
     mysqli_set_charset($con, 'utf8mb4');
-    return $con;
+    $cached = $con;
+    return $cached;
 }
 
 function table_count($con, string $table): ?int
